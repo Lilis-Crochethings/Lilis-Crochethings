@@ -1,0 +1,96 @@
+---
+import { getCollection } from "astro:content";
+
+const general = (await getCollection("general"))[0]; // TODO: improve, this is ugly
+console.log(general);
+---
+
+<nav class="nav">
+  <div class="logo">
+    <img src="images/Lilis-Crochethings.webp" alt="Profile pic" />
+    <p>{general.data.name}</p>
+  </div>
+
+  <button class="hamburger" id="hamburger">☰</button>
+
+  <ul class="nav-links" id="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/creations">Creations</a></li>
+    <li><a href="/patterns">Patterns</a></li>
+    <li><a href="/about">About me</a></li>
+  </ul>
+</nav>
+
+<script>
+  const btn = document.getElementById("hamburger");
+  const links = document.getElementById("nav-links");
+
+  btn?.addEventListener("click", () => {
+    links?.classList.toggle("open");
+  });
+</script>
+
+<style>
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--accent);
+  }
+
+  .logo {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    text-decoration: none;
+    color: #333;
+  }
+
+  .hamburger {
+    display: none;
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .hamburger {
+      display: block;
+    }
+
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 60px;
+      right: 1rem;
+      background: white;
+      padding: 1rem;
+      border: 1px solid #ddd;
+    }
+
+    .nav-links.open {
+      display: flex;
+    }
+  }
+</style>

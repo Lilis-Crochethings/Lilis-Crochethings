@@ -1,0 +1,10 @@
+---
+const { creation } = Astro.props;
+---
+
+<article class="card">
+  <img src={creation.data.image} alt={creation.data.title} />
+  <h2>{creation.data.title}</h2>
+  <p>Difficulty: {creation.data.difficulty}</p>
+  <a href={`/patterns/${creation.slug}`}>View pattern</a>
+</article>

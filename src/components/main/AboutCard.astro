@@ -1,0 +1,59 @@
+---
+// src/components/cards/AboutCard.astro
+const { name, bio, image } = Astro.props;
+---
+
+<a class="card" href="/about">
+  <h2>About me</h2>
+
+  <div class="content">
+    <p>{bio}</p>
+    <div class="profile">
+      <h3>{name}</h3>
+      <img src={image} alt={name} />
+    </div>
+    
+  </div>
+</a>
+
+<style>
+.card {
+  display: block;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.card:hover {
+  transform: scale(1.01);
+}
+
+h2 {
+  margin-top: 0;
+}
+</style>

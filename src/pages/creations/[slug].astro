@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const creations = await getCollection("creations");
+
+  return creations.map((creation) => ({
+    params: { slug: creation.id },
+    props: { creation },
+  }));
+}
+
+const { creation } = Astro.props;
+---
+<BaseLayout>
+  <h1>{creation.data.title}</h1>
+  
+  <img src={creation.data.image} alt={creation.data.title} />
+  
+  <p>{creation.data.description}</p>
+  
+  <div set:html={creation.rendered?.html ?? ""} />
+</BaseLayout>
