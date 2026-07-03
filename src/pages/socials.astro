@@ -1,6 +1,6 @@
 ---
-import fs from "node:fs";
 import { parse } from "yaml";
+import socialsRaw from "../data/socials.yaml?raw";
 import "../styles/global.css";
 
 type LinkEntry = { name: string; href: string; icon: string; newTab?: boolean };
@@ -10,9 +10,7 @@ type SocialsConfig = {
   contacts: LinkEntry[];
 };
 
-const { icons, socials, contacts } = parse(
-  fs.readFileSync(new URL("../data/socials.yaml", import.meta.url), "utf-8")
-) as SocialsConfig;
+const { icons, socials, contacts } = parse(socialsRaw) as SocialsConfig;
 ---
 
 <html lang="en">
