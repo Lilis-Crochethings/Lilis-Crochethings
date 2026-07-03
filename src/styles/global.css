@@ -35,6 +35,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Lili Love";
+  src: url("/fonts/Lili Love-Regular.otf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lili Love";
+  src: url("/fonts/Lili Love-Bold.otf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
+
 :root {
   --primary: #B7718D;
   --background: #fffaf7;
