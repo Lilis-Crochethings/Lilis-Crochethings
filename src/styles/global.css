@@ -1,5 +1,40 @@
 /* src/styles/global.css */
 
+@font-face {
+  font-family: "Lili Bold";
+  src: url("/fonts/Lili Bold-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lili Curly";
+  src: url("/fonts/Lili Curly-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lili Jolly";
+  src: url("/fonts/Lili Jolly-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lili Lovely";
+  src: url("/fonts/Lili Lovely-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lili Simple";
+  src: url("/fonts/Lili Simple-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   --primary: #B7718D;
   --background: #fffaf7;
@@ -24,7 +59,7 @@ a {
 }
 
 h1, h2, h3 {
-  font-family: Georgia, serif;
+  /*font-family: Georgia, serif;*/
   margin-top: 0px;
 }
 

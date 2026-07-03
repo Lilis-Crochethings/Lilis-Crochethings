@@ -1,0 +1,49 @@
+icons:
+  home:
+    src: /images/Lilis-Crochethings.webp
+    radius: 50%
+  instagram:
+    src: /images/socials/instagram.webp
+    pad: 2
+  pinterest:
+    src: /images/socials/pinterest.webp
+  facebook:
+    src: /images/socials/facebook.webp
+  messenger:
+    src: /images/socials/messenger.webp
+    pad: 1
+  mail:
+    src: /images/socials/email.webp
+    pad: 3
+
+socials:
+  # - name: Lili's Crochethings
+  #   href: /
+  #   icon: home
+  #   newTab: false
+  - name: Instagram
+    href: https://www.instagram.com/lilis_crochethings/
+    icon: instagram
+    newTab: true
+  - name: Pinterest
+    href: https://www.pinterest.com/liliscrochethings/_created/
+    icon: pinterest
+    newTab: true
+  - name: Facebook
+    href: https://www.facebook.com/people/Lilis-Crochethings/61568543484297
+    icon: facebook
+    newTab: true
+
+contacts:
+  - name: lilis.crochethings@gmail.com
+    href: mailto:lilis.crochethings@gmail.com
+    icon: mail
+    newTab: false
+  - name: Messenger
+    href: https://www.messenger.com/t/465517986647818
+    icon: messenger
+    newTab: true
+  - name: Instagram
+    href: https://www.instagram.com/lilis_crochethings/
+    icon: instagram
+    newTab: true

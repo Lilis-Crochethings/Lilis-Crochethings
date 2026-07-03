@@ -1,0 +1,151 @@
+---
+import fs from "node:fs";
+import { parse } from "yaml";
+import "../styles/global.css";
+
+type LinkEntry = { name: string; href: string; icon: string; newTab?: boolean };
+type SocialsConfig = {
+  icons: Record<string, { src: string; pad?: number; radius?: string }>;
+  socials: LinkEntry[];
+  contacts: LinkEntry[];
+};
+
+const { icons, socials, contacts } = parse(
+  fs.readFileSync(new URL("../data/socials.yaml", import.meta.url), "utf-8")
+) as SocialsConfig;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Socials — Lili's Crochethings</title>
+  </head>
+
+  <body class="socials-body">
+    <main class="card">
+      <h1 class="brand">Lili's Crochethings</h1>
+
+      <div class="avatar">
+        <img src="/images/Lilis-Crochethings.webp" alt="Lili's Crochethings" />
+      </div>
+
+      <h2 class="section-title">Socials</h2>
+      <div class="links">
+        {socials.map((s) => (
+          <a class="link-pill" href={s.href} target={s.newTab ? "_blank" : undefined} rel={s.newTab ? "noopener noreferrer" : undefined}>
+            <span class="badge" style={`padding:${icons[s.icon].pad ?? 0}px`}>
+              <img src={icons[s.icon].src} alt="" style={`border-radius:${icons[s.icon].radius ?? 0}`} />
+            </span>
+            <span>{s.name}</span>
+          </a>
+        ))}
+      </div>
+
+      <h2 class="section-title">Contact</h2>
+      <div class="links">
+        {contacts.map((c) => (
+          <a class="link-pill" href={c.href} target={c.newTab ? "_blank" : undefined} rel={c.newTab ? "noopener noreferrer" : undefined}>
+            <span class="badge" style={`padding:${icons[c.icon].pad ?? 0}px`}>
+              <img src={icons[c.icon].src} alt="" style={`border-radius:${icons[c.icon].radius ?? 0}`} />
+            </span>
+            <span>{c.name}</span>
+          </a>
+        ))}
+      </div>
+    </main>
+  </body>
+</html>
+
+<style>
+  .socials-body {
+    font-family: "Lili lovely", Georgia, serif;
+    background: var(--background);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    font-size: 1.1rem;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .brand {
+    font-size: 2rem;
+    text-align: center;
+    color: var(--primary);
+    margin: 0 0 0.5rem;
+  }
+
+  .avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin: 1rem 0 0.25rem;
+  }
+
+  .links {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .link-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--text);
+    background: #ffffff;
+  }
+
+  .badge {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+</style>
