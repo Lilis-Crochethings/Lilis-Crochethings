@@ -34,7 +34,7 @@ Routing is file-based under `src/pages/`. Every page wraps its content in `src/l
 
 ### Components
 
-- `src/components/main/` — home page highlight cards (`AboutCard`, `CreationsCard`, `PatternsCard`) that link out to `/about`, `/creations`, `/patterns`.
+- `src/components/main/` — home page cards (`AboutCard`, `CreationsCard`, `PatternsCard`) that link out to `/about`, `/creations`, `/patterns`.
 - `src/components/creations/CreationCard.astro` — a detail-card component whose props (`difficulty`, `creation.slug`) match the *patterns* schema rather than the current *creations* schema, and it isn't referenced from any page yet. Reconcile this against whichever collection it's meant for before using it.
 - `Navbar.astro` includes its own mobile hamburger toggle script and scoped styles.
 

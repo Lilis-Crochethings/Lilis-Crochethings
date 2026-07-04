@@ -13,12 +13,79 @@ export async function getStaticPaths() {
 
 const { creation } = Astro.props;
 ---
-<BaseLayout>
+<BaseLayout
+  title={creation.data.title}
+  description={creation.data.description}
+  image={creation.data.images[0]}
+>
   <h1>{creation.data.title}</h1>
-  
-  <img src={creation.data.image} alt={creation.data.title} />
-  
+
+  <div class="gallery">
+    {creation.data.images.map((image) => (
+      <img src={image} alt={creation.data.title} />
+    ))}
+  </div>
+
   <p>{creation.data.description}</p>
-  
-  <div set:html={creation.rendered?.html ?? ""} />
+
+  <ul class="details">
+    <li>Type: {creation.data.type}</li>
+    {creation.data.date && <li>Made on: {creation.data.date.toLocaleDateString()}</li>}
+    {creation.data.hoursSpent && <li>Time spent: {creation.data.hoursSpent} hours</li>}
+    {creation.data.hookSize && <li>Hook size: {creation.data.hookSize}</li>}
+    {creation.data.yarn && creation.data.yarn.length > 0 && (
+      <li class="yarn-chips">
+        <span>Yarn:</span>
+        {creation.data.yarn.map((y) => (<span class="chip">{y}</span>))}
+      </li>
+    )}
+    {creation.data.creator && (
+      <li>
+        Made by: {creation.data.creatorLink ? <a href={creation.data.creatorLink} target="_blank" rel="noopener noreferrer">{creation.data.creator}</a> : creation.data.creator}
+      </li>
+    )}
+    {creation.data.patternLink && (
+      <li>Pattern: <a href={creation.data.patternLink} target="_blank" rel="noopener noreferrer">{creation.data.patternName ?? "View pattern"}</a></li>
+    )}
+    {!creation.data.patternLink && creation.data.patternName && <li>Pattern: {creation.data.patternName}</li>}
+    {creation.data.instagramLink && <li><a href={creation.data.instagramLink} target="_blank" rel="noopener noreferrer">View on Instagram</a></li>}
+  </ul>
 </BaseLayout>
+
+<style>
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.gallery img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.details {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.yarn-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  background: var(--accent);
+  color: var(--text);
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+</style>

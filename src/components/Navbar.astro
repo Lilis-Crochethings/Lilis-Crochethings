@@ -7,11 +7,11 @@ console.log(general);
 
 <nav class="nav">
   <div class="logo">
-    <img src="images/Lilis-Crochethings.webp" alt="Profile pic" />
+    <img src="/images/Lilis-Crochethings.webp" alt="Profile pic" />
     <p>{general.data.name}</p>
   </div>
 
-  <button class="hamburger" id="hamburger">☰</button>
+  <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">☰</button>
 
   <ul class="nav-links" id="nav-links">
     <li><a href="/">Home</a></li>
@@ -25,8 +25,22 @@ console.log(general);
   const btn = document.getElementById("hamburger");
   const links = document.getElementById("nav-links");
 
+  const closeMenu = () => {
+    links?.classList.remove("open");
+    btn?.setAttribute("aria-expanded", "false");
+    if (btn) btn.textContent = "☰";
+    document.body.classList.remove("nav-open");
+  };
+
   btn?.addEventListener("click", () => {
-    links?.classList.toggle("open");
+    const isOpen = links?.classList.toggle("open");
+    btn.setAttribute("aria-expanded", String(!!isOpen));
+    btn.textContent = isOpen ? "✕" : "☰";
+    document.body.classList.toggle("nav-open", !!isOpen);
+  });
+
+  links?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", closeMenu);
   });
 </script>
 
@@ -70,6 +84,7 @@ console.log(general);
     font-size: 1.5rem;
     background: none;
     border: none;
+    z-index: 1001;
   }
 
   /* Mobile */
@@ -79,18 +94,27 @@ console.log(general);
     }
 
     .nav-links {
-      display: none;
+      display: flex;
+      visibility: hidden;
+      opacity: 0;
       flex-direction: column;
-      position: absolute;
-      top: 60px;
-      right: 1rem;
-      background: white;
-      padding: 1rem;
-      border: 1px solid #ddd;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      position: fixed;
+      inset: 0;
+      background: var(--accent);
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+    }
+
+    .nav-links a {
+      font-size: 1.5rem;
     }
 
     .nav-links.open {
-      display: flex;
+      visibility: visible;
+      opacity: 1;
     }
   }
 </style>

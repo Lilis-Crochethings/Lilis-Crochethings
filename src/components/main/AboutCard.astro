@@ -1,18 +1,20 @@
 ---
 // src/components/cards/AboutCard.astro
 const { name, bio, image } = Astro.props;
+const paragraphs = Array.isArray(bio) ? bio : [bio];
 ---
 
 <a class="card" href="/about">
   <h2>About me</h2>
 
   <div class="content">
-    <p>{bio}</p>
-    <div class="profile">
-      <h3>{name}</h3>
-      <img src={image} alt={name} />
+    <div class="bio">
+      {paragraphs.map((paragraph) => <p>{paragraph}</p>)}
     </div>
-    
+    <div class="profile">
+      <img src={image} alt={name} />
+      <h3>{name}</h3>
+    </div>
   </div>
 </a>
 
@@ -42,6 +44,17 @@ const { name, bio, image } = Astro.props;
   align-items: start;
 }
 
+.bio {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.bio p {
+  margin: 0;
+}
+
 img {
   width: 120px;
   height: 120px;
@@ -55,5 +68,21 @@ img {
 
 h2 {
   margin-top: 0;
+}
+
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .profile {
+    order: -1;
+  }
+
+  .profile h3 {
+    margin: 0;
+  }
 }
 </style>

@@ -22,3 +22,10 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# raw images pending webp conversion (see scripts/convert-images.mjs)
+images-to-convert/
+
+# personal data exports (time tracking, Instagram archive)
+scripts/clockify/
+scripts/instagram-export/

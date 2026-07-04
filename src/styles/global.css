@@ -1,5 +1,9 @@
 /* src/styles/global.css */
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 @font-face {
   font-family: "Lili Bold";
   src: url("/fonts/Lili Bold-Regular.otf") format("opentype");
@@ -58,13 +62,18 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: "Lili Love", system-ui, sans-serif;
+  font-size: 1.1rem;
   background: var(--background);
   color: var(--text);
   display: flex;
   align-items: stretch;
   justify-content: center;
   flex-direction: column;
+}
+
+body.nav-open {
+  overflow: hidden;
 }
 
 a {
@@ -79,7 +88,8 @@ h1, h2, h3 {
 
 
   main {
+    width: 100%;
     padding: 1rem;
-    max-width: 1000px;
+    max-width: 1046px;
     align-self: center;
   }

@@ -2,9 +2,33 @@
 const { creation } = Astro.props;
 ---
 
-<article class="card">
-  <img src={creation.data.image} alt={creation.data.title} />
-  <h2>{creation.data.title}</h2>
-  <p>Difficulty: {creation.data.difficulty}</p>
-  <a href={`/patterns/${creation.slug}`}>View pattern</a>
-</article>
+<a class="card" href={`/creations/${creation.id}`} data-date={creation.data.date?.getTime() ?? 0} data-type={creation.data.type}>
+  <div class="imgWrap">
+    <img src={creation.data.images[0]} alt={creation.data.title} />
+  </div>
+</a>
+
+<style>
+.card {
+  display: block;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.imgWrap img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.card:hover {
+  transform: scale(1.08);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.2);
+}
+</style>

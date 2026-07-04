@@ -4,7 +4,7 @@ const { patterns } = Astro.props;
 ---
 
 <a class="card" href="/patterns">
-  <h2>Pattern highlights</h2>
+  <h2>Patterns</h2>
 
   <div class="grid">
     {patterns.map((p: any) => (
@@ -29,13 +29,14 @@ const { patterns } = Astro.props;
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px;
 }
 
 .imgWrap img {
   width: 100%;
-  height: 120px;
+  max-width: 150px;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 10px;
 }

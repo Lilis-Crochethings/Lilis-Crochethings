@@ -1,19 +1,153 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CreationCard from '../../components/creations/CreationCard.astro';
 import { getCollection } from "astro:content";
 
-const creations = await getCollection("creations");
+const creations = (await getCollection("creations")).sort(
+  (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
+);
 ---
-<BaseLayout>
-  <h1>Creations</h1>
-  
-  <ul>
+<BaseLayout
+  title="Creations"
+  description="Browse Lili's finished crochet creations — bags, amigurumi, blankets, and more handmade pieces."
+>
+  <div class="toolbar">
+    <h1>Creations</h1>
+    <div class="controls">
+      <div class="filter-toggle" role="group" aria-label="Filter by type">
+        <button type="button" data-filter="all" class="active" aria-pressed="true">All</button>
+        <button type="button" data-filter="crochet" aria-pressed="false">Crochet</button>
+        <button type="button" data-filter="embroidery" aria-pressed="false">Embroidery</button>
+      </div>
+      <button id="sort-toggle" type="button" aria-pressed="false">Date ↓</button>
+    </div>
+  </div>
+
+  <div class="grid" id="creations-grid">
     {creations.map((creation) => (
-      <li>
-        <a href={`/creations/${creation.id}`}>
-          {creation.data.title}
-        </a>
-      </li>
+      <CreationCard creation={creation} />
     ))}
-  </ul>
+  </div>
 </BaseLayout>
+
+<style>
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    justify-content: flex-start;
+  }
+
+  .controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .filter-toggle button,
+  #sort-toggle {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem;
+  }
+}
+
+.toolbar h1 {
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--background);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.filter-toggle button {
+  border: none;
+  background: none;
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.filter-toggle button.active {
+  background: var(--accent);
+}
+
+#sort-toggle {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+</style>
+
+<script>
+  const grid = document.getElementById('creations-grid');
+  const sortButton = document.getElementById('sort-toggle');
+  const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle button');
+  let ascending = false;
+  let currentFilter = 'all';
+
+  function applyFilter() {
+    if (!grid) return;
+    const cards = Array.from(grid.children) as HTMLElement[];
+    for (const card of cards) {
+      const matches = currentFilter === 'all' || card.dataset.type === currentFilter;
+      card.style.display = matches ? '' : 'none';
+    }
+  }
+
+  filterButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentFilter = btn.dataset.filter ?? 'all';
+      filterButtons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', String(active));
+      });
+      applyFilter();
+    });
+  });
+
+  sortButton?.addEventListener('click', () => {
+    if (!grid) return;
+    ascending = !ascending;
+
+    const cards = Array.from(grid.children) as HTMLElement[];
+    cards.sort((a, b) => {
+      const dateA = Number(a.dataset.date);
+      const dateB = Number(b.dataset.date);
+      return ascending ? dateA - dateB : dateB - dateA;
+    });
+    cards.forEach((card) => grid.appendChild(card));
+
+    sortButton.textContent = ascending ? 'Date ↑' : 'Date ↓';
+    sortButton.setAttribute('aria-pressed', String(ascending));
+  });
+</script>

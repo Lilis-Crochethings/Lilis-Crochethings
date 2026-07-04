@@ -2,6 +2,21 @@
 import "../styles/global.css";
 import Navbar from '../components/Navbar.astro';
 
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
+const {
+  title = "Lili's Crochethings",
+  description = "Handmade crochet creations and free patterns by Lili — browse finished pieces and interactive patterns for your next project.",
+  image = "/images/Lilis-Crochethings.webp",
+} = Astro.props;
+
+const pageTitle = title === "Lili's Crochethings" ? title : `${title} — Lili's Crochethings`;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const imageURL = new URL(image, Astro.site);
 ---
 
 <html lang="en">
@@ -9,7 +24,22 @@ import Navbar from '../components/Navbar.astro';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Lili's Crochethings</title>
+    <link rel="canonical" href={canonicalURL} />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lili's Crochethings" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={imageURL} />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageURL} />
   </head>
 
   <body>
@@ -17,5 +47,58 @@ import Navbar from '../components/Navbar.astro';
     <main>
       <slot />
     </main>
+
+    <button id="scroll-to-top" type="button" aria-label="Scroll to top">↑</button>
   </body>
 </html>
+
+<style>
+#scroll-to-top {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 900;
+}
+
+#scroll-to-top.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #scroll-to-top {
+    transition: none;
+  }
+}
+</style>
+
+<script>
+  const scrollButton = document.getElementById('scroll-to-top');
+  const SCROLL_THRESHOLD = 400;
+
+  function updateVisibility() {
+    scrollButton?.classList.toggle('visible', window.scrollY > SCROLL_THRESHOLD);
+  }
+
+  window.addEventListener('scroll', updateVisibility, { passive: true });
+  updateVisibility();
+
+  scrollButton?.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>

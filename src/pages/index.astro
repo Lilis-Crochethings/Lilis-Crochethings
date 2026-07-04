@@ -3,26 +3,32 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutCard from '../components/main/AboutCard.astro';
 import CreationsCard from '../components/main/CreationsCard.astro';
 import PatternsCard from '../components/main/PatternsCard.astro';
+import { getCollection } from 'astro:content';
+
+const allCreations = (await getCollection('creations')).sort(
+  (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
+);
+
+const creationImages = allCreations.flatMap((creation) =>
+  creation.data.images.map((image) => ({ image, title: creation.data.title }))
+);
 ---
 
-<BaseLayout>
+<BaseLayout
+  description="Lili's Crochethings — handmade crochet bags, amigurumi, and blankets, plus free interactive crochet patterns to make your own."
+>
 
 <AboutCard
   name="Lili"
-  bio="Hi, I'm Lili and I found my love for crochet in the summer of 2023. I then started to share my crochet pieces on Instagram and have been expanding my socials since.
-  You can take a look around on my website where you can find my creations and my patterns.
-  They're specially designed to be interactive on the web. If you like my stuff, you can give me a follow on my socials.
-  However, currently the site is still work in progress..."
+  bio={[
+    "Hi, I'm Lili and I found my love for crochet in the summer of 2023. I then started to share my crochet pieces on Instagram and have been expanding my socials since.",
+    "You can take a look around on my website where you can find my creations and my patterns. They're specially designed to be interactive on the web.",
+    "If you like my stuff, you can give me a follow on my socials. However, currently the site is still work in progress...",
+  ]}
   image="/images/Lilis-Crochethings.webp"
 />
 
-<CreationsCard
-  creations={[
-    { image: "/images/Lilis-Crochethings.webp", link: "/creations/c1", title: "bag" },
-    { image: "/images/Lilis-Crochethings.webp", link: "/creations/c2", title: "bear" },
-    { image: "/images/Lilis-Crochethings.webp", link: "/creations/c3", title: "blanket" }
-  ]}
-/>
+<CreationsCard creations={creationImages} />
 
 <PatternsCard
   patterns={[
