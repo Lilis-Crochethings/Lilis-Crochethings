@@ -55,10 +55,6 @@ const creations = (await getCollection("creations")).sort(
     font-size: 0.95rem;
     padding: 0.35rem 0.6rem;
   }
-
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .toolbar h1 {
@@ -109,6 +105,13 @@ const creations = (await getCollection("creations")).sort(
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
 }
 </style>
 

@@ -74,6 +74,9 @@ const organizationSchema = {
   bottom: 1.5rem;
   width: 48px;
   height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 50%;
   background: var(--primary);
@@ -93,6 +96,14 @@ const organizationSchema = {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  #scroll-to-top {
+    width: 56px;
+    height: 56px;
+    font-size: 1.8rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
