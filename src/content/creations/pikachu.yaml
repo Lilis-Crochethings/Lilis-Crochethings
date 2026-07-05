@@ -8,6 +8,7 @@ images:
 description: ""
 date: 2025-11-03
 instagramLink: "https://www.instagram.com/p/DTbEDptjcR-/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02zG142aBzuqxept7sq92oJHtF4rPHNH1y9Lh91pfD5jZ76B9MWicsoMS2CR3KPHm1l&id=61568543484297"
 hoursSpent: 4.37
 hookSize: "4mm"
 yarn:
@@ -15,7 +16,10 @@ yarn:
   - "Honey Bunny - Tomato"
   - "Honey Bunny - Black"
   - "Honey Bunny - Caramel"
+  - hex: "#1a1a1a"
+    name: "Jet Black"
+    type: "Acrylic"
 creator: "pebble_crochets"
 creatorLink: "https://www.instagram.com/pebble_crochets/"
 patternName: "Pikachu"
-patternLink: "https://www.etsy.com/shop/PebblesCrochetShop23"
+patternLink: "https://www.etsy.com/listing/1854144232/crochet-electric-mouse-snuggler"

@@ -6,10 +6,14 @@ images:
 description: ""
 date: 2024-12-08
 instagramLink: "https://www.instagram.com/p/DDXngQ4tEVI/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid0212T8JHGSBzqYNQUAEBTYD4PH1J942eSAmBNDimUsTbgj678BRJxtsm2i5GA3j25Ml&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160249937/"
 hoursSpent: 8.28
 hookSize: "4mm"
 yarn:
-  - "Honey Bunny - White"
-# creator: ""
-# creatorLink: ""
-# patternLink: ""
+  - "Chenille - Cream"
+  - "Embroidery floss - Blue"
+creator: "Lili's Crochethings"
+creatorLink: "/about"
+patternName: "Original design (pattern coming soon)"
+patternLink: "/patterns"

@@ -5,11 +5,16 @@ images:
 description: ""
 date: 2025-02-25
 instagramLink: "https://www.instagram.com/p/DGgEZ_wN_3D/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid0MqzHSQGebxHMqcJXYMrCAX5dVUn2yqgons6aT22cnwV5Xd8Nmoks8D8Td61MQ4Bfl&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160250728/"
 hoursSpent: 7.24
 hookSize: "4mm"
 yarn:
-  - "Toucan - Beige"
-  - "Unspecified green (mint-like)"
+  - "Dolce - Yellow"
+  - "Toucan - Mint"
+  - hex: "#c5ecd0"
+    name: "Light Green"
+    type: "Chenille"
   - "Honey Bunny - Caramel"
 creator: "pebble_crochets"
 creatorLink: "https://www.instagram.com/pebble_crochets/"

@@ -8,12 +8,17 @@ images:
 description: ""
 date: 2025-04-07
 instagramLink: "https://www.instagram.com/p/DIJlj2nNugO/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid0Z1vzBbUQnQcwWpNSD7bKuggKtmRj3D5JRkUcmxt6s7JxsbAMQkrVFRnC2Et1f6SDl&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160378194/"
 hoursSpent: 5.59
 hookSize: "2.5mm"
 yarn:
-  - "Green acrylic"
+  - hex: "#6b8f47"
+    name: "Green"
+    type: "Acrylic"
   - "Bohème Velvet Fine - Soft Rose"
   - "Bohème Velvet Fine - Rusty"
+  - "Embroidery floss - Ivory"
 creator: "gonkui_chapa_crochet"
 creatorLink: "https://www.instagram.com/gonkui_chapa_crochet/"
 patternName: "Easy Crochet Lily Pink Flower"

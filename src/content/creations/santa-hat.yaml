@@ -5,10 +5,15 @@ images:
 description: ""
 date: 2025-12-17
 instagramLink: "https://www.instagram.com/p/DEKxT59tvTP/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid0mdrhjshxiQNST2T9pPHZeNQ8JXhwy2vKLHgWMke9WmUmE7TgMrnUJ9ZYvma6u4cGl&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160377637/"
 hoursSpent: 12.67
 hookSize: "8mm"
 yarn:
-  - "Acrylic with white faux fur"
+  - hex: "#A20C14"
+    name: "Red"
+    type: "Acrylic"
+  - "Faux fur - Ivory"
 creator: "mjsoffthehook"
 creatorLink: "https://www.instagram.com/mjsoffthehook/"
 patternName: "Bulky & Quick Santa Hat"

@@ -26,6 +26,10 @@ pnpm-debug.log*
 # raw images pending webp conversion (see scripts/convert-images.mjs)
 images-to-convert/
 
+# only the .svg icons in this folder are actually used on the site
+public/images/icons/*
+!public/images/icons/*.svg
+
 # personal data exports (time tracking, Instagram archive)
 scripts/clockify/
 scripts/instagram-export/

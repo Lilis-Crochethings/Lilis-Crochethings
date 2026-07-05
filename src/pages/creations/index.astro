@@ -52,8 +52,12 @@ const creations = (await getCollection("creations")).sort(
 
   .filter-toggle button,
   #sort-toggle {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     padding: 0.35rem 0.6rem;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -76,14 +80,21 @@ const creations = (await getCollection("creations")).sort(
   padding: 2px;
 }
 
-.filter-toggle button {
+.filter-toggle button,
+#sort-toggle {
   border: none;
-  background: none;
-  color: var(--text);
-  padding: 0.4rem 0.8rem;
   border-radius: 999px;
+  color: var(--text);
+  padding: 0.45rem 0.9rem 0.35rem;
   font: inherit;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1;
   cursor: pointer;
+}
+
+.filter-toggle button {
+  background: none;
 }
 
 .filter-toggle button.active {
@@ -91,13 +102,7 @@ const creations = (await getCollection("creations")).sort(
 }
 
 #sort-toggle {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 999px;
   background: var(--accent);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
 }
 
 .grid {
@@ -108,6 +113,17 @@ const creations = (await getCollection("creations")).sort(
 </style>
 
 <script>
+  const SCROLL_KEY = 'creations-scroll';
+
+  const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+  if (savedScroll) {
+    window.scrollTo(0, parseInt(savedScroll, 10));
+  }
+
+  window.addEventListener('scroll', () => {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+  }, { passive: true });
+
   const grid = document.getElementById('creations-grid');
   const sortButton = document.getElementById('sort-toggle');
   const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle button');

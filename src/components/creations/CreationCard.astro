@@ -4,7 +4,7 @@ const { creation } = Astro.props;
 
 <a class="card" href={`/creations/${creation.id}`} data-date={creation.data.date?.getTime() ?? 0} data-type={creation.data.type}>
   <div class="imgWrap">
-    <img src={creation.data.images[0]} alt={creation.data.title} />
+    <img src={creation.data.images[0]} alt={creation.data.title} loading="lazy" decoding="async" />
   </div>
 </a>
 
@@ -17,7 +17,6 @@ const { creation } = Astro.props;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   overflow: hidden;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
 }
 
 .imgWrap img {

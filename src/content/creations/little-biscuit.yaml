@@ -7,11 +7,16 @@ images:
 description: "Cute little Doggo"
 date: 2024-11-02
 instagramLink: "https://www.instagram.com/p/DB_yZyYt64K/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02idSwvzVigGE66sDV8iSHekUuTjKGSp8htUQxfkkXm6LQHtHcGYcX2XwZsewz63WTl&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160249386/"
 hoursSpent: 16.92
 hookSize: "4mm"
 yarn:
   - "Toucan - Ecru"
   - "Toucan - Cappuccino"
+  - hex: "#1a1a1a"
+    name: "Jet Black"
+    type: "Acrylic"
 creator: "trangluu2310"
 creatorLink: "https://www.instagram.com/trangluu2310/"
 patternName: "Little Biscuit the Corgi Puppy"

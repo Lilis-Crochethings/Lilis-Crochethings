@@ -6,18 +6,18 @@ console.log(general);
 ---
 
 <nav class="nav">
-  <div class="logo">
+  <a class="logo" href="/">
     <img src="/images/Lilis-Crochethings.webp" alt="Profile pic" />
     <p>{general.data.name}</p>
-  </div>
+  </a>
 
   <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">☰</button>
 
   <ul class="nav-links" id="nav-links">
-    <li><a href="/">Home</a></li>
     <li><a href="/creations">Creations</a></li>
     <li><a href="/patterns">Patterns</a></li>
     <li><a href="/about">About me</a></li>
+    <li><a href="/faq">FAQ</a></li>
   </ul>
 </nav>
 
@@ -49,15 +49,18 @@ console.log(general);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 0.6rem 1rem;
     background: var(--accent);
   }
 
   .logo {
+    font-family: "Lili Love", cursive;
     font-weight: bold;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
   }
 
   img {
@@ -70,11 +73,13 @@ console.log(general);
 
   .nav-links {
     display: flex;
-    gap: 1rem;
+    gap: 2rem;
     list-style: none;
   }
 
   .nav-links a {
+    font-family: "Lili Love", cursive;
+    font-weight: bold;
     text-decoration: none;
     color: #333;
   }

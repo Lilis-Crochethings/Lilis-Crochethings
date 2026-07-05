@@ -1,58 +1,373 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import CreationCard from '../../components/creations/CreationCard.astro';
 import { getCollection } from "astro:content";
+import { resolveYarn } from "../../lib/yarn";
 
 export async function getStaticPaths() {
-  const creations = await getCollection("creations");
+  const SIMILAR_LIMIT = 4;
 
-  return creations.map((creation) => ({
-    params: { slug: creation.id },
-    props: { creation },
-  }));
+  function seededShuffle<T>(items: T[], seed: string): T[] {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    const rand = () => {
+      h = Math.imul(h ^ (h >>> 15), h | 1);
+      h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+      return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
+    };
+
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  const creations = await getCollection("creations");
+  const yarnsEntry = (await getCollection("yarns"))[0];
+
+  return creations.map((creation) => {
+    const others = creations.filter((c) => c.id !== creation.id);
+    const shuffledOthers = seededShuffle(others, creation.id);
+
+    const similar: typeof others = [];
+    const addUnique = (candidates: typeof others) => {
+      for (const c of candidates) {
+        if (similar.length >= SIMILAR_LIMIT) break;
+        if (!similar.some((s) => s.id === c.id)) similar.push(c);
+      }
+    };
+
+    if (creation.data.patternName) {
+      addUnique(
+        others
+          .filter((c) => c.data.patternName === creation.data.patternName)
+          .sort((a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0))
+      );
+    }
+    addUnique(shuffledOthers.filter((c) => c.data.type === creation.data.type));
+    addUnique(shuffledOthers);
+
+    return {
+      params: { slug: creation.id },
+      props: { creation, yarnLines: yarnsEntry.data.yarns, similar },
+    };
+  });
 }
 
-const { creation } = Astro.props;
+const { creation, yarnLines, similar } = Astro.props;
+const data = creation.data;
+
+const yarnTiles = (data.yarn ?? [])
+  .map((y) => resolveYarn(y, yarnLines))
+  .filter((y) => y !== null)
+  .sort((a, b) => (a.type ?? "").localeCompare(b.type ?? ""));
+
+const typeLabel = data.type.charAt(0).toUpperCase() + data.type.slice(1);
+
+function isWhite(hex?: string): boolean {
+  if (!hex) return false;
+  const clean = hex.replace("#", "").toLowerCase();
+  return clean === "fff" || clean === "ffffff";
+}
+
+const pageDescription = data.description || (
+  data.patternName
+    ? `A handmade ${data.type} ${data.title}, made using the "${data.patternName}" pattern${data.creator ? ` by ${data.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
+    : `A handmade ${data.type} ${data.title} by Lili's Crochethings.`
+);
+
+const creativeWorkSchema = {
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  name: data.title,
+  description: pageDescription,
+  image: data.images.map((image) => new URL(image, Astro.site).toString()),
+  ...(data.date ? { dateCreated: data.date.toISOString().slice(0, 10) } : {}),
+  ...(data.creator ? { creator: { "@type": "Person", name: data.creator, ...(data.creatorLink ? { url: new URL(data.creatorLink, Astro.site).toString() } : {}) } } : {}),
+  ...(data.patternName ? { about: data.patternName } : {}),
+};
 ---
 <BaseLayout
-  title={creation.data.title}
-  description={creation.data.description}
-  image={creation.data.images[0]}
+  title={data.title}
+  description={pageDescription}
+  image={data.images[0]}
 >
-  <h1>{creation.data.title}</h1>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(creativeWorkSchema)} />
 
-  <div class="gallery">
-    {creation.data.images.map((image) => (
-      <img src={image} alt={creation.data.title} />
-    ))}
+  <a class="back-link" id="back-link" href="/creations">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
+    Creations
+  </a>
+
+  <h1>{data.title}</h1>
+
+  <div class="layout">
+    <div class="col-left">
+    <div class="card card-images">
+      <h2>Images</h2>
+      <div class="gallery">
+        {data.images.map((image, i) => (
+          <img src={image} alt={data.title} class="gallery-thumb" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+        ))}
+      </div>
+    </div>
+
+    {yarnTiles.length > 0 && (
+      <div class="card card-yarn">
+        <h2>Yarns used</h2>
+        <div class="yarn-grid">
+          {yarnTiles.map((yarn) => {
+            const Tag = yarn.link ? "a" : "div";
+            return (
+              <Tag class="yarn-tile" title={yarn.description} {...(yarn.link ? { href: yarn.link, target: "_blank", rel: "noopener noreferrer" } : {})}>
+                {yarn.type && <span class="type-chip-small">{yarn.type}</span>}
+                <div class="swatch" class:list={{ "swatch-bordered": isWhite(yarn.hex) }} style={`background-color: ${yarn.hex ?? "var(--accent)"}`}>
+                  {yarn.image
+                    ? <img src={yarn.image} alt="" onerror="this.remove()" />
+                    : <img class="swatch-icon" class:list={{ "swatch-icon-dark": isWhite(yarn.hex) }} src="/images/icons/yarn.svg" alt="" />}
+                </div>
+                <div class="yarn-titles">
+                  <span class="color-name">{yarn.colorName}</span>
+                  <span class="line-name">{yarn.lineName}</span>
+                </div>
+              </Tag>
+            );
+          })}
+        </div>
+      </div>
+    )}
+    </div>
+
+    <div class="col-right">
+    <div class="card card-info">
+      <h2>Info</h2>
+      <span class="chip type-chip">
+        <span class="icon" style={`mask-image: url(/images/icons/${data.type === "embroidery" ? "embroidery" : "hook"}.svg); -webkit-mask-image: url(/images/icons/${data.type === "embroidery" ? "embroidery" : "hook"}.svg);`}></span>
+        {typeLabel}
+      </span>
+
+      <ul class="info-list">
+        {data.date && (
+          <li>
+            <span class="icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+            {data.date.toLocaleDateString()}
+          </li>
+        )}
+        {data.hoursSpent && (
+          <li>
+            <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
+            {data.hoursSpent}h
+          </li>
+        )}
+        {data.hookSize && (
+          <li>
+            <span class="icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
+            {data.hookSize}
+          </li>
+        )}
+      </ul>
+    </div>
+
+    <div class="card card-designer">
+      <h2>Pattern</h2>
+      <ul class="designer-list">
+        <li>
+          <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>
+          {data.creator
+            ? (data.creatorLink
+              ? <a href={data.creatorLink} target="_blank" rel="noopener noreferrer">{data.creator}</a>
+              : data.creator)
+            : "unknown"}
+        </li>
+        <li>
+          <span class="icon" style="mask-image: url(/images/icons/pattern.svg); -webkit-mask-image: url(/images/icons/pattern.svg);"></span>
+          {data.patternName
+            ? (data.patternLink
+              ? <a href={data.patternLink} target="_blank" rel="noopener noreferrer">{data.patternName}</a>
+              : data.patternName)
+            : "unknown"}
+        </li>
+      </ul>
+    </div>
+
+    {(data.instagramLink || data.facebookLink || data.pinterestLink) && (
+      <div class="card card-socials">
+        <h2>View on</h2>
+        <ul class="socials-list">
+          {data.instagramLink && (
+            <li>
+              <a href={data.instagramLink} target="_blank" rel="noopener noreferrer">
+                <img src="/images/socials/instagram.webp" alt="" />
+                Instagram
+              </a>
+            </li>
+          )}
+          {data.facebookLink && (
+            <li>
+              <a href={data.facebookLink} target="_blank" rel="noopener noreferrer">
+                <img src="/images/socials/facebook.webp" alt="" />
+                Facebook
+              </a>
+            </li>
+          )}
+          {data.pinterestLink && (
+            <li>
+              <a href={data.pinterestLink} target="_blank" rel="noopener noreferrer">
+                <img src="/images/socials/pinterest.webp" alt="" />
+                Pinterest
+              </a>
+            </li>
+          )}
+        </ul>
+      </div>
+    )}
+
+    {similar.length > 0 && (
+      <div class="card card-similar">
+        <h2>See also</h2>
+        <div class="similar-grid">
+          {similar.map((c) => (
+            <CreationCard creation={c} />
+          ))}
+        </div>
+      </div>
+    )}
+    </div>
   </div>
 
-  <p>{creation.data.description}</p>
-
-  <ul class="details">
-    <li>Type: {creation.data.type}</li>
-    {creation.data.date && <li>Made on: {creation.data.date.toLocaleDateString()}</li>}
-    {creation.data.hoursSpent && <li>Time spent: {creation.data.hoursSpent} hours</li>}
-    {creation.data.hookSize && <li>Hook size: {creation.data.hookSize}</li>}
-    {creation.data.yarn && creation.data.yarn.length > 0 && (
-      <li class="yarn-chips">
-        <span>Yarn:</span>
-        {creation.data.yarn.map((y) => (<span class="chip">{y}</span>))}
-      </li>
-    )}
-    {creation.data.creator && (
-      <li>
-        Made by: {creation.data.creatorLink ? <a href={creation.data.creatorLink} target="_blank" rel="noopener noreferrer">{creation.data.creator}</a> : creation.data.creator}
-      </li>
-    )}
-    {creation.data.patternLink && (
-      <li>Pattern: <a href={creation.data.patternLink} target="_blank" rel="noopener noreferrer">{creation.data.patternName ?? "View pattern"}</a></li>
-    )}
-    {!creation.data.patternLink && creation.data.patternName && <li>Pattern: {creation.data.patternName}</li>}
-    {creation.data.instagramLink && <li><a href={creation.data.instagramLink} target="_blank" rel="noopener noreferrer">View on Instagram</a></li>}
-  </ul>
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-content">
+      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
+      </button>
+      <img id="lightbox-img" src="" alt="" />
+      <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
 </BaseLayout>
 
+<script>
+  const backLink = document.getElementById("back-link") as HTMLAnchorElement;
+  if (document.referrer && new URL(document.referrer).pathname.replace(/\/$/, "") === "/creations") {
+    backLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      history.back();
+    });
+  }
+
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement;
+  const prevBtn = document.getElementById("lightbox-prev");
+  const nextBtn = document.getElementById("lightbox-next");
+
+  const thumbs = Array.from(document.querySelectorAll<HTMLImageElement>(".gallery-thumb"));
+  let currentIndex = 0;
+
+  if (thumbs.length <= 1) {
+    prevBtn?.classList.add("hidden");
+    nextBtn?.classList.add("hidden");
+  }
+
+  function showImage(index: number) {
+    currentIndex = (index + thumbs.length) % thumbs.length;
+    lightboxImg.src = thumbs[currentIndex].src;
+    lightboxImg.alt = thumbs[currentIndex].alt;
+  }
+
+  thumbs.forEach((thumb, index) => {
+    thumb.addEventListener("click", () => {
+      showImage(index);
+      lightbox?.classList.add("open");
+    });
+  });
+
+  function closeLightbox() {
+    lightbox?.classList.remove("open");
+    lightboxImg.src = "";
+  }
+
+  lightbox?.addEventListener("click", closeLightbox);
+
+  prevBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showImage(currentIndex - 1);
+  });
+
+  nextBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showImage(currentIndex + 1);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!lightbox?.classList.contains("open")) return;
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") showImage(currentIndex - 1);
+    if (e.key === "ArrowRight") showImage(currentIndex + 1);
+  });
+</script>
+
 <style>
+.back-link {
+  font-family: "Lili Love", cursive;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.back-link svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (min-width: 1078px) {
+  .back-link {
+    margin-left: -28px;
+  }
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.col-left, .col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.card-images { order: 1; }
+.card-info { order: 2; }
+.card-designer { order: 3; }
+.card-socials { order: 4; }
+.card-yarn { order: 5; }
+.card-similar { order: 6; }
+
+.card-yarn, .card-socials, .card-info, .card-designer {
+  font-family: "Lili Love", cursive;
+}
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -66,26 +381,303 @@ const { creation } = Astro.props;
   border-radius: 10px;
 }
 
-.details {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.gallery-thumb {
+  cursor: zoom-in;
 }
 
-.yarn-chips {
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 2000;
+  cursor: zoom-out;
+}
+
+.lightbox.open {
+  display: flex;
+}
+
+.lightbox-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lightbox-content img {
+  display: block;
+  max-width: 80vw;
+  max-height: 85vh;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  justify-content: center;
+  z-index: 2001;
+}
+
+.lightbox-nav svg {
+  width: 22px;
+  height: 22px;
+}
+
+.lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-nav.hidden {
+  display: none;
+}
+
+.lightbox-prev {
+  right: 100%;
+  margin-right: 2rem;
+}
+
+.lightbox-next {
+  left: 100%;
+  margin-left: 2rem;
+}
+
+.socials-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 1rem;
+}
+
+.socials-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+}
+
+.socials-list img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.yarn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.similar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.yarn-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  color: inherit;
+  text-decoration: none;
+}
+
+.type-chip-small {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: #fff;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.38rem 0.7rem 0.27rem;
+  border-radius: 999px;
+}
+
+a.yarn-tile {
+  transition: transform 0.2s ease;
+}
+
+a.yarn-tile:hover {
+  transform: scale(1.05);
+}
+
+div.yarn-tile .line-name {
+  color: gray;
+}
+
+.yarn-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.swatch {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.swatch .swatch-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  opacity: 0.55;
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+
+.swatch .swatch-icon-dark {
+  filter: brightness(0) invert(0.6);
+}
+
+.swatch-bordered {
+  border: 1px solid #ccc;
+}
+
+.swatch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.color-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.line-name {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  color: var(--primary);
 }
 
 .chip {
-  background: var(--accent);
-  color: var(--text);
-  padding: 0.15rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--primary);
+  color: white;
+  font-family: "Quicksand", sans-serif;
+  padding: 0.26rem 0.8rem 0.34rem;
   border-radius: 999px;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+}
+
+.icon {
+  display: inline-block;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.chip .icon {
+  width: 16px;
+  height: 16px;
+  background-color: white;
+}
+
+.info-list, .designer-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 1rem;
+}
+
+.info-list li, .designer-list li {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.info-list .icon, .designer-list .icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .col-left, .col-right {
+    display: contents;
+  }
+
+  .yarn-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lightbox {
+    padding: 0.5rem;
+  }
+
+  .lightbox-content img {
+    max-width: 68vw;
+  }
+
+  .lightbox-nav {
+    width: 32px;
+    height: 32px;
+  }
+
+  .lightbox-nav svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lightbox-prev {
+    right: 100%;
+    margin-right: 8px;
+  }
+
+  .lightbox-next {
+    left: 100%;
+    margin-left: 8px;
+  }
 }
 </style>

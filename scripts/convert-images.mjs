@@ -13,6 +13,7 @@ const destDir = join(rootDir, "public", "images");
 
 const CONVERTIBLE_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff", ".avif", ".bmp"]);
 const WEBP_QUALITY = 82;
+const MAX_DIMENSION = 1600;
 
 const force = process.argv.includes("--force");
 
@@ -80,7 +81,11 @@ async function main() {
       // .rotate() with no args bakes in the EXIF Orientation tag (common on
       // phone photos) as an actual pixel rotation before encoding — webp
       // doesn't reliably preserve/honor that tag otherwise.
-      await sharp(srcPath).rotate().webp({ quality: WEBP_QUALITY }).toFile(destPath);
+      await sharp(srcPath)
+        .rotate()
+        .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toFile(destPath);
       converted++;
       console.log(`Converted: ${relPath} -> ${relative(rootDir, destPath)}`);
     }

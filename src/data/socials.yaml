@@ -17,10 +17,10 @@ icons:
     pad: 3
 
 socials:
-  # - name: Lili's Crochethings
-  #   href: /
-  #   icon: home
-  #   newTab: false
+  - name: Website
+    href: /
+    icon: home
+    newTab: false
   - name: Instagram
     href: https://www.instagram.com/lilis_crochethings/
     icon: instagram

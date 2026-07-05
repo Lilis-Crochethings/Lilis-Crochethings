@@ -18,12 +18,14 @@ const creationImages = allCreations.flatMap((creation) =>
   description="Lili's Crochethings — handmade crochet bags, amigurumi, and blankets, plus free interactive crochet patterns to make your own."
 >
 
+<div class="home-stack">
 <AboutCard
   name="Lili"
   bio={[
     "Hi, I'm Lili and I found my love for crochet in the summer of 2023. I then started to share my crochet pieces on Instagram and have been expanding my socials since.",
     "You can take a look around on my website where you can find my creations and my patterns. They're specially designed to be interactive on the web.",
-    "If you like my stuff, you can give me a follow on my socials. However, currently the site is still work in progress...",
+    "If you like my stuff, you can give me a follow on my socials.",
+    "However, currently the site is still work in progress...",
   ]}
   image="/images/Lilis-Crochethings.webp"
 />
@@ -32,10 +34,19 @@ const creationImages = allCreations.flatMap((creation) =>
 
 <PatternsCard
   patterns={[
-    { image: "/images/Lilis-Crochethings.webp", link: "/patterns/p1", title: "flower" },
-    { image: "/images/Lilis-Crochethings.webp", link: "/patterns/p2", title: "frog" },
-    { image: "/images/Lilis-Crochethings.webp", link: "/patterns/p3", title: "bag" }
+    { image: "/images/creations/Bunny.webp", title: "Bunny" },
+    { image: "/images/creations/Sleepy-Bunny-1.webp", title: "Sleepy Bunny" },
+    { image: "/images/creations/Goose-1.webp", title: "Goose" }
   ]}
 />
+</div>
 
 </BaseLayout>
+
+<style>
+.home-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+</style>

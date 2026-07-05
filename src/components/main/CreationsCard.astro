@@ -13,20 +13,20 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
   <div class="marquee">
     <div class="row row-1">
       <div class="track track-left" style={`--count: ${rowA.length}`}>
-        {rowA.map((c: any) => (<img src={c.image} alt={c.title} />))}
-        {rowA.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" />))}
+        {rowA.map((c: any) => (<img src={c.image} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowA.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
     <div class="row row-2">
       <div class="track track-right" style={`--count: ${rowB.length}`}>
-        {rowB.map((c: any) => (<img src={c.image} alt={c.title} />))}
-        {rowB.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" />))}
+        {rowB.map((c: any) => (<img src={c.image} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowB.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
     <div class="row row-3">
       <div class="track track-left" style={`--count: ${rowC.length}`}>
-        {rowC.map((c: any) => (<img src={c.image} alt={c.title} />))}
-        {rowC.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" />))}
+        {rowC.map((c: any) => (<img src={c.image} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowC.map((c: any) => (<img src={c.image} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
   </div>
@@ -40,8 +40,8 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
   border-radius: 16px;
   text-decoration: none;
   color: inherit;
-  margin-bottom: 2rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .marquee {
@@ -54,6 +54,7 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
 
 .row {
   overflow: hidden;
+  border-radius: 10px;
 }
 
 .track {

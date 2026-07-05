@@ -7,12 +7,18 @@ images:
 description: ""
 date: 2025-05-05
 instagramLink: "https://www.instagram.com/p/DJUX4SQtfnl/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02BycjFmAZkT9y2r7q25wcyyS8uKiYDk5cbfbZuSjd4aE2fnQhYoQaBSv2wtwhLCx9l&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160162991/"
 hoursSpent: 11.74
 hookSize: "4mm"
 yarn:
   - "Baby Snuggle Solid - Soft Sand"
   - "Toucan - Ecru"
   - "Toucan - Cappuccino"
+  - hex: "#3A2924"
+    name: "Chestnut Brown"
+    type: "Acrylic"
+  - "Embroidery floss - Black"
 creator: "crochetwith.kim"
 creatorLink: "https://www.instagram.com/crochetwith.kim/"
 patternName: "Levi the Lion"

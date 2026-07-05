@@ -4,12 +4,12 @@ const { patterns } = Astro.props;
 ---
 
 <a class="card" href="/patterns">
-  <h2>Patterns</h2>
+  <h2>Patterns <span class="coming-soon">Coming soon</span></h2>
 
   <div class="grid">
     {patterns.map((p: any) => (
       <div class="imgWrap">
-        <img src={p.image} alt={p.title} />
+        <img src={p.image} alt={p.title} loading="lazy" decoding="async" />
       </div>
     ))}
   </div>
@@ -23,8 +23,8 @@ const { patterns } = Astro.props;
   border-radius: 16px;
   text-decoration: none;
   color: inherit;
-  margin-bottom: 2rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .grid {

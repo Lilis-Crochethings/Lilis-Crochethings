@@ -4,6 +4,7 @@
   box-sizing: border-box;
 }
 
+
 @font-face {
   font-family: "Lili Bold";
   src: url("/fonts/Lili Bold-Regular.otf") format("opentype");
@@ -53,6 +54,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/Quicksand-Variable.ttf") format("truetype-variations");
+  font-weight: 300 700;
+  font-style: normal;
+}
+
 :root {
   --primary: #B7718D;
   --background: #fffaf7;
@@ -60,9 +68,34 @@
   --accent: #F0C7D7;
 }
 
+html {
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--accent) var(--background);
+  scrollbar-width: auto;
+}
+
+::-webkit-scrollbar {
+  width: 18px;
+  height: 18px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
+  border: 3px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
 body {
   margin: 0;
-  font-family: "Lili Love", system-ui, sans-serif;
+  font-family: "Quicksand", Georgia, "Times New Roman", serif;
   font-size: 1.1rem;
   background: var(--background);
   color: var(--text);
@@ -82,14 +115,26 @@ a {
 }
 
 h1, h2, h3 {
-  /*font-family: Georgia, serif;*/
+  font-family: "Lili Love", cursive;
   margin-top: 0px;
 }
 
 
   main {
     width: 100%;
-    padding: 1rem;
+    padding: 1rem 1rem 6rem;
     max-width: 1046px;
     align-self: center;
   }
+
+.coming-soon {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  vertical-align: middle;
+}

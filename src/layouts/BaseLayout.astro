@@ -17,6 +17,19 @@ const {
 const pageTitle = title === "Lili's Crochethings" ? title : `${title} — Lili's Crochethings`;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const imageURL = new URL(image, Astro.site);
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Lili's Crochethings",
+  url: Astro.site?.toString(),
+  logo: new URL("/images/Lilis-Crochethings.webp", Astro.site).toString(),
+  sameAs: [
+    "https://www.instagram.com/lilis_crochethings/",
+    "https://www.pinterest.com/liliscrochethings/_created/",
+    "https://www.facebook.com/people/Lilis-Crochethings/61568543484297",
+  ],
+};
 ---
 
 <html lang="en">
@@ -40,6 +53,8 @@ const imageURL = new URL(image, Astro.site);
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageURL} />
+
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(organizationSchema)} />
   </head>
 
   <body>

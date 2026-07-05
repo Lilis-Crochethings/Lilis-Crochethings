@@ -7,12 +7,16 @@ images:
 description: ""
 date: 2025-04-19
 instagramLink: "https://www.instagram.com/p/DL-PQM9tbsA/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid0iyyroYvcUvsaL6ZCtDfKXuwwkESofLAGNP5x7G1KBBGEHELR1TGQEHSu8sAakfEUl&id=61568543484297"
 hoursSpent: 13.25
 hookSize: "4mm"
 yarn:
   - "Honey Bunny - White"
   - "Honey Bunny - Black"
   - "Honey Bunny - Caramel"
+  - hex: "#1a1a1a"
+    name: "Black"
+    type: "Acrylic"
 creator: "trangluu2310"
 creatorLink: "https://www.instagram.com/trangluu2310/"
 patternName: "Little Bailey the Beagle Puppy"

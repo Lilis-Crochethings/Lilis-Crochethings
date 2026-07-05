@@ -21,6 +21,13 @@ const patterns = defineCollection({
   }),
 });
 
+const inlineYarn = z.object({
+  hex: z.string(),
+  name: z.string(),
+  type: z.string().optional(),
+  description: z.string().optional(),
+});
+
 const creations = defineCollection({
   loader: glob({ pattern: "**/*.yaml", base: "./src/content/creations" }),
   schema: z.object({
@@ -30,9 +37,11 @@ const creations = defineCollection({
     description: z.string(),
     date: z.date().optional(),
     instagramLink: z.string().optional(),
+    facebookLink: z.string().optional(),
+    pinterestLink: z.string().optional(),
     hoursSpent: z.number().optional(),
     hookSize: z.string().optional(),
-    yarn: z.array(z.string()).optional(),
+    yarn: z.array(z.union([z.string(), inlineYarn])).optional(),
     creator: z.string().optional(),
     creatorLink: z.string().optional(),
     patternName: z.string().optional(),
@@ -40,20 +49,25 @@ const creations = defineCollection({
   }),
 });
 
+const yarnLine = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  type: z.string().optional(),
+  link: z.string().optional(),
+  hookSize: z.string().optional(),
+  colors: z.array(z.object({
+    number: z.string().optional(),
+    name: z.string(),
+    link: z.string().optional(),
+    image: z.string().optional(),
+    hex: z.string().optional(),
+  })).optional(),
+});
+
 const yarns = defineCollection({
   loader: glob({ pattern: "yarns.yaml", base: "./src/content" }),
   schema: z.object({
-    yarns: z.array(z.object({
-      brand: z.string().optional(),
-      name: z.string(),
-      link: z.string().optional(),
-      hookSize: z.string().optional(),
-      colors: z.array(z.object({
-        number: z.string(),
-        name: z.string(),
-        link: z.string().optional(),
-      })).optional(),
-    })),
+    yarns: z.array(yarnLine),
   }),
 });
 
