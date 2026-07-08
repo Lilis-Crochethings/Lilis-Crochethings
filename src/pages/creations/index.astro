@@ -1,37 +1,159 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CreationCard from '../../components/creations/CreationCard.astro';
+import CreationListItem from '../../components/creations/CreationListItem.astro';
 import { getCollection } from "astro:content";
+import { getEffectiveTags } from "../../lib/tags";
 
 const creations = (await getCollection("creations")).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
 );
+
+const taxonomyEntry = (await getCollection("tags"))[0];
+const taxonomy = taxonomyEntry.data.tags;
+
+const creationsWithTags = creations.map((creation) => ({
+  creation,
+  effectiveTags: getEffectiveTags(creation.data.tags, taxonomy),
+}));
 ---
 <BaseLayout
   title="Creations"
   description="Browse Lili's finished crochet creations — bags, amigurumi, blankets, and more handmade pieces."
 >
-  <div class="toolbar">
-    <h1>Creations</h1>
-    <div class="controls">
-      <div class="filter-toggle" role="group" aria-label="Filter by type">
-        <button type="button" data-filter="all" class="active" aria-pressed="true">All</button>
-        <button type="button" data-filter="crochet" aria-pressed="false">Crochet</button>
-        <button type="button" data-filter="embroidery" aria-pressed="false">Embroidery</button>
-      </div>
-      <button id="sort-toggle" type="button" aria-pressed="false">Date ↓</button>
-    </div>
-  </div>
+  <div class="layout">
+    <div class="content-header">
+      <h1>Creations</h1>
+      <div class="content-controls">
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <span class="view-toggle-thumb" aria-hidden="true"></span>
+          <button type="button" data-view="gallery" class="active" aria-pressed="true" aria-label="Gallery view">
+            <span class="icon icon-gallery"></span>
+          </button>
+          <button type="button" data-view="list" aria-pressed="false" aria-label="List view">
+            <span class="icon icon-list"></span>
+          </button>
+        </div>
 
-  <div class="grid" id="creations-grid">
-    {creations.map((creation) => (
-      <CreationCard creation={creation} />
-    ))}
+        <button id="filters-toggle" type="button" class="filters-btn" aria-expanded="false">
+          <span class="icon icon-filter"></span>
+          Filters
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="grid" id="gallery-view">
+        {creationsWithTags.map(({ creation, effectiveTags }) => (
+          <CreationCard creation={creation} tags={effectiveTags} />
+        ))}
+      </div>
+      <div class="list" id="list-view" hidden>
+        {creationsWithTags.map(({ creation, effectiveTags }) => (
+          <CreationListItem creation={creation} effectiveTags={effectiveTags} taxonomy={taxonomy} />
+        ))}
+      </div>
+    </div>
+
+    <script is:inline>
+      // Runs synchronously during parsing, before first paint, so a saved
+      // "list" preference doesn't flash the default gallery view first.
+      (function () {
+        if (localStorage.getItem('creations-view-mode') === 'list') {
+          document.getElementById('gallery-view')?.setAttribute('hidden', '');
+          document.getElementById('list-view')?.removeAttribute('hidden');
+        }
+      })();
+    </script>
+
+    <aside class="filters-panel" id="filters-panel">
+      <div class="filters-panel-inner">
+        <button type="button" class="close-filters" id="close-filters" aria-label="Close filters">✕</button>
+
+        <div class="sort-section">
+          <h2>Sort by</h2>
+          <h3 class="filter-subheading">Date</h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="date-desc" class="sort-radio" checked />
+              New → Old
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="date-asc" class="sort-radio" />
+              Old → New
+            </label>
+          </div>
+
+          <h3 class="filter-subheading">Time spent</h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="time-asc" class="sort-radio" />
+              Least → Most
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="time-desc" class="sort-radio" />
+              Most → Least
+            </label>
+          </div>
+        </div>
+
+        <div class="filters-section">
+          <div class="filters-heading-row">
+            <h2>Filters</h2>
+            <button type="button" id="reset-filters" class="reset-filters">Reset</button>
+          </div>
+
+          <h3 class="filter-subheading">Difficulty</h3>
+          <div class="difficulty-options">
+            {(["easy", "medium", "hard"] as const).map((level) => (
+              <label class:list={["taxonomy-item", `difficulty-${level}`]}>
+                <input type="checkbox" value={level} class="difficulty-filter" />
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </label>
+            ))}
+          </div>
+
+          <h3 class="filter-subheading">Tags</h3>
+          <ul class="taxonomy">
+            {taxonomy.map((category) => {
+              const hasChildren = !!category.children && category.children.length > 0;
+              return (
+                <li>
+                  <div class="taxonomy-row">
+                    <label class="taxonomy-item">
+                      <input type="checkbox" value={category.id} class="tag-filter" />
+                      {category.label}
+                    </label>
+                    {hasChildren && (
+                      <button type="button" class="category-toggle" aria-expanded="false" aria-label={`Show ${category.label} sub-categories`}>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasChildren && (
+                    <ul class="taxonomy-children">
+                      {category.children!.map((child) => (
+                        <li>
+                          <label class="taxonomy-item">
+                            <input type="checkbox" value={child.id} class="tag-filter" />
+                            {child.label}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </aside>
   </div>
 </BaseLayout>
 
 <style>
-.toolbar {
+.content-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -40,83 +162,534 @@ const creations = (await getCollection("creations")).sort(
   margin-bottom: 1rem;
 }
 
-@media (max-width: 768px) {
-  .toolbar {
-    justify-content: flex-start;
-  }
-
-  .controls {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .filter-toggle button,
-  #sort-toggle {
-    font-size: 0.95rem;
-    padding: 0.35rem 0.6rem;
-  }
-}
-
-.toolbar h1 {
+.content-header h1 {
   margin: 0;
 }
 
-.controls {
+.content-controls {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.filter-toggle {
+.view-toggle {
+  position: relative;
   display: flex;
   gap: 2px;
   background: var(--background);
-  border: 1px solid var(--accent);
+  border: 1.5px solid var(--primary);
   border-radius: 999px;
   padding: 2px;
+  box-sizing: border-box;
 }
 
-.filter-toggle button,
-#sort-toggle {
+.view-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: 0;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), width 0.25s ease;
+}
+
+.view-toggle button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 999px;
   color: var(--text);
-  padding: 0.45rem 0.9rem 0.35rem;
+  background: none;
+  padding: 0.5rem;
+  cursor: var(--cursor-pointer);
+}
+
+.view-toggle .icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: var(--primary);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  transition: background-color 0.25s ease;
+}
+
+.view-toggle button.active .icon {
+  background-color: white;
+}
+
+.icon-gallery {
+  mask-image: url(/images/icons/gallery.svg);
+  -webkit-mask-image: url(/images/icons/gallery.svg);
+}
+
+.icon-list {
+  width: 13px;
+  height: 13px;
+  mask-image: url(/images/icons/list.svg);
+  -webkit-mask-image: url(/images/icons/list.svg);
+}
+
+.filters-btn .icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: var(--primary);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  transition: background-color 0.2s ease;
+}
+
+.filters-btn.active .icon {
+  background-color: white;
+}
+
+.icon-filter {
+  mask-image: url(/images/icons/filter.svg);
+  -webkit-mask-image: url(/images/icons/filter.svg);
+}
+
+.filters-btn {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 999px;
+  background: none;
+  color: var(--primary);
+  padding: 0.5rem 0.9rem 0.4rem;
   font: inherit;
   font-family: "Quicksand", sans-serif;
   font-size: 0.95rem;
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--cursor-pointer);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.filter-toggle button {
-  background: none;
+.filters-btn.active {
+  background: var(--primary);
+  color: white;
 }
 
-.filter-toggle button.active {
-  background: var(--accent);
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  grid-template-rows: auto 1fr;
+  column-gap: 1.5rem;
+  row-gap: 1rem;
+  align-items: start;
 }
 
-#sort-toggle {
-  background: var(--accent);
+.layout .content-header {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+.layout .content {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 70vh;
+}
+
+.layout .filters-panel {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
-@media (max-width: 768px) {
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.grid[hidden], .list[hidden] {
+  display: none;
+}
+
+.filters-panel {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.filters-panel-inner {
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 0 1.5rem 1.5rem;
+  scrollbar-color: var(--accent) white;
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar) {
+  width: 10px;
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar-track) {
+  background: white;
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar-thumb) {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.filters-panel h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters-panel h2:not(:first-child) {
+  margin-top: 1.5rem;
+}
+
+/* The close button sits above this on mobile/tablet, so "Sort by" always
+   needs its own top clearance regardless of DOM first-child position. */
+.sort-section > h2 {
+  margin-top: 1.5rem;
+}
+
+.filters-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters-heading-row h2 {
+  margin: 0;
+}
+
+.filter-subheading {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  opacity: 0.75;
+  margin: 0 0 0.6rem;
+}
+
+.filter-subheading:not(:first-of-type) {
+  margin-top: 1.1rem;
+}
+
+.difficulty-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.taxonomy-item.difficulty-easy input::before {
+  background-color: #8dc399;
+}
+
+.taxonomy-item.difficulty-medium input::before {
+  background-color: #f3c368;
+}
+
+.taxonomy-item.difficulty-hard input::before {
+  background-color: #cb8184;
+}
+
+.difficulty-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+.reset-filters {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.reset-filters:hover {
+  text-decoration: underline;
+}
+
+.close-filters {
+  display: none;
+}
+
+.sort-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sort-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+.taxonomy, .taxonomy-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.taxonomy {
+  gap: 1.1rem;
+}
+
+.taxonomy-children {
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition: max-height 0.3s ease, opacity 0.2s ease, transform 0.25s ease, margin-top 0.3s ease;
+}
+
+.taxonomy-children.open {
+  max-height: 400px;
+  margin-top: 0.6rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.taxonomy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.taxonomy-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  cursor: var(--cursor-pointer);
+}
+
+.taxonomy-row .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+.category-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--primary);
+  padding: 0.25rem;
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+
+.category-toggle .chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.category-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.taxonomy-item input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+
+.taxonomy-item input::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--primary);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.taxonomy-item input:checked::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 767px) {
+  .content-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+  }
+
+  .filters-btn {
+    display: inline-flex;
+    order: -1;
+  }
+
+  .filters-panel {
+    position: fixed;
+    inset: 0;
+    max-height: none;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .filters-panel.open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .filters-panel-inner {
+    position: relative;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .close-filters {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: none;
+    background: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: var(--cursor-pointer);
+  }
+}
+
+/* iPad held upright: enough width for a 3-across gallery and a wide filters
+   sheet, but still not enough to keep the filters sidebar docked on the right. */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .filters-btn {
+    display: inline-flex;
+    order: -1;
+  }
+
+  .filters-panel {
+    position: fixed;
+    inset: 0;
+    max-height: none;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .filters-panel.open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .filters-panel-inner {
+    position: relative;
+    width: 100%;
+    height: 82vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  .sort-section, .filters-section {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .close-filters {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: none;
+    background: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: var(--cursor-pointer);
   }
 }
 </style>
 
 <script>
   const SCROLL_KEY = 'creations-scroll';
+  const VIEW_KEY = 'creations-view-mode';
 
   const savedScroll = sessionStorage.getItem(SCROLL_KEY);
   if (savedScroll) {
@@ -127,46 +700,223 @@ const creations = (await getCollection("creations")).sort(
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
   }, { passive: true });
 
-  const grid = document.getElementById('creations-grid');
-  const sortButton = document.getElementById('sort-toggle');
-  const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle button');
-  let ascending = false;
-  let currentFilter = 'all';
+  const galleryView = document.getElementById('gallery-view');
+  const listView = document.getElementById('list-view');
+  const viewButtons = document.querySelectorAll<HTMLButtonElement>('.view-toggle button');
+  const viewToggleThumb = document.querySelector<HTMLElement>('.view-toggle-thumb');
 
-  function applyFilter() {
-    if (!grid) return;
-    const cards = Array.from(grid.children) as HTMLElement[];
-    for (const card of cards) {
-      const matches = currentFilter === 'all' || card.dataset.type === currentFilter;
-      card.style.display = matches ? '' : 'none';
-    }
+  function moveThumb(activeButton: HTMLButtonElement | undefined) {
+    if (!viewToggleThumb || !activeButton) return;
+    viewToggleThumb.style.width = `${activeButton.offsetWidth}px`;
+    viewToggleThumb.style.transform = `translateX(${activeButton.offsetLeft - 2}px)`;
   }
 
-  filterButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      currentFilter = btn.dataset.filter ?? 'all';
-      filterButtons.forEach((b) => {
-        const active = b === btn;
-        b.classList.toggle('active', active);
-        b.setAttribute('aria-pressed', String(active));
-      });
-      applyFilter();
+  function setView(mode: string) {
+    const isGallery = mode === 'gallery';
+    galleryView?.toggleAttribute('hidden', !isGallery);
+    listView?.toggleAttribute('hidden', isGallery);
+    let activeButton: HTMLButtonElement | undefined;
+    viewButtons.forEach((btn) => {
+      const active = btn.dataset.view === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+      if (active) activeButton = btn;
+    });
+    moveThumb(activeButton);
+    localStorage.setItem(VIEW_KEY, mode);
+  }
+
+  viewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setView(btn.dataset.view ?? 'gallery'));
+  });
+
+  window.addEventListener('resize', () => {
+    const active = Array.from(viewButtons).find((btn) => btn.classList.contains('active'));
+    moveThumb(active);
+  });
+
+  setView(localStorage.getItem(VIEW_KEY) ?? 'gallery');
+
+  const SORT_KEY = 'creations-sort-order';
+  const FILTERS_KEY = 'creations-filters';
+
+  const sortRadios = document.querySelectorAll<HTMLInputElement>('input[name="sort-order"]');
+  let sortMode = 'date-desc';
+
+  function sortContainer(container: HTMLElement | null) {
+    if (!container) return;
+    const [field, direction] = sortMode.split('-');
+    const key = field === 'time' ? 'hours' : 'date';
+    const ascending = direction === 'asc';
+    const items = Array.from(container.children) as HTMLElement[];
+    items.sort((a, b) => {
+      const valueA = Number(a.dataset[key]);
+      const valueB = Number(b.dataset[key]);
+      return ascending ? valueA - valueB : valueB - valueA;
+    });
+    items.forEach((item) => container.appendChild(item));
+  }
+
+  sortRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      sortMode = radio.value;
+      sessionStorage.setItem(SORT_KEY, radio.value);
+      sortContainer(galleryView);
+      sortContainer(listView);
     });
   });
 
-  sortButton?.addEventListener('click', () => {
-    if (!grid) return;
-    ascending = !ascending;
+  const savedSort = sessionStorage.getItem(SORT_KEY);
+  if (savedSort) {
+    const radioToSelect = Array.from(sortRadios).find((radio) => radio.value === savedSort);
+    if (radioToSelect) {
+      radioToSelect.checked = true;
+      sortMode = savedSort;
+      sortContainer(galleryView);
+      sortContainer(listView);
+    }
+  }
 
-    const cards = Array.from(grid.children) as HTMLElement[];
-    cards.sort((a, b) => {
-      const dateA = Number(a.dataset.date);
-      const dateB = Number(b.dataset.date);
-      return ascending ? dateA - dateB : dateB - dateA;
+  const DIFFICULTY_KEY = 'creations-difficulty-filters';
+
+  const tagCheckboxes = document.querySelectorAll<HTMLInputElement>('.tag-filter');
+  const difficultyCheckboxes = document.querySelectorAll<HTMLInputElement>('.difficulty-filter');
+  const filtersToggle = document.getElementById('filters-toggle');
+  const filtersPanel = document.getElementById('filters-panel');
+  const closeFilters = document.getElementById('close-filters');
+
+  function saveFilters() {
+    const selected = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(FILTERS_KEY, JSON.stringify(selected));
+  }
+
+  function saveDifficultyFilters() {
+    const selected = Array.from(difficultyCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(DIFFICULTY_KEY, JSON.stringify(selected));
+  }
+
+  function applyFilters() {
+    const selectedTags = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    const selectedDifficulties = Array.from(difficultyCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    filtersToggle?.classList.toggle('active', selectedTags.length > 0 || selectedDifficulties.length > 0);
+    for (const container of [galleryView, listView]) {
+      if (!container) continue;
+      const items = Array.from(container.children) as HTMLElement[];
+      for (const item of items) {
+        const itemTags = (item.dataset.tags ?? '').split(' ').filter(Boolean);
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((tag) => itemTags.includes(tag));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(item.dataset.difficulty ?? '');
+        item.style.display = tagsMatch && difficultyMatch ? '' : 'none';
+      }
+    }
+  }
+
+  function getParentCheckbox(cb: HTMLInputElement) {
+    const parentLi = cb.closest('ul.taxonomy-children')?.parentElement;
+    return parentLi?.querySelector<HTMLInputElement>(':scope > .taxonomy-row .tag-filter') ?? null;
+  }
+
+  tagCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const childList = cb.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+      childList?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((child) => {
+        child.checked = cb.checked;
+      });
+
+      const parentCheckbox = getParentCheckbox(cb);
+      const siblings = parentCheckbox?.closest('li')?.querySelectorAll<HTMLInputElement>(':scope > ul.taxonomy-children .tag-filter');
+      if (parentCheckbox && siblings) {
+        parentCheckbox.checked = Array.from(siblings).every((sibling) => sibling.checked);
+      }
+
+      saveFilters();
+      applyFilters();
     });
-    cards.forEach((card) => grid.appendChild(card));
+  });
 
-    sortButton.textContent = ascending ? 'Date ↑' : 'Date ↓';
-    sortButton.setAttribute('aria-pressed', String(ascending));
+  difficultyCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      saveDifficultyFilters();
+      applyFilters();
+    });
+  });
+
+  document.getElementById('reset-filters')?.addEventListener('click', () => {
+    tagCheckboxes.forEach((cb) => { cb.checked = false; });
+    difficultyCheckboxes.forEach((cb) => { cb.checked = false; });
+    saveFilters();
+    saveDifficultyFilters();
+    applyFilters();
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+      if (!childList) return;
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      childList.classList.toggle('open', !expanded);
+    });
+  });
+
+  // For categories with sub-tags, clicking the label text should expand/collapse
+  // the sub-tags rather than select the tag — only the heart checkbox selects.
+  document.querySelectorAll<HTMLLabelElement>('.taxonomy-row > .taxonomy-item').forEach((label) => {
+    const toggle = label.parentElement?.querySelector<HTMLButtonElement>('.category-toggle');
+    if (!toggle) return;
+    const input = label.querySelector('input');
+    label.addEventListener('click', (e) => {
+      if (e.target === input) return;
+      e.preventDefault();
+      toggle.click();
+    });
+  });
+
+  const savedFilters = sessionStorage.getItem(FILTERS_KEY);
+  const savedDifficultyFilters = sessionStorage.getItem(DIFFICULTY_KEY);
+
+  if (savedFilters) {
+    const selected: string[] = JSON.parse(savedFilters);
+    tagCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+    document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
+      const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+      const hasCheckedChild = !!childList?.querySelector<HTMLInputElement>('input[type="checkbox"]:checked');
+      if (hasCheckedChild) {
+        toggle.setAttribute('aria-expanded', 'true');
+        childList?.classList.add('open');
+      }
+    });
+  }
+
+  if (savedDifficultyFilters) {
+    const selected: string[] = JSON.parse(savedDifficultyFilters);
+    difficultyCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  if (savedFilters || savedDifficultyFilters) {
+    applyFilters();
+  }
+
+  filtersToggle?.addEventListener('click', () => {
+    filtersPanel?.classList.add('open');
+    filtersToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('nav-open');
+  });
+
+  function closeFiltersPanel() {
+    filtersPanel?.classList.remove('open');
+    filtersToggle?.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('nav-open');
+  }
+
+  closeFilters?.addEventListener('click', closeFiltersPanel);
+
+  filtersPanel?.addEventListener('click', (e) => {
+    if (e.target === filtersPanel) closeFiltersPanel();
   });
 </script>

@@ -1,12 +1,17 @@
 title: "Goose"
-type: "crochet"
+difficulty: easy
 images:
   - "/images/creations/Goose-1.webp"
   - "/images/creations/Goose-2.webp"
-description: ""
-date: 2024-09-30
+description: |-
+  🤍🧡
+  This is the first full pattern I created by myself. It looks so adorable.
+  
+  It is also super easy to make and there are actually multiple versions available for this pattern! Go check it out!
+date: 2024-10-01
 instagramLink: "https://www.instagram.com/p/DAlG6jZNahM/?img_index=1"
 facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02LXkwLUvhLHdRJ8wvnZDow7EcFnUs63pPuwVmsPP3Y5YReuQimtrqKJBh9Numnsdal&id=61568543484297"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160797589/"
 hoursSpent: 1.31
 hookSize: "4mm"
 yarn:
@@ -16,3 +21,6 @@ creator: "Lili's Crochethings"
 creatorLink: "/about"
 patternName: "Original design (pattern coming soon)"
 patternLink: "/patterns"
+tags:
+  - amigurumi
+  - goose

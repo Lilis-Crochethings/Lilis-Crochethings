@@ -3,22 +3,56 @@ import { getCollection } from "astro:content";
 
 const general = (await getCollection("general"))[0]; // TODO: improve, this is ugly
 console.log(general);
+
+const navItems = [
+  { href: "/creations", label: "Creations" },
+  { href: "/patterns", label: "Patterns" },
+  { href: "/about", label: "About me" },
+  { href: "/faq", label: "FAQ" },
+];
+
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
 
 <nav class="nav">
-  <a class="logo" href="/">
-    <img src="/images/Lilis-Crochethings.webp" alt="Profile pic" />
-    <p>{general.data.name}</p>
-  </a>
+  <div class="nav-inner">
+    <a class="logo" href="/">
+      <img src="/images/Lilis-Crochethings.webp" alt="Profile pic" />
+      <p>{general.data.name}</p>
+    </a>
 
-  <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span class="icon icon-menu"></span>
+      <span class="icon-close">✕</span>
+    </button>
 
-  <ul class="nav-links" id="nav-links">
-    <li><a href="/creations">Creations</a></li>
-    <li><a href="/patterns">Patterns</a></li>
-    <li><a href="/about">About me</a></li>
-    <li><a href="/faq">FAQ</a></li>
-  </ul>
+    <ul class="nav-links" id="nav-links">
+      {navItems.map(({ href, label }) => {
+        const isActive = currentPath === href || currentPath.startsWith(`${href}/`);
+        return (
+          <li>
+            <a href={href} class:list={{ active: isActive }} aria-current={isActive ? "page" : undefined}>{label}</a>
+          </li>
+        );
+      })}
+    </ul>
+
+    <div class="nav-search" id="nav-search">
+      <span class="search-icon" id="search-icon-toggle" aria-hidden="true"></span>
+      <input
+        type="search"
+        id="site-search"
+        class="search-input"
+        placeholder="Search"
+        autocomplete="off"
+        aria-label="Search"
+        aria-controls="search-results"
+        aria-expanded="false"
+      />
+      <button class="search-close" id="search-close" type="button" aria-label="Close search"></button>
+      <div class="search-results" id="search-results" role="listbox" hidden></div>
+    </div>
+  </div>
 </nav>
 
 <script>
@@ -27,30 +61,196 @@ console.log(general);
 
   const closeMenu = () => {
     links?.classList.remove("open");
+    btn?.classList.remove("open");
     btn?.setAttribute("aria-expanded", "false");
-    if (btn) btn.textContent = "☰";
     document.body.classList.remove("nav-open");
   };
 
   btn?.addEventListener("click", () => {
     const isOpen = links?.classList.toggle("open");
+    btn.classList.toggle("open", !!isOpen);
     btn.setAttribute("aria-expanded", String(!!isOpen));
-    btn.textContent = isOpen ? "✕" : "☰";
     document.body.classList.toggle("nav-open", !!isOpen);
   });
 
   links?.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", closeMenu);
   });
+
+  // Exposes the navbar's real height so the mobile search dropdown (which is
+  // position:fixed, viewport-wide, rather than anchored to the narrow input)
+  // can sit flush below it.
+  const nav = document.querySelector(".nav") as HTMLElement | null;
+  function updateNavHeightVar() {
+    if (nav) document.documentElement.style.setProperty("--nav-height", `${nav.getBoundingClientRect().height}px`);
+  }
+  updateNavHeightVar();
+  window.addEventListener("resize", updateNavHeightVar);
+</script>
+
+<script>
+  import { search, renderResultTile, type SearchDoc } from "../lib/search";
+  import { searchFaq, renderFaqResultTile, bindFaqResultCardClicks, type FaqDoc } from "../lib/faq";
+
+  const DEBOUNCE_MS = 120;
+
+  const input = document.getElementById("site-search") as HTMLInputElement | null;
+  const resultsPanel = document.getElementById("search-results") as HTMLDivElement | null;
+  const navSearch = document.getElementById("nav-search") as HTMLElement | null;
+  const searchIconToggle = document.getElementById("search-icon-toggle") as HTMLElement | null;
+  const searchClose = document.getElementById("search-close") as HTMLButtonElement | null;
+
+  if (resultsPanel) bindFaqResultCardClicks(resultsPanel);
+
+  // On tablet/mobile the search box collapses to just this icon; clicking it
+  // expands the real input to fill the available space (see the ≤1024px /
+  // ≤767px rules in <style>). No-op on desktop, where it's always expanded.
+  function expandSearch() {
+    navSearch?.classList.add("expanded");
+    // preventScroll: the collapsed input is a valid focus target even before
+    // it animates to full width, and without this the browser's default
+    // scroll-into-view nudges body.scrollLeft (body is an overflow-x:hidden
+    // scroll container here), visibly yanking the whole nav sideways.
+    input?.focus({ preventScroll: true });
+  }
+
+  // Only ever called from an explicit "close" signal (the close button,
+  // clicking outside, blurring with an empty field, or Escape) — never from
+  // the input event itself, so backspacing a query to empty while still
+  // typing does not yank the box closed underneath the user.
+  function collapseSearchIfEmpty() {
+    if (input && !input.value.trim()) {
+      navSearch?.classList.remove("expanded");
+      input.blur();
+    }
+  }
+
+  searchIconToggle?.addEventListener("click", () => {
+    if (navSearch?.classList.contains("expanded")) {
+      input?.focus();
+    } else {
+      expandSearch();
+    }
+  });
+
+  searchClose?.addEventListener("click", () => {
+    if (input) input.value = "";
+    if (resultsPanel) {
+      resultsPanel.innerHTML = "";
+      resultsPanel.setAttribute("hidden", "");
+    }
+    input?.setAttribute("aria-expanded", "false");
+    navSearch?.classList.remove("expanded");
+    input?.blur();
+  });
+
+  input?.addEventListener("blur", () => {
+    window.setTimeout(collapseSearchIfEmpty, 150);
+  });
+
+  // Same corpus/composition as the dedicated /search page: creations + FAQ
+  // (patterns ignored for now), Creations group before FAQ group.
+  let indexPromise: Promise<[SearchDoc[], FaqDoc[]]> | null = null;
+  function loadIndex(): Promise<[SearchDoc[], FaqDoc[]]> {
+    if (!indexPromise) {
+      indexPromise = Promise.all([
+        fetch("/search-index.json").then((res) => res.json()),
+        fetch("/faq-index.json").then((res) => res.json()),
+      ]);
+    }
+    return indexPromise;
+  }
+
+  function openPanel() {
+    resultsPanel?.removeAttribute("hidden");
+    input?.setAttribute("aria-expanded", "true");
+  }
+
+  function closePanel() {
+    resultsPanel?.setAttribute("hidden", "");
+    input?.setAttribute("aria-expanded", "false");
+  }
+
+  function render(query: string, creationDocs: SearchDoc[], faqDocs: FaqDoc[]) {
+    if (!resultsPanel) return;
+    const creationMatches = search(creationDocs, query).filter((doc) => doc.type === "creation");
+    const faqMatches = searchFaq(faqDocs, query);
+
+    if (creationMatches.length === 0 && faqMatches.length === 0) {
+      resultsPanel.innerHTML = `<p class="search-empty">No results for "${query.replace(/"/g, "&quot;")}".</p>`;
+      openPanel();
+      return;
+    }
+
+    let html = "";
+    if (creationMatches.length > 0) {
+      html += `<p class="search-group-label">Creations</p>`;
+      html += creationMatches.map((doc) => renderResultTile(doc, query)).join("");
+    }
+    if (faqMatches.length > 0) {
+      html += `<p class="search-group-label">FAQ</p>`;
+      html += faqMatches.map((doc) => renderFaqResultTile(doc, query)).join("");
+    }
+    resultsPanel.innerHTML = html;
+    openPanel();
+  }
+
+  let debounceTimer: number | undefined;
+  input?.addEventListener("input", () => {
+    window.clearTimeout(debounceTimer);
+    const query = input.value.trim();
+    if (!query) {
+      closePanel();
+      if (resultsPanel) resultsPanel.innerHTML = "";
+      return;
+    }
+    debounceTimer = window.setTimeout(async () => {
+      const [creationDocs, faqDocs] = await loadIndex();
+      render(query, creationDocs, faqDocs);
+    }, DEBOUNCE_MS);
+  });
+
+  input?.addEventListener("focus", () => {
+    loadIndex();
+    if (input.value.trim() && resultsPanel?.innerHTML) openPanel();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (navSearch && !navSearch.contains(e.target as Node)) {
+      closePanel();
+      collapseSearchIfEmpty();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closePanel();
+      input?.blur();
+      collapseSearchIfEmpty();
+    }
+  });
+
+  input?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const query = input.value.trim();
+    if (!query) return;
+    e.preventDefault();
+    window.location.href = `/search?q=${encodeURIComponent(query)}`;
+  });
 </script>
 
 <style>
   .nav {
+    background: var(--background);
+    border-bottom: 1px solid var(--primary);
+  }
+
+  .nav-inner {
+    position: relative;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.6rem 1rem;
-    background: var(--accent);
+    gap: 2.5rem;
+    padding: 0.9rem 1.25rem;
   }
 
   .logo {
@@ -60,19 +260,19 @@ console.log(general);
     align-items: flex-end;
     gap: 0.5rem;
     text-decoration: none;
-    color: inherit;
+    color: #9d486a;
   }
 
   .logo p {
     margin: 0;
+    font-size: 1.3rem;
   }
 
   img {
-    width: 30px;
-    height: 30px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid white;
   }
 
   .nav-links {
@@ -85,23 +285,268 @@ console.log(general);
 
   .nav-links a {
     font-family: "Lili Love", cursive;
-    font-weight: bold;
+    font-weight: normal;
+    font-size: 1.1rem;
     text-decoration: none;
-    color: #333;
+    color: #9d486a;
+  }
+
+  .nav-links a.active {
+    font-weight: bold;
+  }
+
+  .nav-search {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 21px;
+    height: 21px;
+    background-color: var(--primary);
+    mask-image: url(/images/icons/search.svg);
+    -webkit-mask-image: url(/images/icons/search.svg);
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 1rem 0.5rem 3rem;
+    border: 1.5px solid var(--primary);
+    border-radius: 999px;
+    background: white;
+    color: var(--text);
+    font: inherit;
+    font-family: "Quicksand", sans-serif;
+    font-size: 0.95rem;
+  }
+
+  .search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 1.5px var(--primary);
+  }
+
+  .search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-left: 0.4rem;
+    cursor: var(--cursor-pointer);
+    background-color: var(--primary);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+  }
+
+  /* Dedicated close button for the collapsible (tablet/mobile) search box —
+     always visible while expanded, unlike the native cancel button which
+     only appears once there's text. Hidden entirely on desktop, where the
+     search bar never collapses. */
+  .search-close {
+    display: none;
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    line-height: 0;
+    cursor: var(--cursor-pointer);
+    z-index: 1;
+  }
+
+  .search-close::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: var(--primary);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+  }
+
+  .search-results {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: 640px;
+    max-width: min(640px, calc(100vw - 2rem));
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--background);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    z-index: 1100;
+  }
+
+  .search-results[hidden] {
+    display: none;
+  }
+
+  .search-results :global(.list-item) {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
   .hamburger {
     display: none;
-    font-size: 1.5rem;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     z-index: 1001;
   }
 
-  /* Mobile */
-  @media (max-width: 768px) {
-    .hamburger {
+  .hamburger .icon {
+    display: inline-block;
+    width: 21px;
+    height: 21px;
+    background-color: var(--primary);
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+  }
+
+  .icon-menu {
+    mask-image: url(/images/icons/menu.svg);
+    -webkit-mask-image: url(/images/icons/menu.svg);
+  }
+
+  .icon-close {
+    display: none;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: var(--primary);
+  }
+
+  .hamburger.open .icon-menu {
+    display: none;
+  }
+
+  .hamburger.open .icon-close {
+    display: block;
+  }
+
+  /* Tablet/iPad: drop the wordmark, collapse search to an icon that expands
+     on click (nav items still shown as text; no hamburger yet). */
+  @media (max-width: 1024px) {
+    .logo p {
+      display: none;
+    }
+
+    .nav-search {
+      flex: 0 0 40px;
+      width: 40px;
+      max-width: 40px;
+    }
+
+    .search-icon {
+      pointer-events: auto;
+      cursor: var(--cursor-pointer);
+    }
+
+    .search-input {
+      opacity: 0;
+      pointer-events: none;
+      padding-right: 2.6rem;
+      transition: opacity 0.15s ease;
+    }
+
+    .search-input::-webkit-search-cancel-button {
+      display: none;
+    }
+
+    /* Expanding takes the search box out of flex flow entirely (absolute,
+       anchored to the same right edge) so it never fights the nav links for
+       space — growing it in-flow was forcing the sibling links to reflow on
+       every animation frame, which is what caused the horizontal glitch. */
+    .nav-search.expanded {
+      position: absolute;
+      top: 50%;
+      right: 1.25rem;
+      transform: translateY(-50%);
+      margin-left: 0;
+      width: min(300px, calc(100vw - 6rem));
+      max-width: none;
+      transition: width 0.25s ease;
+    }
+
+    .nav-search.expanded .search-input {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .nav-search.expanded .search-close {
       display: block;
+    }
+  }
+
+  /* Mobile */
+  @media (max-width: 767px) {
+    .nav-inner {
+      flex-wrap: nowrap;
+      gap: 0.75rem;
+    }
+
+    .hamburger {
+      display: flex;
+      order: 3;
+    }
+
+    .nav-search {
+      order: 2;
+      margin-left: auto;
+    }
+
+    .nav-search.expanded {
+      max-width: none;
+      flex: 1 1 auto;
+    }
+
+    .search-results {
+      position: fixed;
+      top: calc(var(--nav-height, 64px) + 0.5rem);
+      left: 1rem;
+      right: 1rem;
+      transform: none;
+      width: auto;
+      max-width: none;
     }
 
     .nav-links {
@@ -114,7 +559,7 @@ console.log(general);
       gap: 2rem;
       position: fixed;
       inset: 0;
-      background: var(--accent);
+      background: var(--background);
       transition: opacity 0.2s ease;
       z-index: 1000;
     }

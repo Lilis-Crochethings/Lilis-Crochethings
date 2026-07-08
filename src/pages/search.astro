@@ -1,0 +1,99 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Search"
+  description="Search Lili's Crochethings for creations and frequently asked questions."
+>
+  <h1 id="search-heading">Search</h1>
+
+  <div id="search-page-body">
+    <section id="results-creations" class="search-page-section" hidden>
+      <h2>Creations</h2>
+      <div class="list" id="results-creations-list"></div>
+    </section>
+
+    <section id="results-faq" class="search-page-section" hidden>
+      <h2>FAQ</h2>
+      <div class="faq-results-list" id="results-faq-list"></div>
+    </section>
+
+    <p id="search-page-empty" class="search-empty" hidden>No results found.</p>
+  </div>
+</BaseLayout>
+
+<style>
+  #search-page-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .search-page-section h2 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+  }
+
+  .list,
+  .faq-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  #search-page-empty {
+    font-size: 1.05rem;
+  }
+</style>
+
+<script>
+  import { search, renderResultTile, type SearchDoc } from '../lib/search';
+  import { searchFaq, renderFaqResultTile, bindFaqResultCardClicks, type FaqDoc } from '../lib/faq';
+
+  const heading = document.getElementById('search-heading');
+  const creationsSection = document.getElementById('results-creations');
+  const creationsList = document.getElementById('results-creations-list');
+  const faqSection = document.getElementById('results-faq');
+  const faqList = document.getElementById('results-faq-list');
+  const emptyMessage = document.getElementById('search-page-empty');
+
+  const query = (new URLSearchParams(window.location.search).get('q') ?? '').trim();
+
+  if (heading) {
+    heading.textContent = query ? `Search for '${query}'` : 'Search';
+  }
+  if (query) {
+    document.title = `Search for '${query}' — Lili's Crochethings`;
+  }
+
+  async function run() {
+    if (!query) return;
+
+    const [creationDocs, faqDocs]: [SearchDoc[], FaqDoc[]] = await Promise.all([
+      fetch('/search-index.json').then((res) => res.json()),
+      fetch('/faq-index.json').then((res) => res.json()),
+    ]);
+
+    const creationMatches = search(creationDocs, query).filter((doc) => doc.type === 'creation');
+    const faqMatches = searchFaq(faqDocs, query);
+
+    if (creationMatches.length > 0 && creationsList && creationsSection) {
+      creationsList.innerHTML = creationMatches.map((doc) => renderResultTile(doc, query)).join('');
+      creationsSection.hidden = false;
+    }
+
+    if (faqMatches.length > 0 && faqList && faqSection) {
+      faqList.innerHTML = faqMatches.map((doc) => renderFaqResultTile(doc, query)).join('');
+      faqSection.hidden = false;
+      bindFaqResultCardClicks(faqList);
+    }
+
+    if (creationMatches.length === 0 && faqMatches.length === 0 && emptyMessage) {
+      emptyMessage.hidden = false;
+    }
+  }
+
+  run();
+</script>

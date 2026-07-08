@@ -1,0 +1,39 @@
+---
+import TagChip from "./TagChip.astro";
+import DifficultyChip from "./DifficultyChip.astro";
+import type { TagCategory } from "../../lib/tags";
+
+const { creation, effectiveTags = [], taxonomy } = Astro.props as {
+  creation: any;
+  effectiveTags?: string[];
+  taxonomy: TagCategory[];
+};
+
+const difficulty: string | undefined = creation.data.difficulty;
+---
+
+<a
+  class="list-item"
+  href={`/creations/${creation.id}`}
+  data-date={creation.data.date?.getTime() ?? 0}
+  data-hours={creation.data.hoursSpent ?? 0}
+  data-tags={effectiveTags.join(" ")}
+  data-difficulty={difficulty}
+>
+  <DifficultyChip difficulty={difficulty} hideOnMobile />
+  <div class="thumb">
+    <img src={creation.data.images[0]} alt={creation.data.title} loading="lazy" decoding="async" />
+  </div>
+  <div class="body">
+    <h3 class="title">{creation.data.title}</h3>
+    {creation.data.description && <p class="preview">{creation.data.description}</p>}
+    {effectiveTags.length > 0 && (
+      <div class="tags">
+        {effectiveTags.map((id) => (
+          <TagChip id={id} taxonomy={taxonomy} />
+        ))}
+      </div>
+    )}
+  </div>
+</a>
+

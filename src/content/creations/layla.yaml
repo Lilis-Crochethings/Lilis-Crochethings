@@ -1,9 +1,12 @@
 title: "Layla"
-type: "embroidery"
+difficulty: medium
 images:
   - "/images/creations/Layla-1.webp"
   - "/images/creations/Layla-2.webp"
-description: ""
+description: |-
+  Layla (or Aisha) is such a badass character and the colors turned out so pretty!
+
+  Only one more Winx to go... Tecna!
 date: 2026-06-24
 # instagramLink: ""
 hoursSpent: 9
@@ -30,3 +33,7 @@ creator: "ArtzyJulia"
 creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
 patternName: "Layla"
 patternLink: "https://www.pinterest.com/pin/338895940731443825/"
+tags:
+  - embroidery
+  - cross-stitch
+  - winx

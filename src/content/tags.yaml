@@ -1,0 +1,59 @@
+tags:
+  - id: crochet
+    label: Crochet
+    image: /images/icons/hook.svg
+    children:
+      - id: amigurumi
+        label: Amigurumi
+      - id: clothes
+        label: Clothes
+      - id: keychain
+        label: Keychain
+      - id: misc
+        label: Miscellaneous
+  - id: embroidery
+    label: Embroidery
+    image: /images/icons/embroidery.svg
+    children:
+      - id: cross-stitch
+        label: Cross stitch
+  - id: animal
+    label: Animals
+    children:
+      - id: cat
+        label: Cat
+      - id: dog
+        label: Dog
+      - id: bunny
+        label: Bunny
+      - id: cow
+        label: Cow
+      - id: goose
+        label: Goose
+      - id: whale
+        label: Whale
+      - id: lamb
+        label: Lamb
+      - id: lion
+        label: Lion
+      - id: pig
+        label: Pig
+      - id: fox
+        label: Fox
+      - id: turtle
+        label: Turtle
+      - id: chicken
+        label: Chicken
+      - id: mouse
+        label: Mouse
+      - id: unicorn
+        label: Unicorn
+  - id: pokemon
+    label: Pokémon
+    children:
+      - id: pokeball
+        label: Pokéball
+      - id: eeveelutions
+        label: Eeveelutions
+  - id: winx
+    label: Winx Club

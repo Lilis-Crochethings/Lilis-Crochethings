@@ -1,0 +1,94 @@
+categories:
+  - id: general
+    title: General
+    questions:
+      - question: Can I buy one of your crochet or embroidery items?
+        answer: >
+          Unfortunately, I don't sell my finished creations. However, you're
+          welcome to browse the patterns I used so you can make your own!
+
+      - question: How did you learn to crochet?
+        answer: >
+          I started by following beginner YouTube tutorials and making simple
+          projects like granny squares and amigurumi. As I became more
+          comfortable, I gradually challenged myself with more advanced
+          patterns.
+      - question: Do you have video tutorials?
+        answer: >
+          No, I currently only offer written patterns through my interactive
+          crochet pattern pages.
+      
+      - question: Can I sell items made from your patterns?
+        answer: >
+          Yes! You're welcome to sell finished items made from my patterns.
+          Please credit me as the pattern designer and, if possible, include a
+          link back to my website.
+
+      - question: Can I share your patterns?
+        answer: >
+          You're welcome to share links to my patterns. Please don't repost or
+          redistribute the pattern itself. Instead, credit me as the designer
+          and link back to the original pattern on my website.
+
+  - id: website
+    title: Website
+    questions:
+      - question: Where did my pattern progress go?
+        answer: >
+          Your progress is stored locally in your browser. If you clear your
+          browser data, switch browsers, or use a different device, your saved
+          progress won't be available.
+
+      - question: Why doesn't my progress sync between my computer and my phone?
+        answer: >
+          Progress is stored locally on each device and isn't synced through an
+          account or cloud storage.
+
+      - question: Is that your own handwriting as a font?
+        answer: >
+          Yes! I turned my own handwriting into a font using
+          [Calligraphr](https://www.calligraphr.com/). Glad you noticed!
+
+      - question: Where did you get your icons?
+        answer: >
+          I drew all of the icons myself and then vectorized them using
+          Inkscape.
+
+  - id: crochet
+    title: Crochet Help
+    questions:
+      - question: My amigurumi head turns out cone-shaped instead of round. What should I do?
+        answer: >
+          Instead of starting with a magic ring of 6 single crochets, begin
+          with 8 single crochets. Continue with:
+
+          - 8 inc (16)
+          - (1 sc, 1 inc) × 8 (24)
+
+          Then continue with the pattern as written. Since you started with
+          more stitches, you'll effectively skip one increase round compared
+          to the original pattern.
+
+
+      - question: How do you choose the right crochet hook size for amigurumi?
+        answer: >
+          The best hook size depends on the yarn you're using and how tightly
+          you crochet. I usually make a small test sphere with a few hook
+          sizes and choose the one that gives me the neatest fabric with no
+          visible stuffing. For example, I typically use a 4 mm hook with
+          Hobbii Chenille yarn.
+
+      - question: What yarn did you use?
+        answer: >
+          You can find the yarn and other materials I used on each creation's
+          detail page, just below the images.
+
+      - question: I'm stuck on one of your patterns.
+        answer: >
+          Feel free to contact me through one of my [socials](/about). I'll do
+          my best to help!
+
+      - question: I found a mistake in one of your patterns.
+        answer: >
+          Thanks for letting me know! Please contact me through one of my
+          [socials](/about) so I can fix it as soon as possible.

@@ -1,0 +1,11 @@
+---
+const { difficulty, hideOnMobile = false } = Astro.props as { difficulty?: string; hideOnMobile?: boolean };
+const labels: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
+---
+
+{difficulty && (
+  <span class:list={["difficulty-chip", `difficulty-${difficulty}`, { "hide-on-mobile": hideOnMobile }]}>
+    {labels[difficulty]}
+  </span>
+)}
+

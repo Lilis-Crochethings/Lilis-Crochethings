@@ -1,0 +1,21 @@
+---
+import { findTag } from "../../lib/tags";
+import type { TagCategory } from "../../lib/tags";
+
+const { id, taxonomy } = Astro.props as { id: string; taxonomy: TagCategory[] };
+const tag = findTag(id, taxonomy);
+const label = tag?.label ?? id;
+const image = tag?.image;
+const color = tag?.color;
+---
+
+<span class="tag-chip">
+  {image && (
+    <span
+      class="tag-chip-icon"
+      style={`background-color: ${color ?? "var(--primary)"}; mask-image: url(${image}); -webkit-mask-image: url(${image});`}
+    ></span>
+  )}
+  {label}
+</span>
+

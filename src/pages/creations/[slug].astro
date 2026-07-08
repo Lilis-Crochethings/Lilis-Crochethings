@@ -1,8 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CreationCard from '../../components/creations/CreationCard.astro';
+import TagChip from '../../components/creations/TagChip.astro';
+import DifficultyChip from '../../components/creations/DifficultyChip.astro';
 import { getCollection } from "astro:content";
 import { resolveYarn } from "../../lib/yarn";
+import { getEffectiveTags } from "../../lib/tags";
 
 export async function getStaticPaths() {
   const SIMILAR_LIMIT = 4;
@@ -24,30 +27,55 @@ export async function getStaticPaths() {
     return shuffled;
   }
 
+  // Embroidery floss is a near-universal accent material (eyes, mouths,
+  // small details) used across both crochet and embroidery pieces alike —
+  // sharing it says nothing about two creations actually being similar, so
+  // it's excluded from the yarn comparison entirely.
+  function yarnKey(y: string | { name: string }): string | null {
+    const key = (typeof y === "string" ? y : y.name).trim().toLowerCase();
+    return key.startsWith("embroidery floss") ? null : key;
+  }
+
   const creations = await getCollection("creations");
   const yarnsEntry = (await getCollection("yarns"))[0];
 
   return creations.map((creation) => {
     const others = creations.filter((c) => c.id !== creation.id);
-    const shuffledOthers = seededShuffle(others, creation.id);
 
-    const similar: typeof others = [];
-    const addUnique = (candidates: typeof others) => {
-      for (const c of candidates) {
-        if (similar.length >= SIMILAR_LIMIT) break;
-        if (!similar.some((s) => s.id === c.id)) similar.push(c);
-      }
-    };
+    // Raw tags only, not getEffectiveTags — the auto-added parent category
+    // (every "amigurumi"/"clothes"/"misc" piece is also implicitly "crochet",
+    // every cross-stitch piece also "embroidery") is too broad to mean
+    // anything: it'd hand every crochet item a free point of "similarity"
+    // to every other crochet item regardless of actual subject matter.
+    const ownTags = new Set(creation.data.tags ?? []);
+    const ownYarns = new Set(
+      (creation.data.yarn ?? []).map(yarnKey).filter((key) => key !== null)
+    );
 
-    if (creation.data.patternName) {
-      addUnique(
-        others
-          .filter((c) => c.data.patternName === creation.data.patternName)
-          .sort((a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0))
-      );
+    // Similarity score: +1 per shared (specific) tag, +1 each for a matching
+    // hook size / creator / pattern, +1 per shared yarn used.
+    function similarityScore(other: (typeof others)[number]): number {
+      let score = 0;
+
+      const otherTags = other.data.tags ?? [];
+      score += otherTags.filter((tag) => ownTags.has(tag)).length;
+
+      if (creation.data.hookSize && creation.data.hookSize === other.data.hookSize) score += 1;
+      if (creation.data.creator && creation.data.creator === other.data.creator) score += 1;
+      if (creation.data.patternName && creation.data.patternName === other.data.patternName) score += 1;
+
+      const otherYarns = (other.data.yarn ?? []).map(yarnKey).filter((key) => key !== null);
+      score += otherYarns.filter((yarn) => ownYarns.has(yarn)).length;
+
+      return score;
     }
-    addUnique(shuffledOthers.filter((c) => c.data.type === creation.data.type));
-    addUnique(shuffledOthers);
+
+    // Shuffle first (seeded per-creation) so ties between equally-similar
+    // creations land in a stable-but-varied order instead of always
+    // favoring whichever comes first in the collection.
+    const similar = seededShuffle(others, creation.id)
+      .sort((a, b) => similarityScore(b) - similarityScore(a))
+      .slice(0, SIMILAR_LIMIT);
 
     return {
       params: { slug: creation.id },
@@ -59,12 +87,21 @@ export async function getStaticPaths() {
 const { creation, yarnLines, similar } = Astro.props;
 const data = creation.data;
 
+const patternCredits = [
+  { creator: data.creator, creatorLink: data.creatorLink, patternName: data.patternName, patternLink: data.patternLink },
+  ...(data.additionalPatterns ?? []),
+];
+
+const taxonomyEntry = (await getCollection("tags"))[0];
+const taxonomy = taxonomyEntry.data.tags;
+const effectiveTags = getEffectiveTags(data.tags, taxonomy);
+
 const yarnTiles = (data.yarn ?? [])
   .map((y) => resolveYarn(y, yarnLines))
   .filter((y) => y !== null)
   .sort((a, b) => (a.type ?? "").localeCompare(b.type ?? ""));
 
-const typeLabel = data.type.charAt(0).toUpperCase() + data.type.slice(1);
+const craftType = effectiveTags.includes("embroidery") ? "embroidery" : "crochet";
 
 function isWhite(hex?: string): boolean {
   if (!hex) return false;
@@ -74,8 +111,8 @@ function isWhite(hex?: string): boolean {
 
 const pageDescription = data.description || (
   data.patternName
-    ? `A handmade ${data.type} ${data.title}, made using the "${data.patternName}" pattern${data.creator ? ` by ${data.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
-    : `A handmade ${data.type} ${data.title} by Lili's Crochethings.`
+    ? `A handmade ${craftType} ${data.title}, made using the "${data.patternName}" pattern${data.creator ? ` by ${data.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
+    : `A handmade ${craftType} ${data.title} by Lili's Crochethings.`
 );
 
 const creativeWorkSchema = {
@@ -114,6 +151,13 @@ const creativeWorkSchema = {
       </div>
     </div>
 
+    {data.description && (
+      <div class="card card-description">
+        <h2>Description</h2>
+        <p class="description-text">{data.description}</p>
+      </div>
+    )}
+
     {yarnTiles.length > 0 && (
       <div class="card card-yarn">
         <h2>Yarns used</h2>
@@ -141,13 +185,9 @@ const creativeWorkSchema = {
     </div>
 
     <div class="col-right">
+    <div class="pattern-social-row">
     <div class="card card-info">
       <h2>Info</h2>
-      <span class="chip type-chip">
-        <span class="icon" style={`mask-image: url(/images/icons/${data.type === "embroidery" ? "embroidery" : "hook"}.svg); -webkit-mask-image: url(/images/icons/${data.type === "embroidery" ? "embroidery" : "hook"}.svg);`}></span>
-        {typeLabel}
-      </span>
-
       <ul class="info-list">
         {data.date && (
           <li>
@@ -168,27 +208,40 @@ const creativeWorkSchema = {
           </li>
         )}
       </ul>
+
+      {effectiveTags.length > 0 && (
+        <div class="tags-row">
+          {effectiveTags.map((tag) => (
+            <TagChip id={tag} taxonomy={taxonomy} />
+          ))}
+        </div>
+      )}
     </div>
 
     <div class="card card-designer">
+      <DifficultyChip difficulty={data.difficulty} />
       <h2>Pattern</h2>
       <ul class="designer-list">
-        <li>
-          <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>
-          {data.creator
-            ? (data.creatorLink
-              ? <a href={data.creatorLink} target="_blank" rel="noopener noreferrer">{data.creator}</a>
-              : data.creator)
-            : "unknown"}
-        </li>
-        <li>
-          <span class="icon" style="mask-image: url(/images/icons/pattern.svg); -webkit-mask-image: url(/images/icons/pattern.svg);"></span>
-          {data.patternName
-            ? (data.patternLink
-              ? <a href={data.patternLink} target="_blank" rel="noopener noreferrer">{data.patternName}</a>
-              : data.patternName)
-            : "unknown"}
-        </li>
+        {patternCredits.map((credit) => (
+          <li class="pattern-credit">
+            <div class="credit-line">
+              <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>
+              {credit.creator
+                ? (credit.creatorLink
+                  ? <a href={credit.creatorLink} target="_blank" rel="noopener noreferrer">{credit.creator}</a>
+                  : credit.creator)
+                : "unknown"}
+            </div>
+            <div class="credit-line">
+              <span class="icon" style="mask-image: url(/images/icons/pattern.svg); -webkit-mask-image: url(/images/icons/pattern.svg);"></span>
+              {credit.patternName
+                ? (credit.patternLink
+                  ? <a href={credit.patternLink} target="_blank" rel="noopener noreferrer">{credit.patternName}</a>
+                  : credit.patternName)
+                : "unknown"}
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
 
@@ -223,6 +276,7 @@ const creativeWorkSchema = {
         </ul>
       </div>
     )}
+    </div>
 
     {similar.length > 0 && (
       <div class="card card-similar">
@@ -359,13 +413,23 @@ const creativeWorkSchema = {
 
 .card-images { order: 1; }
 .card-info { order: 2; }
-.card-designer { order: 3; }
-.card-socials { order: 4; }
-.card-yarn { order: 5; }
-.card-similar { order: 6; }
+.card-description { order: 3; }
+.card-designer { order: 4; position: relative; }
+.pattern-social-row { display: contents; }
+.card-socials { order: 5; }
+.card-yarn { order: 6; }
+.card-similar { order: 7; }
 
 .card-yarn, .card-socials, .card-info, .card-designer {
   font-family: "Lili Love", cursive;
+}
+
+.description-text {
+  white-space: pre-line;
+  font-family: "Quicksand", sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0;
 }
 
 .gallery {
@@ -425,7 +489,7 @@ const creativeWorkSchema = {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
   color: white;
-  cursor: pointer;
+  cursor: var(--cursor-pointer);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -467,7 +531,7 @@ const creativeWorkSchema = {
 
 .socials-list a {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.6rem;
   color: var(--primary);
 }
@@ -506,9 +570,11 @@ const creativeWorkSchema = {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary);
-  color: #fff;
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary);
   font-family: "Quicksand", sans-serif;
+  font-weight: bold;
   font-size: 0.7rem;
   line-height: 1;
   padding: 0.38rem 0.7rem 0.27rem;
@@ -583,16 +649,11 @@ div.yarn-tile .line-name {
   color: var(--primary);
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: var(--primary);
-  color: white;
-  font-family: "Quicksand", sans-serif;
-  padding: 0.26rem 0.8rem 0.34rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 1rem;
 }
 
 .icon {
@@ -603,12 +664,6 @@ div.yarn-tile .line-name {
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
-}
-
-.chip .icon {
-  width: 16px;
-  height: 16px;
-  background-color: white;
 }
 
 .info-list, .designer-list {
@@ -625,20 +680,33 @@ div.yarn-tile .line-name {
   margin-top: 0.6rem;
 }
 
-.info-list li, .designer-list li {
+/* Extra breathing room between separate pattern credits (e.g. a main pattern
+   plus a different designer's pattern for the eyes), bigger than the gap
+   between the creator/pattern line within a single credit. */
+.designer-list {
+  gap: 1.75rem;
+}
+
+.pattern-credit {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-list li, .credit-line {
   display: flex;
   align-items: flex-end;
   gap: 0.6rem;
 }
 
-.info-list .icon, .designer-list .icon {
+.info-list .icon, .credit-line .icon {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
   background-color: var(--primary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .layout {
     display: flex;
     flex-direction: column;
@@ -687,6 +755,43 @@ div.yarn-tile .line-name {
 
   .info-list, .designer-list, .socials-list {
     font-size: 1.15rem;
+  }
+}
+
+/* iPad held upright: cards stay stacked (no room for a 300px side column),
+   but there's enough width to fan the gallery/similar grids out further and
+   to sit the pattern + "view on" cards side by side. */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .col-left, .col-right {
+    display: contents;
+  }
+
+  .gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .similar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Info, Pattern, and View on always share one row on iPad, placed above
+     the description. */
+  .pattern-social-row {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    order: 2;
+  }
+
+  .pattern-social-row > .card {
+    flex: 1;
+    min-width: 0;
   }
 }
 </style>

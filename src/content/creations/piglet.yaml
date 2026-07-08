@@ -1,10 +1,13 @@
 title: "Piglet"
-type: "crochet"
+difficulty: medium
 images:
   - "/images/creations/Piglet-1.webp"
   - "/images/creations/Piglet-2.webp"
   - "/images/creations/Piglet-3.webp"
-description: ""
+description: |-
+  This was a (joke) present for someone who had been replaying Piglet's Big Game on the PS2. We all know that feeling when we get distracted by something that we find while cleaning up.
+
+  All jokes aside: They loved it!
 date: 2025-12-26
 # instagramLink: ""
 hoursSpent: 6.01
@@ -18,3 +21,6 @@ creator: "Teddy Knitted"
 creatorLink: "https://www.instagram.com/teddy_knitted/"
 patternName: "Piglet Crochet Pattern"
 patternLink: "https://www.etsy.com/listing/1862880986/piglet-crochet-pattern-pig-amigurumi"
+tags:
+  - amigurumi
+  - pig

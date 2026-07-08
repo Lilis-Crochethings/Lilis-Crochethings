@@ -1,11 +1,197 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { faqCategories, getFaqQuestionId, renderFaqAnswer } from '../lib/faq';
 ---
 
 <BaseLayout
   title="FAQ"
   description="Frequently asked questions about Lili's Crochethings — patterns, commissions, and more."
 >
-  <h1>FAQ</h1>
-  <span class="coming-soon">Coming soon</span>
+  <h1 class="faq-title">FAQ</h1>
+
+  <div class="faq-content">
+    {faqCategories.map((category) => (
+      <section class="faq-section" id={`faq-${category.id}`}>
+        <h2>{category.title}</h2>
+        <div class="faq-items">
+          {category.questions.map((q, index) => (
+            <details class="card faq-item" id={getFaqQuestionId(category.id, index)}>
+              <summary>
+                {q.question}
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </summary>
+              <p set:html={renderFaqAnswer(q.answer)} />
+            </details>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
 </BaseLayout>
+
+<script>
+  const ANIMATION_DURATION = 250;
+
+  document.querySelectorAll<HTMLDetailsElement>('.faq-item').forEach((details) => {
+    const summary = details.querySelector('summary');
+    if (!summary) return;
+
+    let animation: Animation | null = null;
+    let isClosing = false;
+    let isExpanding = false;
+
+    function closedHeight() {
+      return summary!.offsetHeight;
+    }
+
+    summary.addEventListener('click', (e) => {
+      e.preventDefault();
+      details.style.overflow = 'hidden';
+
+      if (isClosing || !details.open) {
+        openDetails();
+      } else if (isExpanding || details.open) {
+        shrink();
+      }
+    });
+
+    function shrink() {
+      isClosing = true;
+      const startHeight = `${details.offsetHeight}px`;
+      const endHeight = `${closedHeight()}px`;
+
+      animation?.cancel();
+      animation = details.animate(
+        { height: [startHeight, endHeight] },
+        { duration: ANIMATION_DURATION, easing: 'ease-out' }
+      );
+      animation.onfinish = () => onAnimationFinish(false);
+      animation.oncancel = () => { isClosing = false; };
+    }
+
+    function openDetails() {
+      const startHeight = `${details.offsetHeight}px`;
+      details.style.height = startHeight;
+      details.open = true;
+      requestAnimationFrame(() => expand(startHeight));
+    }
+
+    function expand(startHeight: string) {
+      isExpanding = true;
+      const endHeight = `${details.scrollHeight}px`;
+
+      animation?.cancel();
+      animation = details.animate(
+        { height: [startHeight, endHeight] },
+        { duration: ANIMATION_DURATION, easing: 'ease-out' }
+      );
+      animation.onfinish = () => onAnimationFinish(true);
+      animation.oncancel = () => { isExpanding = false; };
+    }
+
+    function onAnimationFinish(open: boolean) {
+      details.open = open;
+      animation = null;
+      isClosing = false;
+      isExpanding = false;
+      details.style.height = '';
+      details.style.overflow = '';
+    }
+  });
+
+  // Deep-linking: /faq#faq-q-{category}-{index} expands only that question.
+  function expandFromHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!id) return;
+    const target = document.getElementById(id) as HTMLDetailsElement | null;
+    if (!target || !target.classList.contains('faq-item')) return;
+
+    document.querySelectorAll<HTMLDetailsElement>('.faq-item').forEach((details) => {
+      details.open = details === target;
+    });
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  expandFromHash();
+  window.addEventListener('hashchange', expandFromHash);
+</script>
+
+<style>
+.card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+}
+
+.faq-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.faq-section h2 {
+  scroll-margin-top: 1rem;
+}
+
+.faq-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.faq-item {
+  cursor: var(--cursor-pointer);
+  transition: box-shadow 0.2s ease;
+  scroll-margin-top: 1rem;
+}
+
+.faq-item[open] {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.faq-item summary {
+  font-family: "Quicksand", sans-serif;
+  font-size: 1.05rem;
+  font-weight: bold;
+  color: var(--primary);
+  cursor: var(--cursor-pointer);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -1.5rem;
+  padding: 1.5rem;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item .chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.faq-item[open] .chevron {
+  transform: rotate(180deg);
+}
+
+.faq-item p {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0;
+  color: var(--text);
+}
+
+.faq-item p :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+</style>
