@@ -4,9 +4,9 @@ import { getCollection } from "astro:content";
 const general = (await getCollection("general"))[0];
 
 const navItems = [
-  { href: "/gallery", label: "Gallery" },
   { href: "/creations", label: "Creations" },
   { href: "/patterns", label: "Patterns" },
+  { href: "/gallery", label: "Gallery" },
   { href: "/about", label: "About me" },
   { href: "/faq", label: "FAQ" },
 ];

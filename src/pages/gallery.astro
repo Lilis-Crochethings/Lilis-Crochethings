@@ -612,15 +612,31 @@ h1 {
       })
     : null;
 
+  // body.nav-open's overflow:hidden (global.css) doesn't reliably block
+  // touch-driven scrolling on iOS Safari — a swipe gesture inside the modal
+  // can still scroll the page underneath, which is what was showing through
+  // as an un-greyed, scrollable strip at the bottom. Pinning the body in
+  // place with position:fixed (and restoring the scroll position on close)
+  // is the standard fix for that iOS-specific gap.
+  let savedScrollY = 0;
+
   function openModal(index: number) {
     nav?.show(index);
     overlay?.classList.add("open");
     document.body.classList.add("nav-open");
+    savedScrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = "100%";
   }
 
   function closeModal() {
     overlay?.classList.remove("open");
     document.body.classList.remove("nav-open");
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    window.scrollTo(0, savedScrollY);
   }
 
   grid?.addEventListener("click", (e) => {
