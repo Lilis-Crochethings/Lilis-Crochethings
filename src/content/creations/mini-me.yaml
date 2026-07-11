@@ -27,9 +27,19 @@ yarn:
     name: "Black"
     type: "Cotton"
   - "Embroidery floss - Black"
-creator: "gretawings_diy"
-creatorLink: "https://www.instagram.com/gretawings_diy/"
-patternName: "Funko Pop Base Body"
-patternLink: "https://www.youtube.com/watch?v=JEfTsC7VA48"
-tags:
+patterns:
+  - creator: "GretaWings"
+    creatorLink: "https://gretawings.com/"
+    items:
+      - name: "Funko Pop Base Body"
+        link: "https://www.youtube.com/watch?v=JEfTsC7VA48"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - brown
+  - blue
+  - black
+yarnTypes:
+  - cotton

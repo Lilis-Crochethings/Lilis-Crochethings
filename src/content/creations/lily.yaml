@@ -22,9 +22,19 @@ yarn:
   - "Bohème Velvet Fine - Soft Rose"
   - "Bohème Velvet Fine - Rusty"
   - "Embroidery floss - Ivory"
-creator: "gonkui_chapa_crochet"
-creatorLink: "https://www.instagram.com/gonkui_chapa_crochet/"
-patternName: "Easy Crochet Lily Pink Flower"
-patternLink: "https://www.youtube.com/watch?v=eheUT6lAJ7g"
-tags:
-  - misc
+patterns:
+  - creator: "Gonkui Crochet"
+    creatorLink: "https://www.youtube.com/@gonkuicrochet"
+    items:
+      - name: "Easy Crochet Lily Pink Flower"
+        link: "https://www.youtube.com/watch?v=eheUT6lAJ7g"
+        platform: youtube
+type: crochet
+subtypes:
+  - flower
+colors:
+  - green
+  - pink
+yarnTypes:
+  - acrylic
+  - chenille

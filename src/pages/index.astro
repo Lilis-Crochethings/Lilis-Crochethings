@@ -3,19 +3,25 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutCard from '../components/main/AboutCard.astro';
 import CreationsCard from '../components/main/CreationsCard.astro';
 import GalleryCard from '../components/main/GalleryCard.astro';
-import PatternsCard from '../components/main/PatternsCard.astro';
 import { getCollection } from 'astro:content';
+import { getEffectiveTags } from '../lib/tags';
 
 const allCreations = (await getCollection('creations')).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
 );
 
-// TODO: revisit this card's design (currently just a static grid of covers,
-// same as PatternsCard) — capped at 4 for now so it doesn't grow unbounded
-// as more creations get added.
-const creationCovers = allCreations.slice(0, 4).map((creation) => ({
-  image: creation.data.images[0],
-  title: creation.data.title,
+const taxonomyEntry = (await getCollection('tags'))[0];
+const taxonomy = taxonomyEntry.data.tags;
+
+const typesEntry = (await getCollection('types'))[0];
+const typesTaxonomy = typesEntry.data.types;
+
+// Capped at 4 so the homepage card stays a preview (2x2 on tablet/desktop)
+// rather than growing unbounded as more creations get added — the full set
+// lives at /creations.
+const creationPreviews = allCreations.slice(0, 4).map((creation) => ({
+  creation,
+  effectiveTags: getEffectiveTags(creation.data.tags, taxonomy),
 }));
 
 // Capped at 2 images per creation for the marquee — showing every image of
@@ -43,17 +49,9 @@ const galleryImages = allCreations.flatMap((creation) =>
   image="/images/Lilis-Crochethings-thumb.webp"
 />
 
-<CreationsCard creations={creationCovers} />
+<CreationsCard items={creationPreviews} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
 
 <GalleryCard creations={galleryImages} />
-
-<PatternsCard
-  patterns={[
-    { image: "/images/creations/Bunny.webp", title: "Bunny" },
-    { image: "/images/creations/Sleepy-Bunny-1.webp", title: "Sleepy Bunny" },
-    { image: "/images/creations/Goose-1.webp", title: "Goose" }
-  ]}
-/>
 </div>
 
 </BaseLayout>

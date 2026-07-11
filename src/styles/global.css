@@ -7,12 +7,16 @@
 }
 
 
+/* font-display: block (not swap) — the fallback "cursive" font looks
+   nothing like this handwriting font, so a brief flash of it on first
+   load is more jarring than a short moment of invisible text while the
+   already-preloaded font file finishes loading. */
 @font-face {
   font-family: "Lili Love";
   src: url("/fonts/Lili Love-Regular.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
@@ -20,7 +24,7 @@
   src: url("/fonts/Lili Love-Bold.otf") format("truetype");
   font-weight: bold;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
@@ -145,6 +149,10 @@ mark {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   text-decoration: none;
   color: inherit;
+  /* On the creations page this is a <div role="link"> (not a real <a>), so
+     it doesn't get a pointer cursor for free the way the search-results
+     tiles' real <a class="list-item"> do — set it explicitly for both. */
+  cursor: var(--cursor-pointer);
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -200,9 +208,35 @@ mark {
 
 .list-item .tags {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  /* Icon-bearing chips (type/subtype) are a touch taller than plain text
+     chips — without this, the row's default stretch alignment forces every
+     chip to that taller height, and being inline-block (not flex) a
+     stretched text-only chip doesn't recenter its own content, so its text
+     sits high instead of centered. Centering each chip on its own natural
+     height instead fixes that without touching .tag-chip's display. */
+  align-items: center;
+  overflow: hidden;
   gap: 0.2rem;
   margin-top: 0.2rem;
+  /* .body is align-items: flex-start, so without an explicit width this row
+     would shrink-wrap to its own chips' content width instead of filling
+     the card — leaving the mask below zero slack to fade into, cutting the
+     last chip even when every tag already fits. Forcing full width gives
+     the mask real empty space to fall into when nothing overflows. */
+  width: 100%;
+  /* Single line only — chips that don't fit are clipped rather than
+     wrapping to a second line (which pushed into/overlapped the preview
+     text below, since .body has a fixed height). The mask fades out
+     whatever chip is last, whether or not the row actually overflows: if
+     everything fits, the fade falls on empty space past the last chip and
+     is invisible. */
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+
+.list-item .tags .tag-chip {
+  flex-shrink: 0;
 }
 
 @media (--mobile) {
@@ -251,8 +285,13 @@ mark {
 .tag-chip-icon {
   display: inline-block;
   vertical-align: middle;
-  width: 14px;
-  height: 14px;
+  /* em, not a fixed px, so the icon always matches the surrounding text's
+     own line-height:1 box (icon-less chips elsewhere reuse .tag-chip at
+     other font-sizes, e.g. the homepage Creations card's smaller chips) —
+     a fixed px taller than that line box forced icon-bearing chips to grow
+     past plain text ones, so the two no longer matched in height. */
+  width: 1em;
+  height: 1em;
   margin-right: 0.35rem;
   margin-top: -0.1em;
   mask-repeat: no-repeat;
@@ -263,15 +302,16 @@ mark {
   -webkit-mask-size: contain;
 }
 
-/* Difficulty chip — used on creation/pattern tiles and search results. */
+/* Difficulty chip — used on creation/pattern tiles and search results. Filled
+   (not outlined) with a dark-on-pastel text color for contrast — an outline
+   in the pastel color alone was too low-contrast to read comfortably. */
 .difficulty-chip {
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
   display: inline-flex;
   align-items: center;
-  background: none;
-  border: 1px solid currentColor;
+  border: none;
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.7rem;
@@ -281,15 +321,18 @@ mark {
 }
 
 .difficulty-easy {
-  color: #8dc399;
+  background-color: #c2e7ca;
+  color: #004913;
 }
 
 .difficulty-medium {
-  color: #f3c368;
+  background-color: #ffe8b8;
+  color: #634200;
 }
 
 .difficulty-hard {
-  color: #cb8184;
+  background-color: #f5cbcd;
+  color: #7f0a11;
 }
 
 @media (--mobile) {

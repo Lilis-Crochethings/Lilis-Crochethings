@@ -4,6 +4,7 @@ images:
   - "/images/creations/Glaceon-1.webp"
   - "/images/creations/Glaceon-2.webp"
   - "/images/creations/Glaceon-3.webp"
+  - "/images/creations/Glaceon-4.webp"
 description: |-
   This beauty was a pattern test, and good news, the pattern is already released, so go check it out!!
   This pattern was super fun to work on and easy to follow.
@@ -18,11 +19,21 @@ yarn:
   - "Toucan - Light Turquoise"
   - "Toucan - Dark Turquoise"
   - "Dolce - Petrol Green"
-creator: "Pebble's Crochet Shop"
-creatorLink: "https://www.instagram.com/pebble_crochets/"
-patternName: "Glacier Fox Snuggler (Glaceon)"
-patternLink: "https://www.etsy.com/listing/1889593165/crochet-glacier-fox-snuggler-pattern"
-tags:
+patterns:
+  - creator: "Pebble's Crochet Shop"
+    creatorLink: "https://www.instagram.com/pebble_crochets/"
+    items:
+      - name: "Glacier Fox Snuggler (Glaceon)"
+        link: "https://www.etsy.com/listing/1889593165/crochet-glacier-fox-snuggler-pattern"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - blue
+yarnTypes:
+  - chenille
+tags:
   - pokemon
   - eeveelutions
+  - fox

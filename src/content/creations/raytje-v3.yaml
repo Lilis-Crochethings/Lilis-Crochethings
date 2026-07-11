@@ -22,10 +22,20 @@ yarn:
   - "Embroidery floss - Green"
   - "Bohème Velvet Fine - Soft Rose"
   - "Embroidery floss - Black"
-creator: "trangluu2310"
-creatorLink: "https://www.instagram.com/trangluu2310/"
-patternName: "Sweetie Fluffy: Cat and Bunny"
-patternLink: "https://www.ravelry.com/patterns/library/sweetie-fluffy-cat-and-bunny"
-tags:
+patterns:
+  - creator: "Trang Luu"
+    creatorLink: "https://timmagicring.com/"
+    items:
+      - name: "Sweetie Fluffy: Cat and Bunny"
+        link: "https://timmagicring.com/products/crochet-cat-and-bunny-pattern-bundle-3-in-1-sweetie-fluffy-calico-cat-bunny-english-pdf-pattern"
+        platform: website
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - brown
+  - orange
+yarnTypes:
+  - chenille
+tags:
   - cat

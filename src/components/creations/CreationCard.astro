@@ -1,139 +1,67 @@
 ---
-import { toThumb } from "../../lib/images";
+import TileCarousel from "../TileCarousel.astro";
 
 const { creation } = Astro.props as {
   creation: any;
 };
-
-const images: string[] = creation.data.images;
-const thumbs = images.map(toThumb);
-const hasMultiple = thumbs.length > 1;
-const imagesJson = JSON.stringify(thumbs).replace(/</g, "\\u003c");
 ---
 
-<div class="card" data-images={imagesJson}>
-  <a class="card-link" href={`/creations/${creation.id}`}>
-    <div class="imgWrap">
-      <img class="card-img" src={thumbs[0]} alt={creation.data.title} loading="lazy" decoding="async" />
-    </div>
-  </a>
-
-  {hasMultiple && (
-    <>
-      <button type="button" class="tile-nav prev" aria-label="Previous image">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
-      </button>
-      <button type="button" class="tile-nav next" aria-label="Next image">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </>
-  )}
-</div>
+<TileCarousel
+  images={creation.data.images}
+  alt={creation.data.title}
+  href={`/creations/${creation.id}`}
+/>
 
 <style>
-.card {
-  position: relative;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  overflow: hidden;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+/* <TileCarousel> renders the shared .tile-carousel/.tc-* markup from a
+   child component — Astro scoped styles only apply to a file's own
+   template, so this tile's own square-card look (and its distinctive
+   slide-in-from-the-edge nav buttons) needs :global() to reach into it.
+   !important because Astro appends a [data-astro-cid-*] attribute to the
+   component's own scoped rules, which for properties they both set (nav
+   button transform, in particular) otherwise out-specifies a plain
+   :global() class selector regardless of source order — unlike the
+   lightbox pages, there's no natural per-instance id here to scope by
+   instead (many tiles share one page). */
+:global(.tile-carousel) {
+  /* On its own container (not just the <img>) so this box keeps a stable
+     height even mid-slide, when the sliding image pair goes
+     position:absolute and would otherwise collapse an aspect-ratio set
+     only on them — see the height-chaining comment in TileCarousel.astro. */
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden !important;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
-.card-link {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-}
-
-.imgWrap {
-  position: relative;
-}
-
-.imgWrap img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-}
-
-.card:hover {
-  transform: scale(1.04);
-  box-shadow: 0 16px 32px rgba(0,0,0,0.2);
-}
-
-.tile-nav {
-  position: absolute;
-  top: 50%;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: var(--cursor-pointer);
-  opacity: 0;
-  /* Off (not just invisible) until actually revealed below — otherwise this
-     still intercepts clicks meant for the image/link underneath wherever
-     its hidden position happens to overlap it (its slide-out transform
-     leaves it partly over the image edge even at opacity:0). */
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
-}
-
-.tile-nav:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.tile-nav svg {
-  width: 16px;
-  height: 16px;
-}
-
-.tile-nav.prev {
-  left: 6px;
-  transform: translate(-14px, -50%);
-}
-
-.tile-nav.next {
-  right: 6px;
-  transform: translate(14px, -50%);
+:global(.tile-carousel:hover) {
+  transform: scale(1.04) !important;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Slide-in-on-hover only makes sense where hover is a real, mouse-driven
-   gesture — touch devices get swipe-to-flip instead (see the script below),
-   so the buttons stay hidden there rather than being permanently stuck
-   half-visible with nothing to trigger them. Keyboard focus still reveals
-   them regardless of input type. */
+   gesture — touch devices get swipe-to-flip instead (see TileCarousel's own
+   script), so the buttons stay put off the edge there rather than being
+   permanently stuck half-visible with nothing to trigger them. Keyboard
+   focus still reveals them regardless of input type. */
+:global(.tc-prev) {
+  transform: translateX(-14px) !important;
+}
+
+:global(.tc-next) {
+  transform: translateX(14px) !important;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .tile-nav {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate(0, -50%);
+  :global(.tile-carousel:hover .tc-prev),
+  :global(.tile-carousel:hover .tc-next) {
+    transform: translateX(0) !important;
   }
 }
 
-.tile-nav:focus-visible {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translate(0, -50%);
+:global(.tc-prev:focus-visible),
+:global(.tc-next:focus-visible) {
+  transform: translateX(0) !important;
 }
 </style>
-
-<script>
-  import { initTileCarousel } from "../../lib/tileCarousel";
-
-  document.querySelectorAll<HTMLElement>(".card[data-images]").forEach((root) => {
-    const viewport = root.querySelector<HTMLElement>(".imgWrap");
-    const img = root.querySelector<HTMLImageElement>(".card-img");
-    const link = root.querySelector<HTMLAnchorElement>(".card-link");
-    const prevBtn = root.querySelector<HTMLButtonElement>(".tile-nav.prev");
-    const nextBtn = root.querySelector<HTMLButtonElement>(".tile-nav.next");
-    if (!viewport || !img) return;
-
-    initTileCarousel({ root, viewport, img, swipeTarget: root, link, prevBtn, nextBtn });
-  });
-</script>

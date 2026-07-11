@@ -1,0 +1,70 @@
+title: "Granny Squares"
+difficulty: easy
+images:
+  - "/images/creations/Granny-Squares-1.webp"
+description: |-
+  Ah yes, it's completely logical to start to learn how to make granny squares AFTER you've made a bunny amigurimi in faux yarn. But you know what, I don't have to be logical 😅.
+
+  Anyway, I used up some more of my scrap yarns that I had laying around. I really wanted to make a sunflower granny square, but I didn't have the correct colors. So I just used yellow, orange and black. Safe to say I was really disappointed with how it turned out. It didn't even look close to a sunflower. But either way, this was a good training for the sunflower bag that I wanted to make.
+date: 2023-08-26
+# instagramLink: "https://www.instagram.com/p/DAizAV9tUf7/?img_index=2"
+# facebookLink: "https://www.facebook.com/photo/?fbid=122094871016618116&set=pcb.122094871190618116"
+pinterestLink: ""
+# hoursSpent: 0
+# hookSize: "2.5mm"
+yarn:
+  - hex: "#f7f4f4"
+    name: "White"
+    type: "Acrylic"
+  - hex: "#36427A"
+    name: "Blue gradient"
+    type: Acrylic
+  - hex: "#262547"
+    name: "Dark Blue"
+    type: Acrylic
+  - hex: "#C2BC81"
+    name: Rainbow - white
+    type: "Acrylic"
+  - hex: "#F78E89"
+    name: "Bright pink"
+    type: Acrylic
+  - hex: "#860002"
+    name: "Red"
+    type: "Acrylic"
+  - hex: "#288281"
+    name: "Green"
+    type: Acrylic
+  - hex: "#F8B40C"
+    name: "Yellow"
+    type: Acrylic
+  - hex: "#F66105"
+    name: "Orange"
+    type: Acrylic
+  - hex: "#050204"
+    name: "Black"
+    type: Acrylic
+
+patterns:
+  - creator: "simplydaisy"
+    creatorLink: "https://www.youtube.com/@simplydaisy15"
+    items:
+      - name: "Starburst Granny Square"
+        link: "https://www.youtube.com/watch?v=R3mbrXdoJns"
+        platform: youtube
+  - creator: "by kristine"
+    creatorLink: "https://bykristine.com/"
+    items:
+      - name: "Heart Granny Square"
+        link: "https://www.youtube.com/watch?v=XiF9HJaTIZc"
+        platform: youtube
+      - name: "Sunflower Granny Square"
+        link: "https://www.youtube.com/watch?v=6ETq4l4axpE"
+        platform: youtube
+type: crochet
+subtypes:
+  - misc
+colors:
+  - white
+yarnTypes:
+  - acrylic
+# tags:

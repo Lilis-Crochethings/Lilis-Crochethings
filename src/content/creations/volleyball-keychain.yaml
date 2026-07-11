@@ -20,10 +20,20 @@ yarn:
   - hex: "#F5D033"
     name: "Yellow"
     type: "Cotton"
-creator: "nickishomemadecrafts"
-creatorLink: "https://www.instagram.com/nickishomemadecrafts/"
-patternName: "How to: CROCHET Volleyball Keychain Pattern"
-patternLink: "https://www.youtube.com/watch?v=S_Lvg5j7LXY"
-tags:
+patterns:
+  - creator: "Nicki's Homemade Crafts"
+    creatorLink: "https://www.nickishomemadecrafts.com/"
+    items:
+      - name: "How to: CROCHET Volleyball Keychain Pattern"
+        link: "https://www.youtube.com/watch?v=S_Lvg5j7LXY"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
   - keychain
+colors:
+  - blue
+  - white
+  - yellow
+yarnTypes:
+  - cotton

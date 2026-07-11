@@ -14,6 +14,7 @@ export interface LightboxItem {
 
 export interface LightboxNavRefs {
   swipeTarget: HTMLElement;
+  stage: HTMLElement;
   frame: HTMLElement;
   img: HTMLImageElement;
   prevBtn: HTMLElement | null;
@@ -42,10 +43,44 @@ export function initLightboxNav(refs: LightboxNavRefs): LightboxNavController {
   let img = refs.img;
   let navigating = false;
 
+  // Tracks every src that's been requested (shown or merely prefetched as a
+  // neighbor), keyed by src so repeats reuse the same element instead of
+  // re-requesting — and so each Image stays strongly referenced for its
+  // fetch, since an Image with nothing holding onto it is fair game to be
+  // evicted from the browser's cache mid-download or shortly after,
+  // silently forcing a real network re-fetch (with its own round-trip) the
+  // next time that src is needed.
+  const cache = new Map<string, HTMLImageElement>();
+  function ensureCached(src: string): HTMLImageElement {
+    let cached = cache.get(src);
+    if (!cached) {
+      cached = new Image();
+      cached.src = src;
+      cache.set(src, cached);
+    }
+    return cached;
+  }
+
+  function prefetch(i: number) {
+    const item = refs.items[(i + refs.items.length) % refs.items.length];
+    if (item) ensureCached(item.src);
+  }
+
   function show(newIndex: number, direction?: 1 | -1) {
     const nextIndex = (newIndex + refs.items.length) % refs.items.length;
     const item = refs.items[nextIndex];
     if (!item) return;
+
+    const cached = ensureCached(item.src);
+    // A prior prefetch (or an earlier visit to this same photo) may already
+    // have it fully downloaded — decode() below still resolves near-
+    // instantly in that case, but toggling the spinner class around even a
+    // near-instant wait still reads as a flash on screen. Only show it when
+    // there's an actual wait ahead.
+    const alreadyLoaded = cached.complete && cached.naturalWidth > 0;
+
+    prefetch(nextIndex - 1);
+    prefetch(nextIndex + 1);
 
     if (direction) {
       if (navigating) return;
@@ -62,14 +97,36 @@ export function initLightboxNav(refs: LightboxNavRefs): LightboxNavController {
         };
       }
 
-      slideImage(refs.frame, img, item.src, item.alt, direction, (incoming) => {
-        img = incoming;
-        restoreFrame?.();
-        navigating = false;
-      });
+      if (!alreadyLoaded) refs.stage.classList.add("lb-loading");
+      slideImage(
+        refs.frame,
+        img,
+        item.src,
+        item.alt,
+        direction,
+        (incoming) => {
+          img = incoming;
+          restoreFrame?.();
+          navigating = false;
+        },
+        () => refs.stage.classList.remove("lb-loading"),
+      );
     } else {
-      img.src = item.src;
-      img.alt = item.alt;
+      // Unlike the slide path above, there's no outgoing image to keep
+      // visible on purpose — reusing the same <img> means the browser just
+      // keeps painting whatever it last showed until the new source decodes,
+      // which reads as "the wrong photo is open" rather than "loading".
+      // Decode off-DOM first (covering the stale frame with the spinner
+      // meanwhile) so the swap only happens once the new image is ready.
+      if (!alreadyLoaded) refs.stage.classList.add("lb-loading");
+      cached
+        .decode()
+        .catch(() => {})
+        .finally(() => {
+          img.src = item.src;
+          img.alt = item.alt;
+          refs.stage.classList.remove("lb-loading");
+        });
     }
 
     index = nextIndex;

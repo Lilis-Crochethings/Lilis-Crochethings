@@ -18,10 +18,21 @@ yarn:
   - hex: "#1a1a1a"
     name: "Black"
     type: "Acrylic"
-creator: "trangluu2310"
-creatorLink: "https://www.instagram.com/trangluu2310/"
-patternName: "Little Bailey the Beagle Puppy"
-patternLink: "https://www.ravelry.com/patterns/library/bailey-the-beagle-puppy"
-tags:
+patterns:
+  - creator: "Trang Luu"
+    creatorLink: "https://timmagicring.com/"
+    items:
+      - name: "Little Bailey the Beagle Puppy"
+        link: "https://timmagicring.com/products/crochet-dog-pattern-little-bailey-the-beagle-puppy-amigurumi-dog-pattern-english-pdf-pattern"
+        platform: website
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+  - black
+  - brown
+yarnTypes:
+  - chenille
+tags:
   - dog

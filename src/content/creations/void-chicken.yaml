@@ -2,6 +2,8 @@ title: "Void Chicken"
 difficulty: easy
 images:
   - "/images/creations/Void-chicken.webp"
+  - "/images/creations/Void-chicken-2.webp"
+  - "/images/creations/Void-chicken-3.webp"
 description: |-
   I really wanted to try cross-stitching on a shirt for the first time. So I asked my bf for an old shirt and for something he would like embroidered on it. He chose a void-chicken, which I should've expected hahah.
 
@@ -32,11 +34,21 @@ yarn:
     name: "Dark Grey"
     type: "Floss"
   - "Embroidery floss - Black"
-creator: "ConcernedApe (Eric Barone)"
-creatorLink: "https://www.stardewvalley.net/author/concernedape/"
-patternName: "Void Chicken (Stardew Valley)"
-patternLink: "https://stardewvalleywiki.com/Void_Chicken"
-tags:
-  - embroidery
+patterns:
+  - creator: "ConcernedApe"
+    creatorLink: "https://www.stardewvalley.net/author/concernedape/"
+    items:
+      - name: "Void Chicken (Stardew Valley)"
+        link: "https://stardewvalleywiki.com/Void_Chicken"
+        platform: website
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - red
+  - grey
+  - black
+yarnTypes:
+  - floss
+tags:
   - chicken

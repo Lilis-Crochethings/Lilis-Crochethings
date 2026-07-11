@@ -2,6 +2,9 @@ title: "Sunflower Turtle"
 difficulty: medium
 images:
   - "/images/creations/Sunflower-turtle.webp"
+  - "/images/creations/Sunflower-turtle-2.webp"
+  - "/images/creations/Sunflower-turtle-3.webp"
+  - "/images/creations/Sunflower-turtle-4.webp"
 description: |-
   🌻💛🐢
   The sunflower turtle that I've been wanting to make since forever, is done! 😁 Thanks to my amazing boyfriend who remembered this and got me the colors I needed for Christmas ❤️.
@@ -15,10 +18,31 @@ yarn:
   - "Honey Bunny - White"
   - "Honey Bunny - Chocolate"
   - "Honey Bunny - Gold Dust"
-creator: "onecentcrochet"
-creatorLink: "https://www.instagram.com/onecentcrochet/"
-patternName: "Sunflower Turtle (combined w/ @rose.lily.amigurumi)"
-patternLink: "https://www.youtube.com/watch?v=BjbHBVBvJrk"
-tags:
+patterns:
+  - creator: "Rose & Lily Amigurumi"
+    creatorLink: "https://www.roseandlilyamigurumi.com/"
+    items:
+      - name: "Easy Crochet Turtle - Part 1"
+        link: "https://www.youtube.com/watch?v=o_rsQnKVCEw"
+        platform: youtube
+      - name: "Easy Crochet Turtle - Part 2"
+        link: "https://www.youtube.com/watch?v=Rzn57LxPYgE"
+        platform: youtube
+  - creator: "One Cent Crochet"
+    creatorLink: "https://www.onecentcrochet.com/"
+    items:
+      - name: "Crochet Sunflower Turtle Tutorial (Petals)"
+        link: "https://www.youtube.com/watch?v=cWBWBBT1RR4&t=1570s"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+  - brown
+  - yellow
+yarnTypes:
+  - chenille
+tags:
   - turtle
+  - sunflower

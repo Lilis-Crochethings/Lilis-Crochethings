@@ -302,6 +302,12 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     font-size: 1.1rem;
     text-decoration: none;
     color: var(--primary-text);
+    /* Without this, a link like "About me" wraps onto two lines once the
+       row gets tight (e.g. just above the --nav-collapse-search cutoff,
+       where the search bar is still full-size and squeezing the row) —
+       nav-search has room to shrink below its preferred width, so it
+       should give way here, not the link text. */
+    white-space: nowrap;
   }
 
   .nav-links a.active {
@@ -476,11 +482,32 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: block;
   }
 
-  /* Tablet/iPad: drop the wordmark, collapse search to an icon that expands
-     on click (nav items still shown as text; no hamburger yet). */
-  @media (--nav-collapse) {
+  /* Just past desktop: everything else stays as-is, only the wordmark goes,
+     since dropping it alone buys enough room to leave the search bar
+     expanded for a good while longer. */
+  @media (--nav-hide-wordmark) {
     .logo p {
       display: none;
+    }
+  }
+
+  /* Narrower iPad range: the search bar itself now collapses to an icon
+     that expands on click (nav links still shown as text; no hamburger
+     yet). */
+  @media (--nav-collapse-search) {
+    /* Tighter than the desktop 2.5rem, for the same reason as .nav-links'
+       gap below: frees up room for the expanded search box to grow into
+       without overlapping the nav links, at the narrow end of this tier. */
+    .nav-inner {
+      gap: 1.25rem;
+    }
+
+    /* Tighter than the desktop 2rem — at the narrow end of this tier
+       (just above the --mobile cutoff) the expanded search box below needs
+       room to grow into without overlapping these links, and desktop's
+       roomier gap isn't visible here anyway to make the trade-off felt. */
+    .nav-links {
+      gap: 1rem;
     }
 
     .nav-search {
@@ -508,14 +535,19 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     /* Expanding takes the search box out of flex flow entirely (absolute,
        anchored to the same right edge) so it never fights the nav links for
        space — growing it in-flow was forcing the sibling links to reflow on
-       every animation frame, which is what caused the horizontal glitch. */
+       every animation frame, which is what caused the horizontal glitch.
+       The width itself is capped more aggressively than the 100vw-6rem room
+       a full-bleed box would get: at the narrow end of this tier the nav
+       links' text (fixed width, doesn't reflow) sits right where a wider
+       box would reach, so the cap has to leave clearance for that fixed
+       width rather than just the viewport edges. */
     .nav-search.expanded {
       position: absolute;
       top: 50%;
       right: 1.25rem;
       transform: translateY(-50%);
       margin-left: 0;
-      width: min(300px, calc(100vw - 6rem));
+      width: min(300px, calc(100vw - 29rem));
       max-width: none;
       transition: width 0.25s ease;
     }

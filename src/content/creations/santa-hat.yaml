@@ -16,9 +16,21 @@ yarn:
     name: "Red"
     type: "Acrylic"
   - "Faux fur - Ivory"
-creator: "mjsoffthehook"
-creatorLink: "https://www.instagram.com/mjsoffthehook/"
-patternName: "Bulky & Quick Santa Hat"
-patternLink: "https://www.mjsoffthehookdesigns.com/crochet-santa-hat-free-pattern/"
-tags:
+patterns:
+  - creator: "MJ's Off The Hook Designs"
+    creatorLink: "https://www.mjsoffthehookdesigns.com/"
+    items:
+      - name: "Bulky & Quick Santa Hat"
+        link: "https://www.mjsoffthehookdesigns.com/crochet-santa-hat-free-pattern/"
+        platform: website
+type: crochet
+subtypes:
   - clothes
+colors:
+  - red
+  - white
+yarnTypes:
+  - acrylic
+  - other
+tags:
+  - xmas

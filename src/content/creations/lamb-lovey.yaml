@@ -17,12 +17,25 @@ hookSize: "4mm"
 yarn:
   - "Friends Cotton 8/4 - Titanium"
   - "Friends Cotton 8/4 - Antique Rose"
-  - "Toucan - Ecru"
+  - "Dolce - White"
   - "Embroidery floss - Black"
-creator: "swecraftcorner"
-creatorLink: "https://www.instagram.com/swecraftcorner/"
-patternName: "Little Mary Lamb Lovey"
-patternLink: "https://www.swecraftcorner.com/little-mary-lamb-lovey-free-crochet-pattern/"
-tags:
+patterns:
+  - creator: "Swecraftcorner"
+    creatorLink: "https://www.swecraftcorner.com/"
+    items:
+      - name: "Little Mary Lamb Lovey"
+        link: "https://www.swecraftcorner.com/little-mary-lamb-lovey-free-crochet-pattern/"
+        platform: website
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - grey
+  - pink
+  - white
+yarnTypes:
+  - cotton
+  - chenille
+tags:
   - lamb
+  - easter

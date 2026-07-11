@@ -1,0 +1,45 @@
+title: "Sunflower Tote bag 🌻💛"
+difficulty: medium
+images:
+  - "/images/creations/Sunflower-bag-1.webp"
+  - "/images/creations/Sunflower-bag-2.webp"
+description: |-
+  I really love sunflowers! The yellow and the brown just make the colors pop!
+
+  I'm a bit sad with how tiny this bag turned out. It fits like 3 maybe 4 skeins of yarn 😅. I imagined it more as a beach bag, but now I have an excuse to make another one.
+date: 2023-12-24
+instagramLink: "https://www.instagram.com/p/DAi6lL6NNds/"
+facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02CVSAEyKquomuxPHpEdFKD5yrPq3454zjfhGwE5Kku5gJrKxstDDX7qqzqUf7gtFTl&id=61568543484297"
+pinterestLink: ""
+# hoursSpent: 
+hookSize: "4mm"
+yarn:
+  - hex: "#9E877F"
+    name: "Beige"
+    type: "Acrylic"
+  - hex: "#F5D033"
+    name: "Yellow"
+    type: "Acrylic"
+  - hex: "#7A412E"
+    name: "Brown"
+    type: "Acrylic"
+  - hex: "#6B4423"
+    name: "Dark Brown"
+    type: "Acrylic"
+patterns:
+  - creator: "Kenikse Crochet"
+    creatorLink: "https://kenikseyarns.com/"
+    items:
+      - name: "Crochet sunflower granny square tote bag"
+        link: "https://www.youtube.com/watch?v=czxFQlbUt6I"
+        platform: youtube
+type: crochet
+subtypes:
+  - bag
+colors:
+  - brown
+  - yellow
+yarnTypes:
+  - acrylic
+tags:
+  - sunflower

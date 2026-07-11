@@ -31,11 +31,20 @@ yarn:
   - "Deep Blue"
   - "Medium Blue"
   - "Pale Blue (762)"
-creator: "ArtzyJulia"
-creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
-patternName: "Bloom"
-patternLink: "https://www.pinterest.com/pin/338895940731443802/"
-tags:
-  - embroidery
+patterns:
+  - creator: "ArtzyJulia"
+    creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
+    items:
+      - name: "Bloom"
+        link: "https://www.pinterest.com/pin/338895940731443802/"
+        platform: pinterest
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - red
+  - blue
+yarnTypes:
+  - floss
+tags:
   - winx

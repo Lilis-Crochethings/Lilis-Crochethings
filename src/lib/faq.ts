@@ -1,4 +1,5 @@
 import { escapeHtml, highlight } from "./search";
+import { isExternalLink } from "./links";
 
 export type FaqQuestion = { question: string; answer: string };
 export type FaqCategory = { id: string; title: string; questions: FaqQuestion[] };
@@ -26,8 +27,7 @@ export function renderFaqAnswer(answer: string, query = ""): string {
   while ((match = linkPattern.exec(answer))) {
     result += highlight(answer.slice(lastIndex, match.index), query);
     const [full, text, url] = match;
-    const isExternal = /^https?:\/\//.test(url);
-    const attrs = isExternal ? ' target="_blank" rel="noopener noreferrer"' : "";
+    const attrs = isExternalLink(url) ? ' target="_blank" rel="noopener noreferrer"' : "";
     result += `<a href="${escapeHtml(url)}"${attrs}>${highlight(text, query)}</a>`;
     lastIndex = match.index + full.length;
   }

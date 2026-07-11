@@ -29,11 +29,21 @@ yarn:
   - "Terracotta (355)"
   - "Pink (3607)"
   - "Teal"
-creator: "ArtzyJulia"
-creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
-patternName: "Layla"
-patternLink: "https://www.pinterest.com/pin/338895940731443825/"
-tags:
-  - embroidery
+patterns:
+  - creator: "ArtzyJulia"
+    creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
+    items:
+      - name: "Layla"
+        link: "https://www.pinterest.com/pin/338895940731443825/"
+        platform: pinterest
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - green
+  - purple
+  - brown
+yarnTypes:
+  - floss
+tags:
   - winx

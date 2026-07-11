@@ -1,23 +1,31 @@
-title: "Pokeball"
+title: "Poképouches"
 difficulty: easy
 images:
-  - "/images/creations/Pokeball.webp"
+  - "/images/creations/Pokepouches-1.webp"
+  - "/images/creations/Pokepouches-2.webp"
 description: I have been experimenting a bit with different versions of poképouches (bags in the form of a pokéball). I have come up with a loveball design as well as a great ball one (that I still have to improve). However, I already wanted to show my progress and that I'm still crocheting 😝. I also tested out a new type of color change which looks SO clean, but it takes way longer to achieve 🥲. Yet the result is worth it since the regular PokeBall turned out really nice.
-date: 2025-06-10
+date: 2025-07-05
 instagramLink: "https://www.instagram.com/p/DLujuRvtQBm/"
 facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid033iHvf2jZhho4Nn8r4GSr5iqnUAKx3TxUg5X6T1c3CY2NMbnpoPcXVzQafSwPpJ4Ql&id=61568543484297"
-pinterestLink: "https://www.pinterest.com/pin/1095219203160798378/"
-hoursSpent: 2.51
-hookSize: "5.5mm"
-yarn:
-  - "Honey Bunny - White"
-  - "Honey Bunny - Black"
-  - "Baby Snuggle Solid - Maroon"
-creator: "ami_amour"
-creatorLink: "https://www.instagram.com/ami_amour/"
-patternName: "PokeBall Drawstring Bag"
-patternLink: "https://amiamour.com/crochet-pokeball-bag-free-pattern/"
+pinterestLink: "https://www.pinterest.com/pin/1095219203160797956/"
+# hoursSpent: 0
+#hookSize: "4mm"
+patterns:
+  - creator: "Ami Amour"
+    creatorLink: "https://amiamour.com/"
+    items:
+      - name: "PokeBall Drawstring Bag"
+        link: "https://amiamour.com/crochet-pokeball-bag-free-pattern/"
+        platform: website
+type: crochet
+subtypes:
+  - bag
 tags:
-  - crochet
   - pokemon
   - pokeball
+colors:
+  - white
+  - black
+  - red
+  - pink
+  - blue

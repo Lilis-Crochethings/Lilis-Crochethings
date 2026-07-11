@@ -7,8 +7,12 @@
 @custom-media --tablet-only (min-width: 651px) and (max-width: 1024px);
 @custom-media --desktop-up (min-width: 1025px);
 
-/* Nav-specific: the nav-links list now has one more item (Gallery), so the
-   navbar needs to drop into its collapsed iPad layout (hidden wordmark,
-   icon-only search) earlier than the general --tablet-max cutoff or the
-   extra item pushes the search bar into wrapping. */
-@custom-media --nav-collapse (max-width: 1085px);
+/* Nav-specific, split into two independent thresholds rather than one
+   combined tier — the wordmark alone frees up enough room to hold off
+   collapsing the search bar to an icon until a good deal narrower:
+     >1085          full navbar (wordmark, expanded search bar)
+     851px–1085px   wordmark hidden, search bar still expanded
+     651px–850px    search also collapses to an icon (nav links still text)
+     ≤650px (--mobile) nav links move into the hamburger menu too */
+@custom-media --nav-hide-wordmark (max-width: 1085px);
+@custom-media --nav-collapse-search (max-width: 850px);

@@ -17,10 +17,19 @@ yarn:
   - "Chenille - Pink"
   - "Honey Bunny - Chocolate"
   - "Embroidery floss - Black"
-creator: "Teddy Knitted"
-creatorLink: "https://www.instagram.com/teddy_knitted/"
-patternName: "Piglet Crochet Pattern"
-patternLink: "https://www.etsy.com/listing/1862880986/piglet-crochet-pattern-pig-amigurumi"
-tags:
+patterns:
+  - creator: "Teddy Knitted"
+    creatorLink: "https://www.instagram.com/teddy_knitted/"
+    items:
+      - name: "Piglet Crochet Pattern"
+        link: "https://www.etsy.com/listing/1862880986/piglet-crochet-pattern-pig-amigurumi"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - pink
+yarnTypes:
+  - chenille
+tags:
   - pig

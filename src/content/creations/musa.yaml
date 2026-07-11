@@ -30,11 +30,21 @@ yarn:
   - "Indigo Blue (798)"
   - "Royal Blue (820)"
   - "Navy (823)"
-creator: "ArtzyJulia"
-creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
-patternName: "Musa"
-patternLink: "https://www.pinterest.com/pin/338895940731443828/"
-tags:
-  - embroidery
+patterns:
+  - creator: "ArtzyJulia"
+    creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
+    items:
+      - name: "Musa"
+        link: "https://www.pinterest.com/pin/338895940731443828/"
+        platform: pinterest
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - pink
+  - red
+  - blue
+yarnTypes:
+  - floss
+tags:
   - winx

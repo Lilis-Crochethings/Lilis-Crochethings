@@ -12,6 +12,7 @@ export async function slideImage(
   newAlt: string,
   direction: 1 | -1,
   onSettled: (incoming: HTMLImageElement) => void,
+  onDecoded?: () => void,
 ): Promise<void> {
   const incoming = outgoing.cloneNode() as HTMLImageElement;
   // The gallery modal shows the full-size image, not the thumbnail the grid
@@ -33,6 +34,7 @@ export async function slideImage(
     // before it finishes) — animate whatever it's got rather than leaving
     // the UI stuck waiting on an image that's never coming.
   }
+  onDecoded?.();
 
   Object.assign(incoming.style, {
     position: "absolute",

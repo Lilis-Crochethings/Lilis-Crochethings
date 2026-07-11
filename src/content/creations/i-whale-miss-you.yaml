@@ -9,7 +9,7 @@ description: |-
   We were all studying together, but university came to an end for most of us. So this was my way of saying goodbye and wishing everyone good luck.
   
   I even put magnets in the one from my bf and mine, so they would stick together when brought closer. 🥰
-date: 2024-09-30
+date: 2024-07-08
 instagramLink: "https://www.instagram.com/p/DAjTcJZtmjz/"
 facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid06ECX2ErnsNE5XVNeGc65N7NXf9yUcWNh8v5uChNoHUyxK4znuQkLd6HYqVTqzUGRl&id=61568543484297"
 pinterestLink: "https://www.pinterest.com/pin/1095219203160377451/"
@@ -22,11 +22,21 @@ yarn:
   - hex: "#FAF8F4"
     name: "White"
     type: "Cotton"
-creator: "theyarnbowl_crochet"
-creatorLink: "https://www.instagram.com/theyarnbowl_crochet/"
-patternName: "Crochet Whale No Sew Project"
-patternLink: "https://www.youtube.com/watch?v=PFUbUbzA-EU"
-tags:
+patterns:
+  - creator: "The Yarn Bowl Crochet"
+    creatorLink: "https://theyarnbowlcrochet.com/"
+    items:
+      - name: "Crochet Whale No Sew Project"
+        link: "https://www.youtube.com/watch?v=PFUbUbzA-EU"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
-  - whale
   - keychain
+colors:
+  - blue
+  - white
+yarnTypes:
+  - cotton
+tags:
+  - whale

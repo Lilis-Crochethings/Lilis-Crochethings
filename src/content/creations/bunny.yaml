@@ -6,7 +6,7 @@ description: |-
   This is the first time I kind of freestyled a pattern. I did take inspiration from some images I saw on Pinterest to create this adorable bunny.
   
   The shapes are relatively easy. The hardest part was getting the ears to look so adorable. They're just worked in rounds, so they're pretty heavy 😅.
-date: 2024-09-30
+date: 2024-06-10
 instagramLink: "https://www.instagram.com/p/DAjRJcjt4GW/"
 facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02272bDB6CJkybQUyAZ35pjreLSovD2PcyVi7k9RaeRRY1R4ZzykBBeyrsa3KG8vGnl&id=61568543484297"
 pinterestLink: "https://www.pinterest.com/pin/1095219203160377184/"
@@ -15,9 +15,18 @@ hookSize: "4mm"
 yarn:
   - "Chenille - Gray"
   - "Black"
-creator: "Lili's Crochethings"
-creatorLink: "/about"
-patternName: "Original design (pattern coming soon)"
-tags:
+patterns:
+  - creator: "Lili's Crochethings"
+    creatorLink: "/about"
+    items:
+      - name: "Original design (pattern coming soon)"
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - grey
+yarnTypes:
+  - chenille
+tags:
   - bunny
+  - easter

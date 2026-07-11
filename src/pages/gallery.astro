@@ -1,8 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import GalleryImage from '../components/gallery/GalleryImage.astro';
+import LightboxChrome from '../components/LightboxChrome.astro';
+import LightboxStage from '../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
 import { getEffectiveTags, getTagLabel } from "../lib/tags";
+import { stripDescriptionLinks } from "../lib/description";
 
 const creations = (await getCollection("creations")).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
@@ -11,9 +14,13 @@ const creations = (await getCollection("creations")).sort(
 const taxonomyEntry = (await getCollection("tags"))[0];
 const taxonomy = taxonomyEntry.data.tags;
 
+const typesEntry = (await getCollection("types"))[0];
+const typesTaxonomy = typesEntry.data.types;
+
 const items = creations.flatMap((creation) => {
   const effectiveTags = getEffectiveTags(creation.data.tags, taxonomy);
-  const tagLabels = effectiveTags.map((id) => getTagLabel(id, taxonomy));
+  const typeLabels = [creation.data.type, ...(creation.data.subtypes ?? [])].map((id) => getTagLabel(id, typesTaxonomy));
+  const tagLabels = [...typeLabels, ...effectiveTags.map((id) => getTagLabel(id, taxonomy))];
 
   return creation.data.images.map((image) => ({
     image,
@@ -23,7 +30,7 @@ const items = creations.flatMap((creation) => {
     dateLabel: creation.data.date ? creation.data.date.toLocaleDateString() : null,
     hoursSpent: creation.data.hoursSpent ?? null,
     hookSize: creation.data.hookSize ?? null,
-    description: creation.data.description ?? "",
+    description: stripDescriptionLinks(creation.data.description ?? ""),
     tags: tagLabels,
   }));
 });
@@ -45,54 +52,40 @@ const itemsJson = JSON.stringify(items).replace(/</g, "\\u003c");
     ))}
   </div>
 
-  <div class="modal-overlay" id="gallery-modal">
-    <button type="button" class="modal-close" id="gallery-close" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-
-    <div class="modal-inner">
-      <div class="stage-area">
-        <div class="stage">
-          <div class="stage-frame">
-            <img id="gallery-modal-img" src="" alt="" />
-          </div>
-
-          <button type="button" class="nav-btn prev" id="gallery-prev" aria-label="Previous image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
-          </button>
-
-          <button type="button" class="nav-btn next" id="gallery-next" aria-label="Next image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
-          </button>
+  <LightboxChrome id="gallery-modal">
+    <div class="stage-area">
+      <LightboxStage>
+        <div class="stage-frame">
+          <img id="gallery-modal-img" src="" alt="" />
         </div>
-      </div>
-
-      <div class="info-card" id="gallery-info-card">
-        <span class="difficulty-chip" id="gallery-info-difficulty"></span>
-        <h2 class="info-title" id="gallery-info-title"></h2>
-        <div class="info-tags" id="gallery-info-tags"></div>
-        <ul class="info-meta" id="gallery-info-meta">
-          <li class="meta-date">
-            <span class="icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
-            <span id="gallery-info-date"></span>
-          </li>
-          <li class="meta-hours">
-            <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
-            <span id="gallery-info-hours"></span>
-          </li>
-          <li class="meta-hook">
-            <span class="icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
-            <span id="gallery-info-hook"></span>
-          </li>
-        </ul>
-        <p class="info-description" id="gallery-info-description"></p>
-        <a class="info-cta" id="gallery-info-cta" href="#">
-          View creation
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
-        </a>
-      </div>
+      </LightboxStage>
     </div>
-  </div>
+
+    <div class="info-card" id="gallery-info-card">
+      <span class="difficulty-chip" id="gallery-info-difficulty"></span>
+      <h2 class="info-title" id="gallery-info-title"></h2>
+      <div class="info-tags" id="gallery-info-tags"></div>
+      <ul class="info-meta" id="gallery-info-meta">
+        <li class="meta-date">
+          <span class="icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+          <span id="gallery-info-date"></span>
+        </li>
+        <li class="meta-hours">
+          <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
+          <span id="gallery-info-hours"></span>
+        </li>
+        <li class="meta-hook">
+          <span class="icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
+          <span id="gallery-info-hook"></span>
+        </li>
+      </ul>
+      <p class="info-description" id="gallery-info-description"></p>
+      <a class="info-cta" id="gallery-info-cta" href="#">
+        View creation
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+  </LightboxChrome>
 
   <script type="application/json" id="gallery-data" is:inline set:html={itemsJson} />
 </BaseLayout>
@@ -123,123 +116,64 @@ h1 {
   }
 }
 
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+/* <LightboxChrome>/<LightboxStage> render the shared .lb-overlay/.lb-inner/
+   .lb-stage/.lb-nav/.lb-close markup from child components — Astro scoped
+   styles only apply to a file's own template, so this page's own layout
+   (the two-panel image+info-card row, and its own margins/gap) needs
+   :global() to reach into them. Scoped by the #gallery-modal id (not just
+   the bare class) because Astro appends a [data-astro-cid-*] attribute to
+   the component's own scoped rules, which otherwise out-specifies a plain
+   :global(.lb-foo) class selector — an id selector reliably wins
+   regardless. */
+:global(#gallery-modal.lb-overlay) {
   align-items: flex-start;
   justify-content: center;
   padding: 4rem clamp(1.5rem, 4vw, 3rem);
-  z-index: 2000;
   overflow-y: auto;
 }
 
-.modal-overlay.open {
-  display: flex;
-}
-
-.modal-close {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  cursor: var(--cursor-pointer);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2001;
-}
-
-.modal-close svg {
-  width: 22px;
-  height: 22px;
-}
-
-.modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.modal-inner {
+:global(#gallery-modal .lb-inner) {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  /* The floor has to clear .nav-btn.next's own footprint (44px + 1.25rem
+  /* The floor has to clear .lb-next's own footprint (44px + 1.25rem
      margin ≈ 4rem) with room to spare, or the button and the card start
      touching/overlapping at narrower "desktop-row" widths (iPad landscape) —
      unlike the prev button, there's no separate margin reservation on this
      side, so the gap itself is the only thing holding the button clear. */
   gap: clamp(6rem, 6vw, 8rem);
-  /* Capped so the cluster doesn't sprawl on very wide monitors — .stage and
-     .info-card are allowed to shrink (see below), so this same rule also
-     covers narrower "desktop-row" widths like iPad landscape without a
+  /* Capped so the cluster doesn't sprawl on very wide monitors — .lb-stage
+     and .info-card are allowed to shrink (see below), so this same rule
+     also covers narrower "desktop-row" widths like iPad landscape without a
      separate breakpoint: flexbox just fits everything into what's left. */
   max-width: min(1400px, 100%);
-  /* Explicit, not left to shrink-to-fit — .stage's sliding images go
+  /* Explicit, not left to shrink-to-fit — .lb-stage's sliding images go
      position:absolute mid-transition, which drops them out of normal flow
-     and (with no other in-flow content to size .stage from) collapses the
-     fit-content width calculation that "margin: auto" centering alone would
-     otherwise depend on, snapping .modal-inner — and everything in it —
+     and (with no other in-flow content to size .lb-stage from) collapses
+     the fit-content width calculation that "margin: auto" centering alone
+     would otherwise depend on, snapping .lb-inner — and everything in it —
      to a much smaller width for the duration of the animation. */
   width: 100%;
   margin: auto;
 }
 
-/* Transparent by default (desktop) so .stage is a direct flex child of
-   .modal-inner, same as before. Mobile/tablet turn this into a real flex
-   item that grows to fill the leftover vertical space above the card, so
-   the image centers itself in that space and the card rests at the bottom. */
+/* Transparent by default (desktop) so .lb-stage is a direct flex child of
+   .lb-inner, same as before. Mobile/tablet turn this into a real flex item
+   that grows to fill the leftover vertical space above the card, so the
+   image centers itself in that space and the card rests at the bottom. */
 .stage-area {
   display: contents;
 }
 
-.nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  cursor: var(--cursor-pointer);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.nav-btn.prev {
-  right: 100%;
+:global(#gallery-modal .lb-prev) {
   margin-right: 1.5rem;
 }
 
-.nav-btn.next {
-  left: 100%;
+:global(#gallery-modal .lb-next) {
   margin-left: 1.25rem;
 }
 
-.nav-btn svg {
-  width: 22px;
-  height: 22px;
-}
-
-.nav-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.nav-btn.hidden {
-  display: none;
-}
-
-.stage {
-  position: relative;
+:global(#gallery-modal .lb-stage) {
   /* Allowed to grow (up to max-width, on big screens) and shrink (down to
      min-width, at iPad-landscape-ish widths where it and .info-card don't
      both fit at their preferred size) instead of a fixed/vw-based width —
@@ -248,22 +182,23 @@ h1 {
   flex: 1 1 460px;
   min-width: 260px;
   max-width: 640px;
-  /* Reserves room for .nav-btn.prev (44px + 1.5rem gap), which is absolutely
+  /* Reserves room for .lb-prev (44px + 1.5rem gap), which is absolutely
      positioned outside this box and so wouldn't otherwise count towards
-     .modal-inner's own width — without it, centering .modal-inner centers
-     the image+card pair but not the prev button hanging off their left
-     edge, making the whole cluster look (and eventually clip) off-center. */
+     .lb-inner's own width — without it, centering .lb-inner centers the
+     image+card pair but not the prev button hanging off their left edge,
+     making the whole cluster look (and eventually clip) off-center. */
   margin-left: 4.25rem;
   aspect-ratio: 1 / 1;
 }
 
-/* The rounding/clipping lives here, one level in from .stage, rather than
-   on .stage itself or on the <img> directly. .stage also hosts the nav
-   buttons, which are deliberately positioned *outside* its box — clipping
-   there would cut them off. Putting the radius on the <img> instead (with
-   no clipping frame) would round each image separately, so mid-slide the
-   outgoing/incoming pair reads as two rounded tiles sliding past each
-   other instead of one framed window with the picture moving inside it. */
+/* The rounding/clipping lives here, one level in from .lb-stage, rather
+   than on .lb-stage itself or on the <img> directly. .lb-stage also hosts
+   the nav buttons, which are deliberately positioned *outside* its box —
+   clipping there would cut them off. Putting the radius on the <img>
+   instead (with no clipping frame) would round each image separately, so
+   mid-slide the outgoing/incoming pair reads as two rounded tiles sliding
+   past each other instead of one framed window with the picture moving
+   inside it. */
 .stage-frame {
   position: relative;
   width: 100%;
@@ -278,7 +213,6 @@ h1 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  cursor: zoom-out;
 }
 
 .info-card {
@@ -387,11 +321,11 @@ h1 {
    end. iPad landscape is handled separately below — it reuses the desktop
    row layout instead of this stacked one. */
 @media (--mobile), (--tablet-only) and (orientation: portrait) {
-  .modal-overlay {
+  :global(#gallery-modal.lb-overlay) {
     align-items: stretch;
   }
 
-  .modal-inner {
+  :global(#gallery-modal .lb-inner) {
     flex-direction: column;
     align-items: center;
     width: 100%;
@@ -406,7 +340,7 @@ h1 {
     justify-content: center;
   }
 
-  /* .modal-inner is column-direction here, so .info-card's main axis is
+  /* .lb-inner is column-direction here, so .info-card's main axis is
      height, not width — reset the desktop rule's flex-basis (380px) back to
      auto so the card's height stays content-driven instead of being forced
      toward 380px tall. Its actual width is still controlled by the (cross-
@@ -421,25 +355,25 @@ h1 {
    generous side margin, and a card that spans the full available width
    (inset only by the overlay's own margin) with just the essentials. */
 @media (--tablet-only) and (orientation: portrait) {
-  .modal-overlay {
+  :global(#gallery-modal.lb-overlay) {
     padding: 3rem clamp(3rem, 8vw, 6rem);
   }
 
-  .modal-inner {
+  :global(#gallery-modal .lb-inner) {
     gap: 2rem;
   }
 
-  .stage {
+  :global(#gallery-modal .lb-stage) {
     /* Unlike desktop, the image isn't sharing a row with the card here — it's
        alone in .stage-area, which shrink-wraps to the margin box. Reserving
        room for the prev button would just shift the visible image off-center
        within that box instead of balancing it against anything. */
     margin-left: 0;
-    /* .stage is a flex item of .stage-area (row-direction), so its size is
-       driven by flex-basis, not the width property — the base rule's
+    /* .lb-stage is a flex item of .stage-area (row-direction), so its size
+       is driven by flex-basis, not the width property — the base rule's
        flex-basis (460px) would otherwise win over a plain "width" here.
        Grow/shrink are also reset to 0: the base rule's inherited grow:1
-       otherwise expands .stage to fill .stage-area's stretched width
+       otherwise expands .lb-stage to fill .stage-area's stretched width
        instead of stopping at this basis. */
     flex: 0 0 min(70vw, 720px);
     /* The base rule's max-width (640px) is sized for desktop and would
@@ -467,7 +401,7 @@ h1 {
 }
 
 @media (--mobile) {
-  .modal-overlay {
+  :global(#gallery-modal.lb-overlay) {
     /* Extra top clearance so the centered-in-leftover-space image never
        collides with the fixed close button in its top-right corner — on
        short screens (iPhone SE) with a tall card (long title), the leftover
@@ -476,24 +410,25 @@ h1 {
     padding: 5rem 1rem 1rem;
   }
 
-  .modal-inner {
+  :global(#gallery-modal .lb-inner) {
     gap: 1.5rem;
   }
 
-  .stage {
+  :global(#gallery-modal .lb-stage) {
     margin-left: 0;
-    /* See the tablet-portrait rule above — flex (not width) drives .stage's
-       size within .stage-area, and grow/shrink must be reset to 0 too. */
+    /* See the tablet-portrait rule above — flex (not width) drives
+       .lb-stage's size within .stage-area, and grow/shrink must be reset to
+       0 too. */
     flex: 0 0 min(88vw, 380px);
   }
 
-  .nav-btn.prev {
+  :global(#gallery-modal .lb-prev) {
     right: auto;
     margin-right: 0;
     left: 0.5rem;
   }
 
-  .nav-btn.next {
+  :global(#gallery-modal .lb-next) {
     left: auto;
     margin-left: 0;
     right: 0.5rem;
@@ -528,16 +463,11 @@ h1 {
 </style>
 
 <script>
-  import { initLightboxNav } from "../lib/lightboxNav";
+  import { initLightboxChrome } from "../lib/lightboxChrome";
 
   const overlay = document.getElementById("gallery-modal");
   const modalImg = document.getElementById("gallery-modal-img") as HTMLImageElement;
-  const stage = overlay?.querySelector<HTMLElement>(".stage");
   const stageFrame = overlay?.querySelector<HTMLElement>(".stage-frame");
-  const closeBtn = document.getElementById("gallery-close");
-  const prevBtn = document.getElementById("gallery-prev");
-  const nextBtn = document.getElementById("gallery-next");
-  const infoCard = document.getElementById("gallery-info-card") as HTMLElement;
   const infoCta = document.getElementById("gallery-info-cta") as HTMLAnchorElement;
   const infoDifficulty = document.getElementById("gallery-info-difficulty") as HTMLElement;
   const infoTitle = document.getElementById("gallery-info-title") as HTMLElement;
@@ -564,11 +494,6 @@ h1 {
   const items: GalleryItem[] = dataEl?.textContent ? JSON.parse(dataEl.textContent) : [];
 
   const DIFFICULTY_LABELS: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
-
-  if (items.length <= 1) {
-    prevBtn?.classList.add("hidden");
-    nextBtn?.classList.add("hidden");
-  }
 
   function updateInfoCard(index: number) {
     const item = items[index];
@@ -600,72 +525,20 @@ h1 {
     infoTags.innerHTML = item.tags.map((tag) => `<span class="tag-chip">${tag}</span>`).join("");
   }
 
-  const nav = overlay && stageFrame
-    ? initLightboxNav({
-        swipeTarget: overlay,
+  const chrome = overlay && stageFrame
+    ? initLightboxChrome({
+        overlay,
         frame: stageFrame,
         img: modalImg,
-        prevBtn,
-        nextBtn,
         items: items.map((item) => ({ src: item.image, alt: item.title })),
         onChange: updateInfoCard,
       })
     : null;
 
-  // body.nav-open's overflow:hidden (global.css) doesn't reliably block
-  // touch-driven scrolling on iOS Safari — a swipe gesture inside the modal
-  // can still scroll the page underneath, which is what was showing through
-  // as an un-greyed, scrollable strip at the bottom. Pinning the body in
-  // place with position:fixed (and restoring the scroll position on close)
-  // is the standard fix for that iOS-specific gap.
-  let savedScrollY = 0;
-
-  function openModal(index: number) {
-    nav?.show(index);
-    overlay?.classList.add("open");
-    document.body.classList.add("nav-open");
-    savedScrollY = window.scrollY;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${savedScrollY}px`;
-    document.body.style.width = "100%";
-  }
-
-  function closeModal() {
-    overlay?.classList.remove("open");
-    document.body.classList.remove("nav-open");
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.width = "";
-    window.scrollTo(0, savedScrollY);
-  }
-
   grid?.addEventListener("click", (e) => {
     const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-gallery-index]");
     if (!tile) return;
     const index = Number(tile.dataset.galleryIndex);
-    openModal(index);
-  });
-
-  infoCard?.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
-  stage?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeModal();
-  });
-
-  closeBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeModal();
-  });
-
-  overlay?.addEventListener("click", closeModal);
-
-  document.addEventListener("keydown", (e) => {
-    if (!overlay?.classList.contains("open")) return;
-    if (e.key === "Escape") closeModal();
-    if (e.key === "ArrowLeft") nav?.prev();
-    if (e.key === "ArrowRight") nav?.next();
+    chrome?.open(index);
   });
 </script>

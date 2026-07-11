@@ -1,0 +1,13 @@
+---
+// A drop-in <a> replacement: external (http/https) links open in a new tab
+// with rel="noopener noreferrer", site-relative links (e.g. "/about") stay
+// in the current tab. See lib/links.ts for the internal/external check.
+import { isExternalLink } from "../lib/links";
+
+const { href, class: className, ...rest } = Astro.props as { href: string; class?: string; [key: string]: any };
+const external = isExternalLink(href);
+---
+
+<a href={href} class={className} {...rest} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined}>
+  <slot />
+</a>

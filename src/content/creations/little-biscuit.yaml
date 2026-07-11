@@ -22,10 +22,20 @@ yarn:
   - hex: "#1a1a1a"
     name: "Jet Black"
     type: "Acrylic"
-creator: "trangluu2310"
-creatorLink: "https://www.instagram.com/trangluu2310/"
-patternName: "Little Biscuit the Corgi Puppy"
-patternLink: "https://www.ravelry.com/patterns/library/little-biscuit-the-corgi-puppy"
-tags:
+patterns:
+  - creator: "Trang Luu"
+    creatorLink: "https://timmagicring.com/"
+    items:
+      - name: "Little Biscuit the Corgi Puppy"
+        link: "https://timmagicring.com/products/crochet-corgi-dog-pattern-little-biscuit-amigurumi-puppy-amigurumi-dog-pattern-instant-download-english-pattern-in-pdf-file"
+        platform: website
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+  - brown
+yarnTypes:
+  - chenille
+tags:
   - dog

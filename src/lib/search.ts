@@ -54,7 +54,15 @@ export function search(docs: SearchDoc[], query: string): SearchDoc[] {
 }
 
 const DIFFICULTY_LABELS: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
-const DIFFICULTY_COLORS: Record<string, string> = { easy: "#8dc399", medium: "#f3c368", hard: "#cb8184" };
+// Same background/text pairs as .difficulty-easy/medium/hard in global.css —
+// duplicated here because this chip is built as a raw HTML string (no
+// difficulty-specific class attached) rather than through the Astro
+// <DifficultyChip> component, so it can't just rely on that CSS class.
+const DIFFICULTY_COLORS: Record<string, { bg: string; text: string }> = {
+  easy: { bg: "#c2e7ca", text: "#004913" },
+  medium: { bg: "#ffe8b8", text: "#634200" },
+  hard: { bg: "#f5cbcd", text: "#7f0a11" },
+};
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -70,8 +78,9 @@ export function renderResultTile(doc: SearchDoc, query: string): string {
   const descriptionHtml = doc.description
     ? `<p class="preview">${highlight(doc.description, query)}</p>`
     : "";
+  const difficultyColors = doc.difficulty ? DIFFICULTY_COLORS[doc.difficulty] : undefined;
   const difficultyHtml = doc.difficulty
-    ? `<span class="difficulty-chip hide-on-mobile" style="color:${DIFFICULTY_COLORS[doc.difficulty] ?? "inherit"}">${DIFFICULTY_LABELS[doc.difficulty] ?? doc.difficulty}</span>`
+    ? `<span class="difficulty-chip hide-on-mobile" style="${difficultyColors ? `background-color:${difficultyColors.bg};color:${difficultyColors.text}` : ""}">${DIFFICULTY_LABELS[doc.difficulty] ?? doc.difficulty}</span>`
     : "";
   return `
     <a class="list-item" href="${escapeAttr(doc.href)}" role="option">

@@ -18,10 +18,19 @@ yarn:
   - "Dolce - White"
   - "Bohème Velvet Fine - Soft Rose"
   - "Embroidery floss - Black"
-creator: "etm.studi0"
-creatorLink: "https://www.instagram.com/etm.studi0/"
-patternName: "Crochet Mini Cat Loaf Tutorial"
-patternLink: "https://www.youtube.com/watch?v=gcXwpALX8dk"
-tags:
+patterns:
+  - creator: "ETM's Studio"
+    creatorLink: "https://www.youtube.com/@etmsstudio"
+    items:
+      - name: "Crochet Mini Cat Loaf Tutorial"
+        link: "https://www.youtube.com/watch?v=gcXwpALX8dk"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+yarnTypes:
+  - chenille
+tags:
   - cat

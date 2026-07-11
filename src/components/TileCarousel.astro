@@ -1,0 +1,167 @@
+---
+// Self-contained hover/swipe image carousel for creation tiles: shows the
+// first image, flips through the rest via hover-revealed nav buttons
+// (desktop) or a horizontal swipe (touch), with a sliding "push"
+// transition — see lib/tileCarousel.ts and lib/imageSlide.ts. Wires itself
+// up automatically (the bundled <script> below finds every instance on the
+// page), so callers just drop this in where the image goes and build
+// whatever's around it — see CreationCard.astro (grid tile) and
+// CreationListItem.astro (list row) for the two different surrounding
+// layouts, each overriding this component's default sizing/positioning via
+// :global() (Astro scoped styles can't reach into a child component).
+//
+// Renders its own <a> around the image — nav buttons are real <button>s and
+// so can't nest inside it (invalid HTML), which means a caller that wants
+// the *whole* tile clickable (not just the image) can't also wrap this in
+// its own <a>. See CreationListItem.astro for the non-anchor, click-
+// delegating pattern used there instead.
+import { toThumb } from "../lib/images";
+
+const { images, alt, href } = Astro.props as {
+  images: string[];
+  alt: string;
+  href: string;
+};
+
+const thumbs = images.map(toThumb);
+const hasMultiple = thumbs.length > 1;
+const imagesJson = JSON.stringify(thumbs).replace(/</g, "\\u003c");
+---
+
+<div class="tile-carousel" data-images={imagesJson}>
+  <a class="tc-link" href={href}>
+    <div class="tc-viewport">
+      <img class="tc-img" src={thumbs[0]} alt={alt} loading="lazy" decoding="async" />
+    </div>
+  </a>
+
+  {hasMultiple && (
+    <div class="tc-overlay">
+      <button type="button" class="tc-nav tc-prev" aria-label="Previous image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
+      </button>
+      <button type="button" class="tc-nav tc-next" aria-label="Next image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  )}
+</div>
+
+<style>
+.tile-carousel {
+  position: relative;
+}
+
+.tc-link {
+  display: block;
+  /* Chains a definite height down from .tile-carousel (set per-caller —
+     an aspect-ratio for the grid tile, or a fixed-size parent to fill for
+     the list row) through to .tc-viewport/.tc-img below. Without this,
+     .tc-viewport's own height is "auto", driven by its one normal-flow
+     child — which collapses to 0 the moment that child (and the incoming
+     clone next to it) go position:absolute mid-slide, since out-of-flow
+     elements don't contribute to a parent's auto height. That collapse is
+     what shows through as a flash of the page background between images. */
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tc-viewport {
+  position: relative;
+  height: 100%;
+}
+
+.tc-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* pointer-events stays "none" by default so touch swipes pass straight
+   through to .tc-viewport underneath; on devices with real hover it flips
+   to "auto" so this becomes the reliable target for "is the pointer over
+   the picture" — see the click-forwarding in the script below for why
+   clicks in the gaps between the buttons still need to reach the link. */
+.tc-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tc-nav {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  cursor: var(--cursor-pointer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  /* Off until revealed below — otherwise this still intercepts clicks
+     meant for the picture underneath even while invisible. */
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
+}
+
+.tc-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.tc-nav svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tc-overlay {
+    pointer-events: auto;
+    cursor: var(--cursor-pointer);
+  }
+
+  .tile-carousel:hover .tc-nav {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.tc-nav:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+</style>
+
+<script>
+  import { initTileCarousel } from "../lib/tileCarousel";
+
+  document.querySelectorAll<HTMLElement>(".tile-carousel[data-images]").forEach((root) => {
+    const viewport = root.querySelector<HTMLElement>(".tc-viewport");
+    const img = root.querySelector<HTMLImageElement>(".tc-img");
+    const link = root.querySelector<HTMLAnchorElement>(".tc-link");
+    const overlay = root.querySelector<HTMLElement>(".tc-overlay");
+    const prevBtn = root.querySelector<HTMLButtonElement>(".tc-prev");
+    const nextBtn = root.querySelector<HTMLButtonElement>(".tc-next");
+    if (!viewport || !img) return;
+
+    initTileCarousel({ root, viewport, img, swipeTarget: viewport, link, prevBtn, nextBtn });
+
+    // Clicks landing in the gaps between the buttons (still over the
+    // picture) would otherwise hit the overlay's own empty space instead of
+    // following the link underneath, once the overlay takes over pointer
+    // events on hover-capable devices (see the stylesheet).
+    overlay?.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".tc-nav")) return;
+      link?.click();
+    });
+  });
+</script>

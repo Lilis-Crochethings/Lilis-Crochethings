@@ -1,0 +1,32 @@
+title: "Headphones sprout"
+difficulty: easy
+images:
+  - "/images/creations/Sprout-1.webp"
+  - "/images/creations/Sprout-2.webp"
+description: |-
+  This way my first project after learning the basic stitches, which is pretty decent as a first project, not too hard, not too easy. Plus, I could make my headset absolutely adorable while gaming. I could really match the Among Us vibe from then.
+date: 2023-08-23
+instagramLink: "https://www.instagram.com/p/DAizAV9tUf7/?img_index=1"
+facebookLink: "https://www.facebook.com/photo?fbid=122094871004618116&set=a.122094871166618116"
+pinterestLink: ""
+# hoursSpent: 0
+# hookSize: "2.5mm"
+yarn:
+  - hex: "#288281"
+    name: "Green"
+    type: Acrylic
+patterns:
+  - creator: "lilthings"
+    creatorLink: "https://lilthingsworld.com/"
+    items:
+      - name: "Crochet headphones sprout"
+        link: "https://www.youtube.com/watch?v=jbMKDhgx4eM"
+        platform: youtube
+type: crochet
+subtypes:
+  - misc
+colors:
+  - green
+yarnTypes:
+  - acrylic
+# tags:

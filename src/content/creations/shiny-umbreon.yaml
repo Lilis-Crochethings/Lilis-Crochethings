@@ -2,6 +2,9 @@ title: "Shiny Umbreon"
 difficulty: medium
 images:
   - "/images/creations/Shiny-Umbreon-1.webp"
+  - "/images/creations/Shiny-umbreon-2.webp"
+  - "/images/creations/Shiny-umbreon-3.webp"
+  - "/images/creations/Shiny-umbreon-4.webp"
 description: |-
   Welcome shiny Umbreon to the family. 💙🖤
 
@@ -14,11 +17,21 @@ hookSize: "4mm"
 yarn:
   - "Toucan - Dark Turquoise"
   - "Honey Bunny - Black"
-creator: "Pebble's Crochet Shop"
-creatorLink: "https://www.instagram.com/pebble_crochets/"
-patternName: "Dark Fox Snuggler (Umbreon)"
-patternLink: "https://www.etsy.com/listing/1852421507/crochet-dark-fox-snuggler-pattern"
-tags:
+patterns:
+  - creator: "Pebble's Crochet Shop"
+    creatorLink: "https://www.instagram.com/pebble_crochets/"
+    items:
+      - name: "Dark Fox Snuggler (Umbreon)"
+        link: "https://www.etsy.com/listing/1852421507/crochet-dark-fox-snuggler-pattern"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - black
+yarnTypes:
+  - chenille
+tags:
   - pokemon
   - eeveelutions
+  - fox

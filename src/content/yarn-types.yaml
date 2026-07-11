@@ -1,0 +1,11 @@
+yarnTypes:
+  - id: chenille
+    label: Chenille
+  - id: floss
+    label: Embroidery floss
+  - id: cotton
+    label: Cotton
+  - id: acrylic
+    label: Acrylic
+  - id: other
+    label: Other

@@ -29,11 +29,21 @@ yarn:
   - "Dark Brown (133)"
   - "Medium Brown (435)"
   - "Light Brown"
-creator: "ArtzyJulia"
-creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
-patternName: "Flora"
-patternLink: "https://www.pinterest.com/pin/338895940731443816/"
-tags:
-  - embroidery
+patterns:
+  - creator: "ArtzyJulia"
+    creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
+    items:
+      - name: "Flora"
+        link: "https://www.pinterest.com/pin/338895940731443816/"
+        platform: pinterest
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - pink
+  - green
+  - brown
+yarnTypes:
+  - floss
+tags:
   - winx

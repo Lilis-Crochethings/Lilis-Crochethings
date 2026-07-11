@@ -39,7 +39,7 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
 
 .card {
   display: block;
-  padding: 2rem;
+  padding: 1.5rem;
   background: white;
   border-radius: 16px;
   text-decoration: none;
@@ -92,6 +92,12 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
   object-fit: cover;
   border-radius: 10px;
   flex-shrink: 0;
+}
+
+@media (--mobile) {
+  .card {
+    padding: 1rem;
+  }
 }
 
 @media (--tablet-up) {

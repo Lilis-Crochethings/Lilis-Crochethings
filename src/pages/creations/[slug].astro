@@ -3,9 +3,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import CreationCard from '../../components/creations/CreationCard.astro';
 import TagChip from '../../components/creations/TagChip.astro';
 import DifficultyChip from '../../components/creations/DifficultyChip.astro';
+import SmartLink from '../../components/SmartLink.astro';
+import LightboxChrome from '../../components/LightboxChrome.astro';
+import LightboxStage from '../../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
 import { resolveYarn } from "../../lib/yarn";
 import { getEffectiveTags } from "../../lib/tags";
+import { descriptionToHtml } from "../../lib/description";
 
 export async function getStaticPaths() {
   const SIMILAR_LIMIT = 4;
@@ -27,45 +31,60 @@ export async function getStaticPaths() {
     return shuffled;
   }
 
-  // Embroidery floss is a near-universal accent material (eyes, mouths,
-  // small details) used across both crochet and embroidery pieces alike —
-  // sharing it says nothing about two creations actually being similar, so
-  // it's excluded from the yarn comparison entirely.
-  function yarnKey(y: string | { name: string }): string | null {
-    const key = (typeof y === "string" ? y : y.name).trim().toLowerCase();
-    return key.startsWith("embroidery floss") ? null : key;
-  }
-
   const creations = await getCollection("creations");
   const yarnsEntry = (await getCollection("yarns"))[0];
 
   return creations.map((creation) => {
     const others = creations.filter((c) => c.id !== creation.id);
 
-    // Raw tags only, not getEffectiveTags — the auto-added parent category
-    // (every "amigurumi"/"clothes"/"misc" piece is also implicitly "crochet",
-    // every cross-stitch piece also "embroidery") is too broad to mean
-    // anything: it'd hand every crochet item a free point of "similarity"
-    // to every other crochet item regardless of actual subject matter.
-    const ownTags = new Set(creation.data.tags ?? []);
-    const ownYarns = new Set(
-      (creation.data.yarn ?? []).map(yarnKey).filter((key) => key !== null)
-    );
+    // Tags + subtypes ("amigurumi", "bag", ...) count together — not the
+    // type itself ("crochet"/"embroidery" is too broad, it'd hand every
+    // crochet item a free point of similarity to every other crochet item
+    // regardless of actual subject matter).
+    const ownTags = new Set([...(creation.data.tags ?? []), ...(creation.data.subtypes ?? [])]);
+    const ownColors = new Set(creation.data.colors ?? []);
+    const ownYarnTypes = new Set(creation.data.yarnTypes ?? []);
+    const ownCreators = new Set((creation.data.patterns ?? []).map((g) => g.creator).filter((c) => c));
+    const ownPatternNames = new Set((creation.data.patterns ?? []).flatMap((g) => g.items.map((i) => i.name)));
 
-    // Similarity score: +1 per shared (specific) tag, +1 each for a matching
-    // hook size / creator / pattern, +1 per shared yarn used.
+    // Similarity score, weighted by how strong a signal each match actually
+    // is:
+    //  - same literal pattern (+5): the strongest possible relation — e.g.
+    //    Raytje / Raytje v2 / Raytje v3 are repeat attempts at one pattern.
+    //  - same designer (+3): a good but weaker signal than the exact same
+    //    pattern; can stack with it, since sharing a pattern implies sharing
+    //    its designer too.
+    //  - shared tags/subtypes (+1 each): the main subject-matter signal.
+    //  - shared yarn material (+1 flat): uses the curated data.yarnTypes
+    //    field rather than re-deriving materials from the yarn catalog, so
+    //    it doesn't count a single accent color's material as equal to a
+    //    piece's primary yarn.
+    //  - color overlap (+0–1): scaled by how much of the *combined* palette
+    //    is actually shared (Jaccard similarity) rather than a flat point
+    //    per shared color, so two 1-color pieces that match fully score the
+    //    same as two 4-color pieces that mostly overlap, instead of the
+    //    larger palette always winning on raw shared-color count.
+    // Deliberately no hook size — nearly every creation uses the same 1-2
+    // sizes, so it was a coincidental match, not a real content signal.
     function similarityScore(other: (typeof others)[number]): number {
       let score = 0;
 
-      const otherTags = other.data.tags ?? [];
+      const otherPatternNames = (other.data.patterns ?? []).flatMap((g) => g.items.map((i) => i.name));
+      if (otherPatternNames.some((n) => ownPatternNames.has(n))) score += 5;
+
+      const otherCreators = (other.data.patterns ?? []).map((g) => g.creator).filter((c) => c);
+      if (otherCreators.some((c) => ownCreators.has(c!))) score += 3;
+
+      const otherTags = [...(other.data.tags ?? []), ...(other.data.subtypes ?? [])];
       score += otherTags.filter((tag) => ownTags.has(tag)).length;
 
-      if (creation.data.hookSize && creation.data.hookSize === other.data.hookSize) score += 1;
-      if (creation.data.creator && creation.data.creator === other.data.creator) score += 1;
-      if (creation.data.patternName && creation.data.patternName === other.data.patternName) score += 1;
+      const otherYarnTypes = other.data.yarnTypes ?? [];
+      if (otherYarnTypes.some((type) => ownYarnTypes.has(type))) score += 1;
 
-      const otherYarns = (other.data.yarn ?? []).map(yarnKey).filter((key) => key !== null);
-      score += otherYarns.filter((yarn) => ownYarns.has(yarn)).length;
+      const otherColors = other.data.colors ?? [];
+      const sharedColors = otherColors.filter((color) => ownColors.has(color)).length;
+      const unionColors = new Set([...ownColors, ...otherColors]).size;
+      if (unionColors > 0) score += sharedColors / unionColors;
 
       return score;
     }
@@ -87,21 +106,45 @@ export async function getStaticPaths() {
 const { creation, yarnLines, similar } = Astro.props;
 const data = creation.data;
 
-const patternCredits = [
-  { creator: data.creator, creatorLink: data.creatorLink, patternName: data.patternName, patternLink: data.patternLink },
-  ...(data.additionalPatterns ?? []),
-];
+const patternCredits = data.patterns ?? [];
+const firstPattern = patternCredits[0];
+const firstItem = firstPattern?.items[0];
+
+const PLATFORM_ICONS: Record<string, string> = {
+  etsy: "/images/socials/etsy.webp",
+  youtube: "/images/socials/youtube.webp",
+  instagram: "/images/socials/instagram.webp",
+  pinterest: "/images/socials/pinterest.webp",
+  facebook: "/images/socials/facebook.webp",
+  website: "/images/socials/website.svg",
+  tiktok: "/images/socials/tiktok.svg",
+  pattern: "/images/icons/pattern.svg"
+};
+
+// Etsy is a plain square logo with sharp corners in the source asset — round
+// it to match the site's icon-tile convention. The others (YouTube,
+// Instagram, Pinterest, Facebook) already ship their own rounded brand
+// shape, so rounding them again would clip the logo. The website icon has
+// no background tile to round.
+const ROUNDED_PLATFORMS = new Set(["etsy"]);
 
 const taxonomyEntry = (await getCollection("tags"))[0];
 const taxonomy = taxonomyEntry.data.tags;
 const effectiveTags = getEffectiveTags(data.tags, taxonomy);
+
+const generalEntry = (await getCollection("general"))[0];
+const siteName = generalEntry.data.name;
+
+const typesEntry = (await getCollection("types"))[0];
+const typesTaxonomy = typesEntry.data.types;
+const typeChipIds = [data.type, ...(data.subtypes ?? [])];
 
 const yarnTiles = (data.yarn ?? [])
   .map((y) => resolveYarn(y, yarnLines))
   .filter((y) => y !== null)
   .sort((a, b) => (a.type ?? "").localeCompare(b.type ?? ""));
 
-const craftType = effectiveTags.includes("embroidery") ? "embroidery" : "crochet";
+const craftType = data.type;
 
 function isWhite(hex?: string): boolean {
   if (!hex) return false;
@@ -110,8 +153,8 @@ function isWhite(hex?: string): boolean {
 }
 
 const pageDescription = data.description || (
-  data.patternName
-    ? `A handmade ${craftType} ${data.title}, made using the "${data.patternName}" pattern${data.creator ? ` by ${data.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
+  firstItem
+    ? `A handmade ${craftType} ${data.title}, made using the "${firstItem.name}" pattern${firstPattern?.creator ? ` by ${firstPattern.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
     : `A handmade ${craftType} ${data.title} by Lili's Crochethings.`
 );
 
@@ -122,8 +165,8 @@ const creativeWorkSchema = {
   description: pageDescription,
   image: data.images.map((image) => new URL(image, Astro.site).toString()),
   ...(data.date ? { dateCreated: data.date.toISOString().slice(0, 10) } : {}),
-  ...(data.creator ? { creator: { "@type": "Person", name: data.creator, ...(data.creatorLink ? { url: new URL(data.creatorLink, Astro.site).toString() } : {}) } } : {}),
-  ...(data.patternName ? { about: data.patternName } : {}),
+  ...(firstPattern?.creator ? { creator: { "@type": "Person", name: firstPattern.creator, ...(firstPattern.creatorLink ? { url: new URL(firstPattern.creatorLink, Astro.site).toString() } : {}) } } : {}),
+  ...(firstItem ? { about: firstItem.name } : {}),
 };
 ---
 <BaseLayout
@@ -154,7 +197,7 @@ const creativeWorkSchema = {
     {data.description && (
       <div class="card card-description">
         <h2>Description</h2>
-        <p class="description-text">{data.description}</p>
+        <p class="description-text" set:html={descriptionToHtml(data.description)} />
       </div>
     )}
 
@@ -167,9 +210,24 @@ const creativeWorkSchema = {
             return (
               <Tag class="yarn-tile" title={yarn.description} {...(yarn.link ? { href: yarn.link, target: "_blank", rel: "noopener noreferrer" } : {})}>
                 <div class="swatch" class:list={{ "swatch-bordered": isWhite(yarn.hex) }} style={`background-color: ${yarn.hex ?? "var(--accent)"}`}>
-                  {yarn.image
-                    ? <img src={yarn.image} alt="" onerror="this.remove()" />
-                    : <img class="swatch-icon" class:list={{ "swatch-icon-dark": isWhite(yarn.hex) }} src="/images/icons/yarn.svg" alt="" />}
+                  {yarn.image && (
+                    <img
+                      src={yarn.image}
+                      alt=""
+                      onerror="this.nextElementSibling?.removeAttribute('hidden'); this.remove()"
+                    />
+                  )}
+                  {/* Always rendered, but hidden while the real photo is showing —
+                      the photo's onerror above reveals this if it fails to load
+                      at runtime (e.g. a dead hotlink), same fallback as when no
+                      image URL was ever recorded for this color. */}
+                  <img
+                    class="swatch-icon"
+                    class:list={{ "swatch-icon-dark": isWhite(yarn.hex) }}
+                    src="/images/icons/yarn.svg"
+                    alt=""
+                    hidden={!!yarn.image}
+                  />
                 </div>
                 <div class="yarn-titles">
                   {yarn.type && <span class="type-chip-small">{yarn.type}</span>}
@@ -198,7 +256,7 @@ const creativeWorkSchema = {
         {data.hoursSpent && (
           <li>
             <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
-            {data.hoursSpent}h
+            {data.hoursSpent < 1 ? `${Math.round(data.hoursSpent * 60)}m` : `${data.hoursSpent}h`}
           </li>
         )}
         {data.hookSize && (
@@ -209,8 +267,11 @@ const creativeWorkSchema = {
         )}
       </ul>
 
-      {effectiveTags.length > 0 && (
+      {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
         <div class="tags-row">
+          {typeChipIds.map((tag) => (
+            <TagChip id={tag} taxonomy={typesTaxonomy} />
+          ))}
           {effectiveTags.map((tag) => (
             <TagChip id={tag} taxonomy={taxonomy} />
           ))}
@@ -222,24 +283,54 @@ const creativeWorkSchema = {
       <DifficultyChip difficulty={data.difficulty} />
       <h2>Pattern</h2>
       <ul class="designer-list">
-        {patternCredits.map((credit) => (
+        {patternCredits.map((group) => (
           <li class="pattern-credit">
-            <div class="credit-line">
-              <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>
-              {credit.creator
-                ? (credit.creatorLink
-                  ? <a href={credit.creatorLink} target="_blank" rel="noopener noreferrer">{credit.creator}</a>
-                  : credit.creator)
-                : "unknown"}
+            <div class="credit-name">
+              {group.creator === siteName
+                ? <img class="icon credit-logo" src="/images/Lilis-Crochethings-thumb.webp" alt="" />
+                : <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>}
+              {group.creator
+                ? (group.creatorLink
+                  ? <SmartLink href={group.creatorLink}>{group.creator}</SmartLink>
+                  : group.creator)
+                : "Unknown"}
             </div>
-            <div class="credit-line">
-              <span class="icon" style="mask-image: url(/images/icons/pattern.svg); -webkit-mask-image: url(/images/icons/pattern.svg);"></span>
-              {credit.patternName
-                ? (credit.patternLink
-                  ? <a href={credit.patternLink} target="_blank" rel="noopener noreferrer">{credit.patternName}</a>
-                  : credit.patternName)
-                : "unknown"}
-            </div>
+            <ul class="pattern-items">
+              {group.items.map((item) => {
+                // A self-designed pattern with no platform set (e.g. "pattern
+                // coming soon", no link yet) shouldn't fall back to the
+                // generic website globe — the document icon reads as "this
+                // is an original design" instead of implying an external site.
+                // An explicit platform (if self-published somewhere later)
+                // still wins over this.
+                const platform = item.platform ?? (group.creator === siteName ? "pattern" : "website");
+                const icon = (
+                  <span class="platform-icon-slot">
+                    <img
+                      class="platform-icon"
+                      class:list={{ rounded: ROUNDED_PLATFORMS.has(platform), "platform-icon-website": platform === "website" }}
+                      src={PLATFORM_ICONS[platform]}
+                      alt=""
+                    />
+                  </span>
+                );
+                return (
+                  <li class="pattern-item">
+                    {item.link ? (
+                      <SmartLink class="pattern-link" href={item.link}>
+                        {icon}
+                        {item.name}
+                      </SmartLink>
+                    ) : (
+                      <>
+                        {icon}
+                        {item.name}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </li>
         ))}
       </ul>
@@ -251,26 +342,26 @@ const creativeWorkSchema = {
         <ul class="socials-list">
           {data.instagramLink && (
             <li>
-              <a href={data.instagramLink} target="_blank" rel="noopener noreferrer">
+              <SmartLink href={data.instagramLink}>
                 <img src="/images/socials/instagram.webp" alt="" />
                 Instagram
-              </a>
+              </SmartLink>
             </li>
           )}
           {data.facebookLink && (
             <li>
-              <a href={data.facebookLink} target="_blank" rel="noopener noreferrer">
+              <SmartLink href={data.facebookLink}>
                 <img src="/images/socials/facebook.webp" alt="" />
                 Facebook
-              </a>
+              </SmartLink>
             </li>
           )}
           {data.pinterestLink && (
             <li>
-              <a href={data.pinterestLink} target="_blank" rel="noopener noreferrer">
+              <SmartLink href={data.pinterestLink}>
                 <img src="/images/socials/pinterest.webp" alt="" />
                 Pinterest
-              </a>
+              </SmartLink>
             </li>
           )}
         </ul>
@@ -291,26 +382,17 @@ const creativeWorkSchema = {
     </div>
   </div>
 
-  <div class="lightbox" id="lightbox">
-    <button class="lightbox-close" id="lightbox-close" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <div class="lightbox-content">
-      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous image">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
-      </button>
+  <LightboxChrome id="lightbox">
+    <LightboxStage>
       <div class="lightbox-frame" id="lightbox-frame">
         <img id="lightbox-img" src="" alt="" />
       </div>
-      <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next image">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-  </div>
+    </LightboxStage>
+  </LightboxChrome>
 </BaseLayout>
 
 <script>
-  import { initLightboxNav } from "../../lib/lightboxNav";
+  import { initLightboxChrome } from "../../lib/lightboxChrome";
 
   // Same-origin referrer (any page, not just /creations or /gallery) means
   // there's real history to go back to — e.g. arriving via a "See also"
@@ -328,52 +410,20 @@ const creativeWorkSchema = {
   const lightbox = document.getElementById("lightbox");
   const lightboxFrame = document.getElementById("lightbox-frame") as HTMLElement;
   const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement;
-  const closeBtn = document.getElementById("lightbox-close");
-  const prevBtn = document.getElementById("lightbox-prev");
-  const nextBtn = document.getElementById("lightbox-next");
-
   const thumbs = Array.from(document.querySelectorAll<HTMLImageElement>(".gallery-thumb"));
 
-  if (thumbs.length <= 1) {
-    prevBtn?.classList.add("hidden");
-    nextBtn?.classList.add("hidden");
-  }
-
-  const nav = lightbox
-    ? initLightboxNav({
-        swipeTarget: lightbox,
+  const chrome = lightbox
+    ? initLightboxChrome({
+        overlay: lightbox,
         frame: lightboxFrame,
         img: lightboxImg,
-        prevBtn,
-        nextBtn,
         items: thumbs.map((thumb) => ({ src: thumb.src, alt: thumb.alt })),
         freezeFrameSize: true,
       })
     : null;
 
   thumbs.forEach((thumb, index) => {
-    thumb.addEventListener("click", () => {
-      nav?.show(index);
-      lightbox?.classList.add("open");
-    });
-  });
-
-  function closeLightbox() {
-    lightbox?.classList.remove("open");
-  }
-
-  lightbox?.addEventListener("click", closeLightbox);
-
-  closeBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeLightbox();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (!lightbox?.classList.contains("open")) return;
-    if (e.key === "Escape") closeLightbox();
-    if (e.key === "ArrowLeft") nav?.prev();
-    if (e.key === "ArrowRight") nav?.next();
+    thumb.addEventListener("click", () => chrome?.open(index));
   });
 </script>
 
@@ -447,6 +497,12 @@ const creativeWorkSchema = {
   margin: 0;
 }
 
+.description-text a {
+  color: var(--primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -461,38 +517,30 @@ const creativeWorkSchema = {
 }
 
 .gallery-thumb {
-  cursor: zoom-in;
+  cursor: var(--cursor-pointer);
 }
 
-.lightbox {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+/* <LightboxChrome>/<LightboxStage> render the shared .lb-overlay/.lb-inner/
+   .lb-stage/.lb-nav/.lb-close markup from child components — Astro scoped
+   styles only apply to a file's own template, so this page's own layout
+   (centering, padding) needs :global() to reach into them. Scoped by the
+   #lightbox id (not just the bare class) because Astro appends a
+   [data-astro-cid-*] attribute to the component's own scoped rules, which
+   otherwise out-specifies a plain :global(.lb-overlay) class selector — an
+   id selector reliably wins regardless. */
+:global(#lightbox.lb-overlay) {
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  z-index: 2000;
-  cursor: zoom-out;
 }
 
-.lightbox.open {
-  display: flex;
-}
-
-.lightbox-content {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Rounding/clipping/shadow live here, one level in from .lightbox-content,
-   rather than on the <img> directly — otherwise the outgoing/incoming pair
-   would read as two separately-rounded images sliding past each other
-   instead of one framed window with the picture moving inside it. Sized to
-   shrink-wrap the image normally; only frozen to a fixed px size (via JS)
-   for the duration of a slide, since photos here vary in aspect ratio and
-   the sliding pair needs a stable shared box to animate within. */
+/* Rounding/clipping/shadow live here, one level in from .lb-stage, rather
+   than on the <img> directly — otherwise the outgoing/incoming pair would
+   read as two separately-rounded images sliding past each other instead of
+   one framed window with the picture moving inside it. Sized to shrink-wrap
+   the image normally; only frozen to a fixed px size (via JS) for the
+   duration of a slide, since photos here vary in aspect ratio and the
+   sliding pair needs a stable shared box to animate within. */
 .lightbox-frame {
   position: relative;
   display: flex;
@@ -506,72 +554,6 @@ const creativeWorkSchema = {
   max-width: 80vw;
   max-height: 85vh;
   object-fit: contain;
-}
-
-.lightbox-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  cursor: var(--cursor-pointer);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2001;
-}
-
-.lightbox-nav svg {
-  width: 22px;
-  height: 22px;
-}
-
-.lightbox-nav:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.lightbox-nav.hidden {
-  display: none;
-}
-
-.lightbox-prev {
-  right: 100%;
-  margin-right: 2rem;
-}
-
-.lightbox-next {
-  left: 100%;
-  margin-left: 2rem;
-}
-
-.lightbox-close {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  cursor: var(--cursor-pointer);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2002;
-}
-
-.lightbox-close svg {
-  width: 22px;
-  height: 22px;
-}
-
-.lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
 .socials-list {
@@ -589,6 +571,11 @@ const creativeWorkSchema = {
   align-items: center;
   gap: 0.6rem;
   color: var(--primary-text);
+}
+
+.socials-list a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .socials-list img {
@@ -745,16 +732,108 @@ div.yarn-tile .line-name {
 .pattern-credit {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.3rem;
 }
 
-.info-list li, .credit-line {
+.credit-name {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--primary-text);
+}
+
+.credit-name .icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+}
+
+/* The self-designed case swaps the masked person icon for the site's own
+   logo photo — a real <img>, not a single-color mask shape, so it needs its
+   own object-fit/rounding instead of the mask-based sizing above. */
+.credit-logo {
+  object-fit: cover;
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+/* Plain text links (no card/thumbnail around them to hover-enlarge) rely on
+   an underline for the hover affordance instead. */
+.credit-name a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pattern-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+}
+
+.pattern-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
-.info-list .icon, .credit-line .icon {
+.pattern-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  color: var(--text);
+}
+
+.pattern-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Same 26px width as the person icon on the creator line, so the smaller
+   platform icons inside still line up in the same column, keeping the
+   icon-to-text gap visually consistent between the two lines. */
+.platform-icon-slot {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.platform-icon {
+  max-width: 20px;
+  max-height: 20px;
+  width: auto;
+  height: auto;
+}
+
+.platform-icon.rounded {
+  border-radius: 5px;
+}
+
+/* The globe glyph reads smaller than the brand logos at the same box size
+   (thin outline vs. solid logo mark), so it gets a slightly larger cap. */
+.platform-icon-website {
+  max-width: 24px;
+  max-height: 24px;
+}
+
+.info-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.info-list .icon {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
@@ -780,7 +859,7 @@ div.yarn-tile .line-name {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .lightbox {
+  :global(#lightbox.lb-overlay) {
     padding: 0.5rem;
   }
 
@@ -790,38 +869,38 @@ div.yarn-tile .line-name {
     max-width: 92vw;
   }
 
-  .lightbox-nav {
+  :global(#lightbox .lb-nav) {
     width: 32px;
     height: 32px;
   }
 
-  .lightbox-nav svg {
+  :global(#lightbox .lb-nav svg) {
     width: 18px;
     height: 18px;
   }
 
   /* Unlike desktop/tablet, mobile doesn't have room to keep the buttons
      outside the image — overlay them on the picture's own edges instead. */
-  .lightbox-prev {
+  :global(#lightbox .lb-prev) {
     right: auto;
     left: 0.5rem;
     margin-right: 0;
   }
 
-  .lightbox-next {
+  :global(#lightbox .lb-next) {
     left: auto;
     right: 0.5rem;
     margin-left: 0;
   }
 
-  .lightbox-close {
+  :global(#lightbox .lb-close) {
     top: 0.75rem;
     right: 0.75rem;
     width: 32px;
     height: 32px;
   }
 
-  .lightbox-close svg {
+  :global(#lightbox .lb-close svg) {
     width: 18px;
     height: 18px;
   }

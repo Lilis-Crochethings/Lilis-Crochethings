@@ -1,0 +1,25 @@
+types:
+  - id: crochet
+    label: Crochet
+    image: /images/icons/hook.svg
+    children:
+      - id: amigurumi
+        label: Amigurumi
+      - id: clothes
+        label: Clothes
+      - id: bag
+        label: Bag
+      - id: coaster
+        label: Coaster
+      - id: flower
+        label: Flower
+      - id: keychain
+        label: Keychain
+      - id: misc
+        label: Miscellaneous
+  - id: embroidery
+    label: Embroidery
+    image: /images/icons/embroidery.svg
+    children:
+      - id: cross-stitch
+        label: Cross stitch

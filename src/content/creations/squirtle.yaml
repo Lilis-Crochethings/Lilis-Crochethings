@@ -2,6 +2,8 @@ title: "Squirtle"
 difficulty: easy
 images:
   - "/images/creations/Squirtle.webp"
+  - "/images/creations/Squirtle-2.webp"
+  - "/images/creations/Squirtle-3.webp"
 description: |-
   Welcome Squirtle to the family! 💙🤎🤍
   
@@ -17,10 +19,21 @@ yarn:
   - "Honey Bunny - Pastel Yellow"
   - "Honey Bunny - White"
   - "Honey Bunny - Caramel"
-creator: "53stitches"
-creatorLink: "https://www.instagram.com/53stitches/"
-patternName: "Squirtle"
-patternLink: "https://53stitches.com/squirtle/"
-tags:
+patterns:
+  - creator: "53stitches"
+    creatorLink: "https://53stitches.com/"
+    items:
+      - name: "Squirtle"
+        link: "https://53stitches.com/squirtle/"
+        platform: website
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - blue
+  - yellow
+  - brown
+yarnTypes:
+  - chenille
+tags:
   - pokemon

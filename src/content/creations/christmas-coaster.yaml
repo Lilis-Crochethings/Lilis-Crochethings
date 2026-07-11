@@ -1,0 +1,42 @@
+title: "Christmas Coaster"
+difficulty: easy
+images:
+  - "/images/creations/Christmas-coaster-1.webp"
+  - "/images/creations/Christmas-coaster-2.webp"
+description: |-
+  I really liked this Christmas snow globe coaster that I found as inspiration on Pinterest. However, I was too lazy to make multiple ones, so I only have one Christmas themed coaster 😅.
+
+date: 2023-12-29
+# instagramLink: ""
+# hoursSpent: 6.75
+hookSize: "3.5mm"
+yarn:
+  - hex: "#ffffff"
+    name: "White"
+    type: "Acrylic"
+  - hex: "#F5D033"
+    name: "Yellow"
+    type: "Acrylic"
+  - hex: "#6b8f47"
+    name: "Green"
+    type: "Acrylic"
+  - hex: "#B9A8A3"
+    name: "Dark Beige"
+    type: "Acrylic"
+patterns:
+  - creator: "Heather Corinne Crochets"
+    creatorLink: "https://www.heather-corinne.com/"
+    items:
+      - name: "Crochet Christmas Tree Snow Globe"
+        link: "https://www.heather-corinne.com/post/crochet-christmas-tree-snow-globe"
+        platform: website
+type: crochet
+subtypes:
+  - coaster
+colors:
+  - white
+  - brown
+yarnTypes:
+  - acrylic
+tags:
+  - xmas

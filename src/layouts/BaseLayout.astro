@@ -82,7 +82,18 @@ const organizationSchema = {
 
 #scroll-to-top {
   position: fixed;
-  right: 1.5rem;
+  /* <main> is centered at max-width: var(--page-width), so on wide desktop
+     viewports a plain "right: 1.5rem" (relative to the browser edge) leaves
+     the button stranded far past the actual content's right edge. Anchor it
+     to the content edge instead — 1.5rem outside wherever that edge actually
+     falls — falling back to the flat 1.5rem once the viewport is narrower
+     than the content (mobile/tablet), where there's no gutter to sit in.
+     The subtracted amount is the desired 1.5rem gap *plus* this element's
+     own 48px width: "right" is measured to this element's own right edge,
+     so without also subtracting its width, the button's left edge (not
+     just a margin) would land at the content edge and the button would
+     still straddle it instead of sitting fully in the gutter. */
+  right: max(1.5rem, calc((100vw - var(--page-width)) / 2 - 1.5rem - 48px));
   bottom: 1.5rem;
   width: 48px;
   height: 48px;

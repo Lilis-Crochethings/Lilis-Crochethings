@@ -1,0 +1,59 @@
+---
+// Shared full-screen lightbox backdrop + close button, used by both the
+// creation detail page's photo lightbox and the gallery page's modal. Only
+// the parts that are pixel-identical between the two live here; each page
+// still owns its own layout for whatever it puts in the default slot (e.g.
+// the gallery adds an info-card alongside its <LightboxStage>) via a
+// :global(.lb-overlay)/:global(.lb-inner) override in its own <style>. See
+// lib/lightboxChrome.ts for the open/close/keyboard/scroll-lock behavior.
+const { id } = Astro.props as { id: string };
+---
+
+<div class="lb-overlay" id={id}>
+  <button type="button" class="lb-close" aria-label="Close">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <div class="lb-inner">
+    <slot />
+  </div>
+</div>
+
+<style>
+.lb-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 2000;
+}
+
+.lb-overlay.open {
+  display: flex;
+}
+
+.lb-close {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  cursor: var(--cursor-pointer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2001;
+}
+
+.lb-close svg {
+  width: 22px;
+  height: 22px;
+}
+
+.lb-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+</style>

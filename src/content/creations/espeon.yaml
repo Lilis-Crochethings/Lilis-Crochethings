@@ -17,11 +17,21 @@ yarn:
   - "Honey Bunny - Tomato"
   - "Toucan - Light Purple"
   - "Dolce - Indigo"
-creator: "Pebble's Crochet Shop"
-creatorLink: "https://www.instagram.com/pebble_crochets/"
-patternName: "Psychic Fox Snuggler (Espeon)"
-patternLink: "https://www.etsy.com/listing/1862615948/crochet-psychic-fox-snuggler-pattern"
-tags:
+patterns:
+  - creator: "Pebble's Crochet Shop"
+    creatorLink: "https://www.instagram.com/pebble_crochets/"
+    items:
+      - name: "Psychic Fox Snuggler (Espeon)"
+        link: "https://www.etsy.com/listing/1862615948/crochet-psychic-fox-snuggler-pattern"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - purple
+yarnTypes:
+  - chenille
+tags:
   - pokemon
   - eeveelutions
+  - fox

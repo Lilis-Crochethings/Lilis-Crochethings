@@ -1,24 +1,7 @@
 tags:
-  - id: crochet
-    label: Crochet
-    image: /images/icons/hook.svg
-    children:
-      - id: amigurumi
-        label: Amigurumi
-      - id: clothes
-        label: Clothes
-      - id: keychain
-        label: Keychain
-      - id: misc
-        label: Miscellaneous
-  - id: embroidery
-    label: Embroidery
-    image: /images/icons/embroidery.svg
-    children:
-      - id: cross-stitch
-        label: Cross stitch
   - id: animal
-    label: Animals
+    label: Animal
+    image: /images/icons/paw.svg
     children:
       - id: cat
         label: Cat
@@ -48,12 +31,27 @@ tags:
         label: Mouse
       - id: unicorn
         label: Unicorn
+      - id: octopus
+        label: Octopus
   - id: pokemon
     label: Pokémon
+    image: /images/icons/pokemon.svg
     children:
       - id: pokeball
         label: Pokéball
       - id: eeveelutions
         label: Eeveelutions
+  - id: holiday
+    label: Holiday
+    children:
+      - id: xmas
+        label: Christmas
+      # - id: halloween
+      #   label: Halloween
+      - id: easter
+        label: Easter
   - id: winx
     label: Winx Club
+    image: /images/icons/winx.svg
+  - id: sunflower
+    label: Sunflower

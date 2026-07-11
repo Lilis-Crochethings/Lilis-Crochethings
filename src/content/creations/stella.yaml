@@ -29,11 +29,21 @@ yarn:
   - "Dark Blue 2"
   - "Dark Yellow (783)"
   - "Light Yellow (444)"
-creator: "ArtzyJulia"
-creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
-patternName: "Stella"
-patternLink: "https://www.pinterest.com/pin/338895940731443843/"
-tags:
-  - embroidery
+patterns:
+  - creator: "ArtzyJulia"
+    creatorLink: "https://www.pinterest.com/ArtzyJulia/_created/"
+    items:
+      - name: "Stella"
+        link: "https://www.pinterest.com/pin/338895940731443843/"
+        platform: pinterest
+type: embroidery
+subtypes:
   - cross-stitch
+colors:
+  - orange
+  - blue
+  - yellow
+yarnTypes:
+  - floss
+tags:
   - winx

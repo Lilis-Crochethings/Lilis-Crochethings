@@ -1,0 +1,37 @@
+title: "Fluffy Bunny Loaf"
+difficulty: easy
+images:
+  - "/images/creations/Bunny-loaf-1.webp"
+  - "/images/creations/Bunny-loaf-2.webp"
+description: |-
+  Seeing my first amigurumi project ([my octopus](/creations/octopus)) was a success, I decided it was time to attempt the impossible. I actually had already bought this faux yarn before I even learned how to crochet. I saw this yarn in the store and thought: I want to learn to crochet so I can make a bunny with this. So I learned to crochet by watching some YouTube video's on basic stitches. Tried one basic amigurumi project and thought yes I'm ready now...
+
+  Safe to say I was not. Damn faux yarn is difficult to work with. You can't see it but my stitch count is completely off. You can't see ANYTHING. But the positive thing is: You can't see your mistakes either 😁.
+
+  I still didn't have safety eyes and my buttons weren't big enough to fit this project, so I freestyled some crochet eyes. I think he looks a bit derpy, but that's okay. I really like my fluffy bunny loaf. Still proud to this day that I was able to pull this off as my second amigurumi project. (And I did it with faux yarn 🙈.)
+date: 2023-08-25
+instagramLink: "https://www.instagram.com/p/DAizAV9tUf7/?img_index=3"
+facebookLink: "https://www.facebook.com/photo?fbid=122094871040618116&set=pcb.122094871190618116"
+pinterestLink: ""
+# hoursSpent: 0
+# hookSize: "2.5mm"
+yarn:
+  - hex: "#C5A990"
+    name: "Brown"
+    type: "Faux"
+patterns:
+  - creator: "Ohana Craft Amigurumi"
+    creatorLink: "https://ohanacraftamigurumi.com/"
+    items:
+      - name: "The year of the rabbit"
+        link: "https://www.youtube.com/watch?v=mUEIi57C2rI"
+        platform: youtube
+type: crochet
+subtypes:
+  - amigurumi
+colors:
+  - brown
+yarnTypes:
+  - other
+tags:
+  - bunny

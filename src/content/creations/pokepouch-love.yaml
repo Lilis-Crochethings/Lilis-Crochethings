@@ -1,7 +1,7 @@
-title: "Love Ball"
+title: "Poképouch - Love Ball"
 difficulty: easy
 images:
-  - "/images/creations/Love-ball.webp"
+  - "/images/creations/Pokepouch-love.webp"
 description: |-
   I have been experimenting a bit with different versions of poképouches (bags in the form of a pokéball). I have come up with a loveball design as well as a great ball one (that I still have to improve). However, I already wanted to show my progress and that I'm still crocheting 😝. I also tested out a new type of color change which looks SO clean, but it takes way longer to achieve 🥲. Yet the result is worth it since the regular PokeBall turned out really nice.
 date: 2025-05-13
@@ -14,11 +14,28 @@ yarn:
   - "Chenille - Pink"
   - "Honey Bunny - White"
   - "Honey Bunny - Black"
-creator: "ami_amour"
-creatorLink: "https://www.instagram.com/ami_amour/"
-patternName: "PokeBall Drawstring Bag (altered, heart by @puddnhead)"
-patternLink: "https://amiamour.com/crochet-pokeball-bag-free-pattern/"
+patterns:
+  - creator: "Ami Amour"
+    creatorLink: "https://amiamour.com/"
+    items:
+      - name: "PokeBall Drawstring Bag"
+        link: "https://amiamour.com/crochet-pokeball-bag-free-pattern/"
+        platform: website
+  - creator: "Hooked by Robin"
+    creatorLink: "https://www.hookedbyrobin.com/"
+    items:
+      - name: "Small heart (altered)"
+        link: "https://www.hookedbyrobin.com/blog/crochet-a-small-heart-applique"
+        platform: website
+type: crochet
+subtypes:
+  - bag
+colors:
+  - pink
+  - white
+  - black
+yarnTypes:
+  - chenille
 tags:
-  - crochet
   - pokemon
   - pokeball

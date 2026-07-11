@@ -4,6 +4,8 @@ images:
   - "/images/creations/Umbreon-1.webp"
   - "/images/creations/Umbreon-2.webp"
   - "/images/creations/Umbreon-3.webp"
+  - "/images/creations/Umbreon-4.webp"
+  - "/images/creations/Umbreon-5.webp"
 description: |-
   This baby was so fun to work on! I decided to do the color changes with a different technique to make the yellow stripes pop even more. I think it turned out great.
   
@@ -17,11 +19,21 @@ hookSize: "4mm"
 yarn:
   - "Baby Snuggle Solid - Sunshine"
   - "Honey Bunny - Black"
-creator: "Pebble's Crochet Shop"
-creatorLink: "https://www.instagram.com/pebble_crochets/"
-patternName: "Dark Fox Snuggler (Umbreon)"
-patternLink: "https://www.etsy.com/listing/1852421507/crochet-dark-fox-snuggler-pattern"
-tags:
+patterns:
+  - creator: "Pebble's Crochet Shop"
+    creatorLink: "https://www.instagram.com/pebble_crochets/"
+    items:
+      - name: "Dark Fox Snuggler (Umbreon)"
+        link: "https://www.etsy.com/listing/1852421507/crochet-dark-fox-snuggler-pattern"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - black
+yarnTypes:
+  - chenille
+tags:
   - pokemon
   - eeveelutions
+  - fox

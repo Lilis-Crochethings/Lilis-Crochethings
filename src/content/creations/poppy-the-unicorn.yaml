@@ -2,6 +2,8 @@ title: "Poppy the Unicorn"
 difficulty: medium
 images:
   - "/images/creations/Poppy-the-unicorn.webp"
+  - "/images/creations/Poppy-the-unicorn-2.webp"
+  - "/images/creations/Poppy-the-unicorn-3.webp"
 description: |-
   Mini Poppy the unicorn 🦄💕
   
@@ -22,15 +24,26 @@ yarn:
   - "Embroidery floss - Rose"
   - "Embroidery floss - Dark Pink"
   - "Embroidery floss - White"
-creator: "thenicolechase"
-creatorLink: "https://www.instagram.com/thenicolechase/"
-patternName: "Mini Poppy the Unicorn"
-patternLink: "https://www.thenicolechase.com/patterns/mini-poppy-the-unicorn"
-additionalPatterns:
+patterns:
+  - creator: "Nicole Chase"
+    creatorLink: "https://www.thenicolechase.com/"
+    items:
+      - name: "Mini Poppy the Unicorn"
+        link: "https://www.thenicolechase.com/patterns/mini-poppy-the-unicorn"
+        platform: website
   - creator: "Cro with the Flo"
     creatorLink: "https://crowiththeflo.com/"
-    patternName: "Kawaii crochet eyes"
-    patternLink: "https://www.youtube.com/watch?v=tzmbLJ8rSEU"
-tags:
+    items:
+      - name: "Kawaii crochet eyes"
+        link: "https://www.youtube.com/watch?v=tzmbLJ8rSEU"
+        platform: youtube
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+  - pink
+yarnTypes:
+  - chenille
+tags:
   - unicorn

@@ -3,6 +3,7 @@ difficulty: easy
 images:
   - "/images/creations/Sleepy-Bunny-1.webp"
   - "/images/creations/Sleepy-Bunny-2.webp"
+  - "/images/creations/Sleepy-Bunny-3.webp"
 description: |-
   🤍💙🐰
   A cute sleepy baby for my family of Amigurumi plushies.
@@ -16,10 +17,19 @@ hookSize: "4mm"
 yarn:
   - "Chenille - Cream"
   - "Embroidery floss - Blue"
-creator: "Lili's Crochethings"
-creatorLink: "/about"
-patternName: "Original design (pattern coming soon)"
-patternLink: "/patterns"
-tags:
+patterns:
+  - creator: "Lili's Crochethings"
+    creatorLink: "/about"
+    items:
+      - name: "Original design (pattern coming soon)"
+        link: "/patterns"
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - white
+yarnTypes:
+  - chenille
+tags:
   - bunny
+  - easter

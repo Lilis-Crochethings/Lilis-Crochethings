@@ -84,15 +84,6 @@ export function initTileCarousel(refs: TileCarouselRefs): void {
       e.stopPropagation();
       slide(1);
     });
-
-    // Jump back to the first image once the tile is no longer being
-    // interacted with, so the next hover/swipe always starts from the cover
-    // image — instant, not animated, since the tile is no longer focal.
-    refs.root.addEventListener("mouseleave", () => {
-      if (index === 0 || animating) return;
-      index = 0;
-      current.src = images[0];
-    });
   }
 
   // Swipe support for touch devices, where the hover-revealed buttons never

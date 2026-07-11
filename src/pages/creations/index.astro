@@ -4,12 +4,32 @@ import CreationListItem from '../../components/creations/CreationListItem.astro'
 import { getCollection } from "astro:content";
 import { getEffectiveTags } from "../../lib/tags";
 
-const creations = (await getCollection("creations")).sort(
-  (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
-);
+// Tiebreak by title whenever two creations share a date (or both lack one)
+// so the initial server-rendered order is deterministic — matching the
+// client-side sort's own tiebreak (see the <script> below) rather than
+// falling back to getCollection's incidental file-system order, which the
+// client sort never runs on top of unless a saved sort preference exists.
+const creations = (await getCollection("creations")).sort((a, b) => {
+  const dateDiff = (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0);
+  if (dateDiff !== 0) return dateDiff;
+  return a.data.title.localeCompare(b.data.title, undefined, { sensitivity: "base" });
+});
 
 const taxonomyEntry = (await getCollection("tags"))[0];
 const taxonomy = taxonomyEntry.data.tags;
+
+const typesEntry = (await getCollection("types"))[0];
+const typesTaxonomy = typesEntry.data.types;
+
+const colorsEntry = (await getCollection("colors"))[0];
+const colorPalette = colorsEntry.data.colors;
+
+const yarnTypesEntry = (await getCollection("yarnTypes"))[0];
+const yarnTypesTaxonomy = yarnTypesEntry.data.yarnTypes;
+
+// Same colors as the difficulty-chip styling in global.css — reused here so
+// the active-filters row's difficulty dots match the chips shown on cards.
+const DIFFICULTY_COLORS: Record<string, string> = { easy: "#8dc399", medium: "#f3c368", hard: "#cb8184" };
 
 const creationsWithTags = creations.map((creation) => ({
   creation,
@@ -31,12 +51,18 @@ const creationsWithTags = creations.map((creation) => ({
       </div>
     </div>
 
+    <div class="list-meta">
+      <div class="active-filters" id="active-filters"></div>
+      <p class="results-count" id="results-count">Showing {creations.length} of {creations.length} creations</p>
+    </div>
+
     <div class="content">
       <div class="list" id="list-view">
         {creationsWithTags.map(({ creation, effectiveTags }) => (
-          <CreationListItem creation={creation} effectiveTags={effectiveTags} taxonomy={taxonomy} />
+          <CreationListItem creation={creation} effectiveTags={effectiveTags} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
         ))}
       </div>
+      <p id="no-results" class="search-empty" hidden>No creations match the selected filters.</p>
     </div>
 
     <aside class="filters-panel" id="filters-panel">
@@ -57,7 +83,33 @@ const creationsWithTags = creations.map((creation) => ({
             </label>
           </div>
 
-          <h3 class="filter-subheading">Time spent</h3>
+          <h3 class="filter-subheading">Name</h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="name-asc" class="sort-radio" />
+              A → Z
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="name-desc" class="sort-radio" />
+              Z → A
+            </label>
+          </div>
+
+          <h3 class="filter-subheading time-spent-heading">
+            <span>Time spent</span>
+            <span class="info-tooltip">
+              <button type="button" class="info-icon-btn" aria-describedby="time-spent-tooltip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="11" x2="12" y2="16" />
+                  <circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
+              <span class="tooltip-text" id="time-spent-tooltip" role="tooltip">
+                Creations with no recorded time are treated as 0h and always sort to the end of the list.
+              </span>
+            </span>
+          </h3>
           <div class="sort-options">
             <label class="taxonomy-item">
               <input type="radio" name="sort-order" value="time-asc" class="sort-radio" />
@@ -78,13 +130,53 @@ const creationsWithTags = creations.map((creation) => ({
 
           <h3 class="filter-subheading">Difficulty</h3>
           <div class="difficulty-options">
-            {(["easy", "medium", "hard"] as const).map((level) => (
-              <label class:list={["taxonomy-item", `difficulty-${level}`]}>
-                <input type="checkbox" value={level} class="difficulty-filter" />
-                {level.charAt(0).toUpperCase() + level.slice(1)}
-              </label>
-            ))}
+            {(["easy", "medium", "hard"] as const).map((level) => {
+              const label = level.charAt(0).toUpperCase() + level.slice(1);
+              return (
+                <label class:list={["taxonomy-item", `difficulty-${level}`]}>
+                  <input type="checkbox" value={level} class="difficulty-filter" data-color={DIFFICULTY_COLORS[level]} data-label={label} />
+                  {label}
+                  <span class="filter-count"></span>
+                </label>
+              );
+            })}
           </div>
+
+          <h3 class="filter-subheading">Type</h3>
+          <ul class="taxonomy">
+            {typesTaxonomy.map((type) => {
+              const hasChildren = !!type.children && type.children.length > 0;
+              return (
+                <li>
+                  <div class="taxonomy-row">
+                    <label class="taxonomy-item">
+                      <input type="checkbox" value={type.id} class="type-filter" data-icon={type.image} data-label={type.label} />
+                      {type.label}
+                      <span class="filter-count"></span>
+                    </label>
+                    {hasChildren && (
+                      <button type="button" class="category-toggle" aria-expanded="false" aria-label={`Show ${type.label} sub-types`}>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasChildren && (
+                    <ul class="taxonomy-children">
+                      {type.children!.map((child) => (
+                        <li>
+                          <label class="taxonomy-item">
+                            <input type="checkbox" value={child.id} class="type-filter" data-label={child.label} />
+                            {child.label}
+                            <span class="filter-count"></span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
           <h3 class="filter-subheading">Tags</h3>
           <ul class="taxonomy">
@@ -94,8 +186,9 @@ const creationsWithTags = creations.map((creation) => ({
                 <li>
                   <div class="taxonomy-row">
                     <label class="taxonomy-item">
-                      <input type="checkbox" value={category.id} class="tag-filter" />
+                      <input type="checkbox" value={category.id} class="tag-filter" data-icon={category.image} data-label={category.label} />
                       {category.label}
+                      <span class="filter-count"></span>
                     </label>
                     {hasChildren && (
                       <button type="button" class="category-toggle" aria-expanded="false" aria-label={`Show ${category.label} sub-categories`}>
@@ -108,8 +201,9 @@ const creationsWithTags = creations.map((creation) => ({
                       {category.children!.map((child) => (
                         <li>
                           <label class="taxonomy-item">
-                            <input type="checkbox" value={child.id} class="tag-filter" />
+                            <input type="checkbox" value={child.id} class="tag-filter" data-label={child.label} />
                             {child.label}
+                            <span class="filter-count"></span>
                           </label>
                         </li>
                       ))}
@@ -119,6 +213,28 @@ const creationsWithTags = creations.map((creation) => ({
               );
             })}
           </ul>
+
+          <h3 class="filter-subheading">Yarn type</h3>
+          <div class="yarn-type-options">
+            {yarnTypesTaxonomy.map((yt) => (
+              <label class="taxonomy-item">
+                <input type="checkbox" value={yt.id} class="yarn-type-filter" data-label={yt.label} />
+                {yt.label}
+                <span class="filter-count"></span>
+              </label>
+            ))}
+          </div>
+
+          <h3 class="filter-subheading">Color</h3>
+          <div class="color-options">
+            {colorPalette.map((c) => (
+              <label class="taxonomy-item">
+                <input type="checkbox" value={c.id} class="color-filter" style={`--swatch: ${c.hex}`} data-color={c.hex} data-label={c.label} />
+                {c.label}
+                <span class="filter-count"></span>
+              </label>
+            ))}
+          </div>
         </div>
       </div>
     </aside>
@@ -195,7 +311,7 @@ const creationsWithTags = creations.map((creation) => ({
 .layout {
   display: grid;
   grid-template-columns: 1fr var(--sidebar-width);
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   column-gap: 1.5rem;
   row-gap: 1rem;
   align-items: start;
@@ -207,15 +323,43 @@ const creationsWithTags = creations.map((creation) => ({
   margin-bottom: 0;
 }
 
+.layout .list-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
 .layout .content {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 3;
   min-height: 70vh;
+  /* Grid items default to min-width: auto, which reserves space for their
+     content's intrinsic width instead of shrinking with the track. Because
+     .list-item's nested flex chain (.body's title/preview/tags, each
+     auto-sized under align-items: flex-start) reports a large max-content
+     width up through that chain, the 1fr track refused to shrink below
+     roughly the widest creation's description width — pushing the sidebar
+     column past the viewport at mid-range widths, and overflowing list
+     tiles past the screen at narrow ones. min-width: 0 opts this grid item
+     out of that auto-reservation so it actually tracks the column size. */
+  min-width: 0;
 }
 
 .layout .filters-panel {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
+}
+
+.list-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.results-count {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  color: var(--primary-text);
+  margin: 0;
 }
 
 .list {
@@ -225,18 +369,12 @@ const creationsWithTags = creations.map((creation) => ({
 }
 
 .filters-panel {
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow: hidden;
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .filters-panel-inner {
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
   padding: 0 1.5rem 1.5rem;
   scrollbar-color: var(--accent) white;
 }
@@ -296,10 +434,77 @@ const creationsWithTags = creations.map((creation) => ({
   margin-top: 1.1rem;
 }
 
+.time-spent-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary-text);
+  cursor: var(--cursor-pointer);
+}
+
+.info-icon-btn svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Resets the heading's own bold/uppercase/letter-spacing (all inherited
+   properties) back to plain readable body text for the tooltip's sentence. */
+.tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
+  width: max-content;
+  max-width: 200px;
+  background: var(--text);
+  color: white;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.info-icon-btn:hover + .tooltip-text,
+.info-icon-btn:focus-visible + .tooltip-text {
+  opacity: 1;
+}
+
 .difficulty-options {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+/* The label reuses global.css's .difficulty-easy/medium/hard classes (for
+   the heart-checkbox icon color below), which also set a pastel background
+   and text color for the badge chip elsewhere — cancel both back to the
+   same plain look the other filter sections use, so only the icon stays
+   pastel here. */
+.difficulty-options .taxonomy-item {
+  background-color: transparent;
+  color: var(--text);
 }
 
 .taxonomy-item.difficulty-easy input::before {
@@ -316,6 +521,120 @@ const creationsWithTags = creations.map((creation) => ({
 
 .difficulty-options .taxonomy-item {
   font-size: 1.05rem;
+}
+
+.color-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.color-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+/* Each checkbox carries its own color as a custom property (set inline,
+   since the color list is content-driven rather than a fixed few values
+   like difficulty) — the heart icon picks it up here instead of needing a
+   hardcoded rule per color. "White" itself is defined as a light grey
+   (see colors.yaml) rather than pure white, so its heart stays visible
+   against the panel's near-white background without needing a separate
+   outline treatment. */
+.color-options .taxonomy-item input::before {
+  background-color: var(--swatch, var(--primary));
+}
+
+.yarn-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.yarn-type-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+/* Deliberately not animated: applyFilters() below restores window.scrollY
+   to a single snapshot taken right before this row's height changes. An
+   animated open/close keeps reflowing the page for the length of the
+   transition, well after that one-time restore already ran, so the
+   viewport visibly drifts for the rest of the animation regardless of
+   which CSS technique drives it. An instant, synchronous height change is
+   what actually pairs correctly with a synchronous scroll restore. */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.active-filters:empty {
+  display: none;
+}
+
+/* Chips themselves are built client-side (see the <script> below), so their
+   internals need :global() — Astro scoped styles only tag elements present
+   in this file's own template at build time. */
+:global(.active-filter-chip) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary-text);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  border-radius: 999px;
+}
+
+:global(.active-filter-icon) {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-color: var(--primary);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  flex-shrink: 0;
+}
+
+:global(.active-filter-dot) {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+:global(.active-filter-remove) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  cursor: var(--cursor-pointer);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+:global(.active-filter-remove svg) {
+  width: 100%;
+  height: 100%;
+}
+
+:global(.active-filter-remove:hover) {
+  opacity: 1;
 }
 
 .reset-filters {
@@ -396,6 +715,12 @@ const creationsWithTags = creations.map((creation) => ({
   cursor: var(--cursor-pointer);
 }
 
+.filter-count {
+  margin-left: -0.25rem;
+  font-size: 0.85em;
+  color: var(--primary-text);
+}
+
 .taxonomy-row .taxonomy-item {
   font-size: 1.05rem;
 }
@@ -454,12 +779,6 @@ const creationsWithTags = creations.map((creation) => ({
 }
 
 @media (--mobile) {
-  .content-controls {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
   .layout {
     grid-template-columns: 1fr;
   }
@@ -589,10 +908,19 @@ const creationsWithTags = creations.map((creation) => ({
   const sortRadios = document.querySelectorAll<HTMLInputElement>('input[name="sort-order"]');
   let sortMode = 'date-desc';
 
+  // Breaks ties on the primary sort key (same date, or same/both-unknown
+  // hoursSpent) so ordering is deterministic instead of depending on
+  // whatever order the items happened to already be in — always A→Z by
+  // title regardless of the primary sort's own direction, so flipping
+  // New→Old/Old→New doesn't also shuffle same-date items around.
+  function titleTiebreak(a: HTMLElement, b: HTMLElement): number {
+    return (a.dataset.title ?? '').localeCompare(b.dataset.title ?? '', undefined, { sensitivity: 'base' });
+  }
+
   function sortContainer(container: HTMLElement | null) {
     if (!container) return;
     const [field, direction] = sortMode.split('-');
-    const key = field === 'time' ? 'hours' : 'date';
+    const key = field === 'time' ? 'hours' : field === 'name' ? 'title' : 'date';
     const ascending = direction === 'asc';
     // Not container.children — CreationListItem.astro's own <script> tag
     // gets hoisted in-place as a sibling of the .list-item-wrap elements it
@@ -603,8 +931,26 @@ const creationsWithTags = creations.map((creation) => ({
     // to the top of every sort was this in action.
     const items = Array.from(container.querySelectorAll<HTMLElement>(':scope > .list-item-wrap'));
     items.sort((a, b) => {
+      if (key === 'title') {
+        const titleA = a.dataset.title ?? '';
+        const titleB = b.dataset.title ?? '';
+        const result = titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
+        return ascending ? result : -result;
+      }
+      if (key === 'hours') {
+        // No recorded hoursSpent means data-hours is omitted entirely (see
+        // CreationListItem.astro), not a literal 0 — those creations always
+        // sort to the end, in both directions, instead of masquerading as
+        // the least time spent.
+        const knownA = a.dataset.hours !== undefined;
+        const knownB = b.dataset.hours !== undefined;
+        if (!knownA && !knownB) return titleTiebreak(a, b);
+        if (!knownA) return 1;
+        if (!knownB) return -1;
+      }
       const valueA = Number(a.dataset[key]);
       const valueB = Number(b.dataset[key]);
+      if (valueA === valueB) return titleTiebreak(a, b);
       return ascending ? valueA - valueB : valueB - valueA;
     });
     items.forEach((item) => container.appendChild(item));
@@ -630,12 +976,21 @@ const creationsWithTags = creations.map((creation) => ({
   }
 
   const DIFFICULTY_KEY = 'creations-difficulty-filters';
+  const TYPE_KEY = 'creations-type-filters';
+  const COLOR_KEY = 'creations-color-filters';
+  const YARN_TYPE_KEY = 'creations-yarn-type-filters';
 
   const tagCheckboxes = document.querySelectorAll<HTMLInputElement>('.tag-filter');
   const difficultyCheckboxes = document.querySelectorAll<HTMLInputElement>('.difficulty-filter');
+  const typeCheckboxes = document.querySelectorAll<HTMLInputElement>('.type-filter');
+  const colorCheckboxes = document.querySelectorAll<HTMLInputElement>('.color-filter');
+  const yarnTypeCheckboxes = document.querySelectorAll<HTMLInputElement>('.yarn-type-filter');
   const filtersToggle = document.getElementById('filters-toggle');
   const filtersPanel = document.getElementById('filters-panel');
   const closeFilters = document.getElementById('close-filters');
+  const activeFiltersRow = document.getElementById('active-filters');
+  const noResults = document.getElementById('no-results');
+  const resultsCount = document.getElementById('results-count');
 
   function saveFilters() {
     const selected = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
@@ -647,40 +1002,244 @@ const creationsWithTags = creations.map((creation) => ({
     sessionStorage.setItem(DIFFICULTY_KEY, JSON.stringify(selected));
   }
 
+  function saveTypeFilters() {
+    const selected = Array.from(typeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(TYPE_KEY, JSON.stringify(selected));
+  }
+
+  function saveColorFilters() {
+    const selected = Array.from(colorCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(COLOR_KEY, JSON.stringify(selected));
+  }
+
+  function saveYarnTypeFilters() {
+    const selected = Array.from(yarnTypeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(YARN_TYPE_KEY, JSON.stringify(selected));
+  }
+
   function applyFilters() {
+    // Hiding/showing cards and resizing the active-filters/results-count row
+    // above the fold shifts everything below it — without this, the browser
+    // either keeps the same scrollY (so the content under the cursor jumps)
+    // or its own scroll-anchoring guesses a new position (so it jumps the
+    // other way). Snapshotting and restoring scrollY after every mutation
+    // keeps the viewport pinned regardless of how much height changes.
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
     const selectedTags = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
     const selectedDifficulties = Array.from(difficultyCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
-    filtersToggle?.classList.toggle('active', selectedTags.length > 0 || selectedDifficulties.length > 0);
+    const selectedTypes = Array.from(typeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    const selectedColors = Array.from(colorCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    const selectedYarnTypes = Array.from(yarnTypeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    filtersToggle?.classList.toggle('active', selectedTags.length > 0 || selectedDifficulties.length > 0 || selectedTypes.length > 0 || selectedColors.length > 0 || selectedYarnTypes.length > 0);
     const items = listView ? Array.from(listView.querySelectorAll<HTMLElement>(':scope > .list-item-wrap')) : [];
+    let visibleCount = 0;
     for (const item of items) {
       const itemTags = (item.dataset.tags ?? '').split(' ').filter(Boolean);
+      const itemTypes = (item.dataset.type ?? '').split(' ').filter(Boolean);
+      const itemColors = (item.dataset.colors ?? '').split(' ').filter(Boolean);
+      const itemYarnTypes = (item.dataset.yarnTypes ?? '').split(' ').filter(Boolean);
       const tagsMatch = selectedTags.length === 0 || selectedTags.some((tag) => itemTags.includes(tag));
       const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(item.dataset.difficulty ?? '');
-      item.style.display = tagsMatch && difficultyMatch ? '' : 'none';
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.some((type) => itemTypes.includes(type));
+      const colorMatch = selectedColors.length === 0 || selectedColors.some((color) => itemColors.includes(color));
+      const yarnTypeMatch = selectedYarnTypes.length === 0 || selectedYarnTypes.some((yarnType) => itemYarnTypes.includes(yarnType));
+      const visible = tagsMatch && difficultyMatch && typeMatch && colorMatch && yarnTypeMatch;
+      item.style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
     }
+    if (noResults) noResults.hidden = visibleCount > 0;
+    if (resultsCount) resultsCount.textContent = `Showing ${visibleCount} of ${items.length} creations`;
+    updateFilterCounts(items, selectedTags, selectedDifficulties, selectedTypes, selectedColors, selectedYarnTypes);
+    renderActiveFilters();
+
+    window.scrollTo(scrollX, scrollY);
   }
 
-  function getParentCheckbox(cb: HTMLInputElement) {
-    const parentLi = cb.closest('ul.taxonomy-children')?.parentElement;
-    return parentLi?.querySelector<HTMLInputElement>(':scope > .taxonomy-row .tag-filter') ?? null;
-  }
+  // For every filter checkbox, shows how many creations would match if that
+  // option were combined with whatever is currently selected in the *other*
+  // three sections — e.g. checking "Easy" recomputes the Type/Color/Tags
+  // counts to only reflect easy creations, but doesn't shrink other
+  // Difficulty counts against each other, since Difficulty (like Type,
+  // Color, and Tags) is a same-section OR: you're meant to compare "Easy"
+  // against "Medium" and "Hard" on equal footing, not see them collapse
+  // once one is picked.
+  function updateFilterCounts(
+    items: HTMLElement[],
+    selectedTags: string[],
+    selectedDifficulties: string[],
+    selectedTypes: string[],
+    selectedColors: string[],
+    selectedYarnTypes: string[]
+  ) {
+    const itemData = items.map((item) => ({
+      tags: (item.dataset.tags ?? '').split(' ').filter(Boolean),
+      types: (item.dataset.type ?? '').split(' ').filter(Boolean),
+      colors: (item.dataset.colors ?? '').split(' ').filter(Boolean),
+      yarnTypes: (item.dataset.yarnTypes ?? '').split(' ').filter(Boolean),
+      difficulty: item.dataset.difficulty ?? '',
+    }));
 
-  tagCheckboxes.forEach((cb) => {
-    cb.addEventListener('change', () => {
-      const childList = cb.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
-      childList?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((child) => {
-        child.checked = cb.checked;
-      });
+    function setCount(cb: HTMLInputElement, count: number) {
+      const countEl = cb.closest('label')?.querySelector<HTMLElement>('.filter-count');
+      if (countEl) countEl.textContent = `(${count})`;
+    }
 
-      const parentCheckbox = getParentCheckbox(cb);
-      const siblings = parentCheckbox?.closest('li')?.querySelectorAll<HTMLInputElement>(':scope > ul.taxonomy-children .tag-filter');
-      if (parentCheckbox && siblings) {
-        parentCheckbox.checked = Array.from(siblings).every((sibling) => sibling.checked);
-      }
-
-      saveFilters();
-      applyFilters();
+    difficultyCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        const colorMatch = selectedColors.length === 0 || selectedColors.some((c) => d.colors.includes(c));
+        const yarnTypeMatch = selectedYarnTypes.length === 0 || selectedYarnTypes.some((y) => d.yarnTypes.includes(y));
+        return d.difficulty === cb.value && tagsMatch && typeMatch && colorMatch && yarnTypeMatch;
+      }).length;
+      setCount(cb, count);
     });
+
+    typeCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        const colorMatch = selectedColors.length === 0 || selectedColors.some((c) => d.colors.includes(c));
+        const yarnTypeMatch = selectedYarnTypes.length === 0 || selectedYarnTypes.some((y) => d.yarnTypes.includes(y));
+        return d.types.includes(cb.value) && tagsMatch && difficultyMatch && colorMatch && yarnTypeMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    colorCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        const yarnTypeMatch = selectedYarnTypes.length === 0 || selectedYarnTypes.some((y) => d.yarnTypes.includes(y));
+        return d.colors.includes(cb.value) && tagsMatch && difficultyMatch && typeMatch && yarnTypeMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    yarnTypeCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        const colorMatch = selectedColors.length === 0 || selectedColors.some((c) => d.colors.includes(c));
+        return d.yarnTypes.includes(cb.value) && tagsMatch && difficultyMatch && typeMatch && colorMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    tagCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        const colorMatch = selectedColors.length === 0 || selectedColors.some((c) => d.colors.includes(c));
+        const yarnTypeMatch = selectedYarnTypes.length === 0 || selectedYarnTypes.some((y) => d.yarnTypes.includes(y));
+        return d.tags.includes(cb.value) && typeMatch && difficultyMatch && colorMatch && yarnTypeMatch;
+      }).length;
+      setCount(cb, count);
+    });
+  }
+
+  // Builds one removable chip for a checked filter checkbox — a colored dot
+  // for difficulty, an icon for a tag/type category that has one (from its
+  // data-icon attribute), or just the label for a plain tag/subtype.
+  function buildActiveFilterChip(cb: HTMLInputElement): HTMLElement {
+    const label = cb.dataset.label ?? cb.value;
+    const chip = document.createElement('span');
+    chip.className = 'active-filter-chip';
+
+    if (cb.dataset.color) {
+      const dot = document.createElement('span');
+      dot.className = 'active-filter-dot';
+      dot.style.backgroundColor = cb.dataset.color;
+      chip.appendChild(dot);
+    } else if (cb.dataset.icon) {
+      const icon = document.createElement('span');
+      icon.className = 'active-filter-icon';
+      icon.style.maskImage = `url(${cb.dataset.icon})`;
+      icon.style.setProperty('-webkit-mask-image', `url(${cb.dataset.icon})`);
+      chip.appendChild(icon);
+    }
+
+    chip.append(label);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'active-filter-remove';
+    removeBtn.setAttribute('aria-label', `Remove ${label} filter`);
+    // An inline SVG X, not the "✕" glyph — same trick as LightboxChrome's
+    // close button. Unicode "✕" sits off-center inside its own character
+    // box in most fonts, so centering the button around it still looks
+    // vertically off; an SVG shape centers exactly on its viewBox.
+    removeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    // Toggling via the real checkbox (not just hiding the chip) means the
+    // existing change listeners do the work: cascading to children/parent,
+    // saving to sessionStorage, and re-filtering the list.
+    removeBtn.addEventListener('click', () => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    chip.appendChild(removeBtn);
+
+    return chip;
+  }
+
+  // Renders one chip per currently-checked filter checkbox, in the same
+  // order as the filter panel (Difficulty, then Type, then Tags, then Yarn
+  // type, then Color) — including both a checked parent category and its
+  // auto-checked children, since removing either one independently is
+  // meaningful (see the cascade logic in wireParentChildCheckboxes below).
+  function renderActiveFilters() {
+    if (!activeFiltersRow) return;
+    activeFiltersRow.innerHTML = '';
+    const checked = [
+      ...Array.from(difficultyCheckboxes),
+      ...Array.from(typeCheckboxes),
+      ...Array.from(tagCheckboxes),
+      ...Array.from(yarnTypeCheckboxes),
+      ...Array.from(colorCheckboxes),
+    ].filter((cb) => cb.checked);
+    checked.forEach((cb) => activeFiltersRow.appendChild(buildActiveFilterChip(cb)));
+  }
+
+  function getParentCheckbox(cb: HTMLInputElement, filterClass: string) {
+    const parentLi = cb.closest('ul.taxonomy-children')?.parentElement;
+    return parentLi?.querySelector<HTMLInputElement>(`:scope > .taxonomy-row .${filterClass}`) ?? null;
+  }
+
+  // Shared by the Tags and Type sections: checking a parent (e.g. "Crochet")
+  // checks all its children ("Amigurumi", "Keychain", ...), and checking
+  // every child re-checks the parent — same expand/collapse tree, just a
+  // different top-level checkbox class per section.
+  function wireParentChildCheckboxes(checkboxes: NodeListOf<HTMLInputElement>, filterClass: string, onChange: () => void) {
+    checkboxes.forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const childList = cb.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+        childList?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((child) => {
+          child.checked = cb.checked;
+        });
+
+        const parentCheckbox = getParentCheckbox(cb, filterClass);
+        const siblings = parentCheckbox?.closest('li')?.querySelectorAll<HTMLInputElement>(`:scope > ul.taxonomy-children .${filterClass}`);
+        if (parentCheckbox && siblings) {
+          parentCheckbox.checked = Array.from(siblings).every((sibling) => sibling.checked);
+        }
+
+        onChange();
+      });
+    });
+  }
+
+  wireParentChildCheckboxes(tagCheckboxes, 'tag-filter', () => {
+    saveFilters();
+    applyFilters();
+  });
+
+  wireParentChildCheckboxes(typeCheckboxes, 'type-filter', () => {
+    saveTypeFilters();
+    applyFilters();
   });
 
   difficultyCheckboxes.forEach((cb) => {
@@ -690,11 +1249,31 @@ const creationsWithTags = creations.map((creation) => ({
     });
   });
 
+  colorCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      saveColorFilters();
+      applyFilters();
+    });
+  });
+
+  yarnTypeCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      saveYarnTypeFilters();
+      applyFilters();
+    });
+  });
+
   document.getElementById('reset-filters')?.addEventListener('click', () => {
     tagCheckboxes.forEach((cb) => { cb.checked = false; });
     difficultyCheckboxes.forEach((cb) => { cb.checked = false; });
+    typeCheckboxes.forEach((cb) => { cb.checked = false; });
+    colorCheckboxes.forEach((cb) => { cb.checked = false; });
+    yarnTypeCheckboxes.forEach((cb) => { cb.checked = false; });
     saveFilters();
     saveDifficultyFilters();
+    saveTypeFilters();
+    saveColorFilters();
+    saveYarnTypeFilters();
     applyFilters();
   });
 
@@ -723,19 +1302,14 @@ const creationsWithTags = creations.map((creation) => ({
 
   const savedFilters = sessionStorage.getItem(FILTERS_KEY);
   const savedDifficultyFilters = sessionStorage.getItem(DIFFICULTY_KEY);
+  const savedTypeFilters = sessionStorage.getItem(TYPE_KEY);
+  const savedColorFilters = sessionStorage.getItem(COLOR_KEY);
+  const savedYarnTypeFilters = sessionStorage.getItem(YARN_TYPE_KEY);
 
   if (savedFilters) {
     const selected: string[] = JSON.parse(savedFilters);
     tagCheckboxes.forEach((cb) => {
       cb.checked = selected.includes(cb.value);
-    });
-    document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
-      const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
-      const hasCheckedChild = !!childList?.querySelector<HTMLInputElement>('input[type="checkbox"]:checked');
-      if (hasCheckedChild) {
-        toggle.setAttribute('aria-expanded', 'true');
-        childList?.classList.add('open');
-      }
     });
   }
 
@@ -746,9 +1320,41 @@ const creationsWithTags = creations.map((creation) => ({
     });
   }
 
-  if (savedFilters || savedDifficultyFilters) {
-    applyFilters();
+  if (savedTypeFilters) {
+    const selected: string[] = JSON.parse(savedTypeFilters);
+    typeCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
   }
+
+  if (savedColorFilters) {
+    const selected: string[] = JSON.parse(savedColorFilters);
+    colorCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  if (savedYarnTypeFilters) {
+    const selected: string[] = JSON.parse(savedYarnTypeFilters);
+    yarnTypeCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  // Re-open any category (Tags or Type) that was left with a checked
+  // sub-item from a previous visit, regardless of which section it's in.
+  document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
+    const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+    const hasCheckedChild = !!childList?.querySelector<HTMLInputElement>('input[type="checkbox"]:checked');
+    if (hasCheckedChild) {
+      toggle.setAttribute('aria-expanded', 'true');
+      childList?.classList.add('open');
+    }
+  });
+
+  // Always run once on load — besides applying any saved filters, this is
+  // what draws the active-filters row's initial state.
+  applyFilters();
 
   filtersToggle?.addEventListener('click', () => {
     filtersPanel?.classList.add('open');

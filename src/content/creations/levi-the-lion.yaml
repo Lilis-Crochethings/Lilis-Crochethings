@@ -1,9 +1,9 @@
 title: "Levi the Lion"
 difficulty: medium
 images:
-  - "/images/creations/Levi-the-lion-1.webp"
-  - "/images/creations/Levi-the-lion-2.webp"
   - "/images/creations/Levi-the-lion-3.webp"
+  - "/images/creations/Levi-the-lion-2.webp"
+  - "/images/creations/Levi-the-lion-1.webp"
 description: |-
   This was a pattern test.
   
@@ -26,9 +26,19 @@ yarn:
     name: "Chestnut Brown"
     type: "Acrylic"
   - "Embroidery floss - Black"
-creator: "crochetwith.kim"
-creatorLink: "https://www.instagram.com/crochetwith.kim/"
-patternName: "Levi the Lion"
-tags:
+patterns:
+  - creator: "Crochet with Kim"
+    creatorLink: "https://www.instagram.com/crochetwith.kim/"
+    items:
+      - name: "Levi the Lion & Lumi the Lioness"
+        link: "https://www.etsy.com/listing/4301482650/levi-the-lion-lumi-the-lioness-2-in-1"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - brown
+yarnTypes:
+  - chenille
+tags:
   - lion

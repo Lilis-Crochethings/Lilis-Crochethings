@@ -22,10 +22,19 @@ yarn:
   - hex: "#1a1a1a"
     name: "Jet Black"
     type: "Acrylic"
-creator: "Pebble's Crochet Shop"
-creatorLink: "https://www.instagram.com/pebble_crochets/"
-patternName: "Electric Mouse Snuggler (Pikachu)"
-patternLink: "https://www.etsy.com/listing/1854144232/crochet-electric-mouse-snuggler"
-tags:
+patterns:
+  - creator: "Pebble's Crochet Shop"
+    creatorLink: "https://www.instagram.com/pebble_crochets/"
+    items:
+      - name: "Electric Mouse Snuggler (Pikachu)"
+        link: "https://www.etsy.com/listing/1854144232/crochet-electric-mouse-snuggler"
+        platform: etsy
+type: crochet
+subtypes:
   - amigurumi
+colors:
+  - yellow
+yarnTypes:
+  - chenille
+tags:
   - pokemon
