@@ -9,10 +9,15 @@ categories:
 
       - question: How did you learn to crochet?
         answer: >
-          I started by following beginner YouTube tutorials and making simple
-          projects like granny squares and amigurumi. As I became more
-          comfortable, I gradually challenged myself with more advanced
-          patterns.
+          I started by getting the hang of the basic stitches with the
+          YouTube playlist linked below. Once those felt comfortable, I moved
+          on to simple beginner projects, some of which you can still see on
+          my [about page](/about). From there, I just kept practicing and
+          slowly grew more confident tackling bigger, more advanced patterns.
+        videos:
+          - url: https://www.youtube.com/watch?v=GcOzdAzmtNM&list=PLsrz34yAA5TpH1yiwiZxVMftP_8hokT12
+            title: How to Crochet for Absolute Beginners (Step-by-Step Tutorials)
+            creator: Bella Coco Crochet
       - question: Do you have video tutorials?
         answer: >
           No, I currently only offer written patterns through my interactive

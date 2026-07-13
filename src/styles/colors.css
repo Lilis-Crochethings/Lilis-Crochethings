@@ -1,0 +1,98 @@
+/* src/styles/colors.css
+   The only place literal hex colors are allowed to appear. Every other
+   stylesheet/component should reference a color via var(--token-name) —
+   never write a raw hex code directly. Each token is named for what it's
+   used for plus which theme it belongs to (e.g. --primary-color-dark), so
+   the palette is self-explanatory instead of requiring a lookup against an
+   abstract scale. global.css maps these onto the theme-agnostic variables
+   (--primary, --text, etc.) that components actually consume. */
+:root {
+  /* The one brand color — text/links, icons, borders, focus rings, UI
+     accents, everything. Used to be split into a lighter --primary (icons/
+     borders) and a darker --primary-text (readable text), but dark mode
+     already collapsed those into a single shade, and keeping them separate
+     in light mode just meant icons/borders/buttons read as a visibly
+     different pink than the text/links next to them. One shade everywhere
+     now — this is the AA-safe (darker, on light backgrounds) shade, since
+     that's the one that has to work for text too. */
+  --primary-color-light: #9d486a;
+  --primary-color-dark: #e0a3bb;
+
+  /* Page background */
+  --background-light: #fffaf7;
+  --background-dark: #181715;
+
+  /* Body text */
+  --text-light: #2b2b2b;
+  --text-dark: #f2e7ea;
+
+  /* Chip/highlight background (mark, .coming-soon) */
+  --accent-light: #F0C7D7;
+  --accent-dark: #F0C7D7;
+
+  /* Text/icon color for anything sitting on a solid primary-color
+     background (buttons, active states) */
+  --on-primary-light: #ffffff;
+  --on-primary-dark: #2b2b2b;
+
+  /* Text color for anything sitting on a solid accent-color background
+     (mark, .coming-soon) — same value in both themes since --accent itself
+     doesn't change between them, but kept as a light/dark pair like
+     --on-primary in case that ever changes. */
+  --on-accent-light: #7a4459;
+  --on-accent-dark: #7a4459;
+
+  /* Card/tile surface background */
+  --surface-light: #ffffff;
+  --surface-dark: #282625;
+
+  /* Outer-card edge — transparent in both themes. Light mode gets its
+     elevation cue from a drop shadow instead; dark mode has no working
+     drop-shadow option (black is invisible against an already-dark page,
+     white reads as an unwanted glow) or border (tried one — too harsh), so
+     it relies on --surface-dark being visibly lighter than --background-dark
+     on its own. */
+  --card-border-light: transparent;
+  --card-border-dark: transparent;
+
+  /* Form/validation error text */
+  --error-text-light: #b3261e;
+  --error-text-dark: #ff8a80;
+
+  /* De-emphasized text (yarn line name, breadcrumb separator, etc.) */
+  --muted-text-light: #6b6b6b;
+  --muted-text-dark: #b8b0b3;
+
+  /* Inner/nested card-tile outline (yarn tiles, creation cards nested in
+     another card, FAQ video cards, .swatch-bordered, etc.) — flat hex in
+     dark mode rather than a translucent white. */
+  --border-muted-light: #efeae6;
+  --border-muted-dark: #353334;
+
+  /* Tooltip background — fixed dark in both themes (paired with fixed white
+     tooltip text below), since --text-* itself flips per theme and would
+     leave white tooltip text unreadable in dark mode if this followed it. */
+  --tooltip-background: #2b2b2b;
+
+  /* Difficulty badge chips — fixed in both themes (deliberately not themed;
+     small, isolated badges rather than full-page surfaces). */
+  --difficulty-easy-bg: #c2e7ca;
+  --difficulty-easy-text: #004913;
+  --difficulty-medium-bg: #ffe8b8;
+  --difficulty-medium-text: #634200;
+  --difficulty-hard-bg: #f5cbcd;
+  --difficulty-hard-text: #7f0a11;
+
+  /* Difficulty filter dots (creations/index.astro) — a touch more saturated
+     than the badge chip colors above, so they read against a smaller,
+     borderless swatch. */
+  --difficulty-easy-dot: #8dc399;
+  --difficulty-medium-dot: #f3c368;
+  --difficulty-hard-dot: #cb8184;
+
+  /* ".coming-soon" badge — fixed in both themes, same as the difficulty
+     badges above, rather than following --accent/--on-accent (which are
+     meant for in-flow content like <mark>, not a standalone badge). */
+  --coming-soon-bg: #F0C7D7;
+  --coming-soon-text: #7a4459;
+}

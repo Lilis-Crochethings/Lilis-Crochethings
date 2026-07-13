@@ -9,6 +9,9 @@ description: |-
   Safe to say I was not. Damn faux yarn is difficult to work with. You can't see it but my stitch count is completely off. You can't see ANYTHING. But the positive thing is: You can't see your mistakes either 😁.
 
   I still didn't have safety eyes and my buttons weren't big enough to fit this project, so I freestyled some crochet eyes. I think he looks a bit derpy, but that's okay. I really like my fluffy bunny loaf. Still proud to this day that I was able to pull this off as my second amigurumi project. (And I did it with faux yarn 🙈.)
+searchTerms:
+  - "Plushie"
+  - "Rabbit"
 date: 2023-08-25
 instagramLink: "https://www.instagram.com/p/DAizAV9tUf7/?img_index=3"
 facebookLink: "https://www.facebook.com/photo?fbid=122094871040618116&set=pcb.122094871190618116"
@@ -19,6 +22,15 @@ yarn:
   - hex: "#C5A990"
     name: "Brown"
     type: "Faux"
+  - hex: "#ffffff"
+    name: "White"
+    type: "Acrylic"
+  - hex: "#1a1a1a"
+    name: "Black"
+    type: "Acrylic"
+  - hex: "#E8A0BC"
+    name: "Pink"
+    type: "Acrylic"
 patterns:
   - creator: "Ohana Craft Amigurumi"
     creatorLink: "https://ohanacraftamigurumi.com/"

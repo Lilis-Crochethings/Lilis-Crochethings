@@ -1,0 +1,159 @@
+---
+// A single creation preview tile: thumbnail + difficulty chip + title/date/tags.
+// Checks its own rendered width (via a container query, not the viewport) to
+// decide whether to show the tags row, so it self-adjusts regardless of how
+// cramped the grid it's dropped into happens to be at a given viewport width
+// — a 4-column grid squeezed next to the about page's sidebar is much
+// narrower than the same 4 columns on the home page's full-width card. Any
+// grid that lays out multiple tiles only has to own its own column count.
+import DifficultyChip from "./DifficultyChip.astro";
+import TagChip from "./TagChip.astro";
+import { toThumb } from "../../lib/images";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  creation: CollectionEntry<"creations">;
+  effectiveTags?: string[];
+  taxonomy: TagCategory[];
+  typesTaxonomy: TagCategory[];
+  // Renders the tile as its own link when set — omit when the tile already
+  // sits inside a parent <a> (e.g. the home page's whole-card link) to avoid
+  // nesting anchors.
+  href?: string;
+}
+
+const { creation, effectiveTags = [], taxonomy, typesTaxonomy, href } = Astro.props;
+
+const typeChipIds = [creation.data.type, ...(creation.data.subtypes ?? [])];
+const Tag = href ? "a" : "div";
+---
+
+<Tag class="tile" href={href}>
+  <div class="thumb">
+    <img src={toThumb(creation.data.images[0])} alt={getCreationAlt(creation.data.title, creation.data.type, creation.data.subtypes, typesTaxonomy)} loading="lazy" decoding="async" />
+    <DifficultyChip difficulty={creation.data.difficulty} />
+  </div>
+  <div class="body">
+    <h3 class="title">{creation.data.title}</h3>
+    {creation.data.date && (
+      <p class="date">
+        <span class="icon mask-icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+        {creation.data.date.toLocaleDateString()}
+      </p>
+    )}
+    {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
+      <div class="tags">
+        {typeChipIds.map((id) => (
+          <TagChip id={id} taxonomy={typesTaxonomy} size="small" />
+        ))}
+        {effectiveTags.map((id) => (
+          <TagChip id={id} taxonomy={taxonomy} size="small" />
+        ))}
+      </div>
+    )}
+  </div>
+</Tag>
+
+<style>
+/* Always nested inside another card (home page's .home-card, about.astro's
+   .card-projects). Light mode gives it its own resting shadow same as
+   always; dark mode drops that (--inner-rest-shadow-scale: 0) in favor of
+   the outline below, since a shadow-on-shadow card-in-a-card doesn't read
+   well there the way it does in light mode. */
+.tile {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.tile {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Expanding on hover always gets a (bigger) shadow — in dark mode this is
+   the only shadow the tile ever shows, a white glow mimicking the light-
+   mode hover lift since a dark one wouldn't show up. */
+a.tile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.body {
+  padding: 0.75rem 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.title {
+  font-family: "Lili Love", cursive;
+  font-size: 1.15rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.date .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow: hidden;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+  width: 100%;
+  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+}
+
+.tags :global(.tag-chip) {
+  flex-shrink: 0;
+}
+
+/* Below this the tags row reads as cramped rather than useful — hits on the
+   about page's sidebar-narrowed 4-column grid at almost every viewport width,
+   and on any 4-column grid just above the 2-column breakpoint. */
+@container (max-width: 200px) {
+  .tags {
+    display: none;
+  }
+}
+</style>

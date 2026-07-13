@@ -2,13 +2,50 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getFaqQuestionId, renderFaqAnswer } from '../lib/faq';
 import { faqCategories } from '../lib/faq-data';
+import { getCollection } from 'astro:content';
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.faq;
+
+// Built straight from the same faqCategories the page below renders, so it
+// never needs touching again as the FAQ grows — add a question to
+// src/data/faq.yaml and it's automatically in here on the next build too.
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqCategories.flatMap((category) =>
+    category.questions.map((q) => ({
+      "@type": "Question",
+      name: q.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: renderFaqAnswer(q.answer),
+      },
+    }))
+  ),
+};
 ---
 
 <BaseLayout
-  title="FAQ"
-  description="Frequently asked questions about Lili's Crochethings — patterns, commissions, and more."
+  title={pageMeta.title}
+  description={pageMeta.description}
 >
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(faqSchema)} />
+
   <h1 class="faq-title">FAQ</h1>
+
+  <div class="faq-search">
+    <span class="faq-search-icon mask-icon" aria-hidden="true"></span>
+    <input
+      type="search"
+      id="faq-search-input"
+      class="faq-search-input"
+      placeholder="Search the FAQ"
+      autocomplete="off"
+      aria-label="Search the FAQ"
+    />
+  </div>
+  <p id="faq-search-empty" class="faq-search-empty" hidden>No questions match your search.</p>
 
   <div class="faq-content">
     {faqCategories.map((category) => (
@@ -22,6 +59,19 @@ import { faqCategories } from '../lib/faq-data';
                 <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
               </summary>
               <p set:html={renderFaqAnswer(q.answer)} />
+              {q.videos && q.videos.length > 0 && (
+                <div class="faq-videos">
+                  {q.videos.map((video) => (
+                    <a class="faq-video-card" href={video.url} target="_blank" rel="noopener noreferrer">
+                      <img class="faq-video-logo" src="/images/socials/youtube.webp" alt="" loading="lazy" />
+                      <span class="faq-video-info">
+                        <span class="faq-video-title">{video.title}</span>
+                        {video.creator && <span class="faq-video-creator">{video.creator}</span>}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </details>
           ))}
         </div>
@@ -117,12 +167,112 @@ import { faqCategories } from '../lib/faq-data';
   window.addEventListener('hashchange', expandFromHash);
 </script>
 
+<script>
+  // Filters the already-rendered FAQ (no fetch/index needed — unlike the
+  // navbar/`/search` combined search, this only ever needs to look at this
+  // page's own questions) as the user types, matching against each
+  // question's full text (summary + answer, so it catches answer-only hits
+  // too). Categories with no remaining matches are hidden entirely.
+  const searchInput = document.getElementById('faq-search-input') as HTMLInputElement | null;
+  const sections = document.querySelectorAll<HTMLElement>('.faq-section');
+  const emptyMessage = document.getElementById('faq-search-empty');
+
+  function runFaqSearch() {
+    const query = (searchInput?.value ?? '').trim().toLowerCase();
+    let anyMatch = false;
+
+    sections.forEach((section) => {
+      let sectionHasMatch = false;
+
+      section.querySelectorAll<HTMLDetailsElement>('.faq-item').forEach((item) => {
+        const matches = !query || (item.textContent ?? '').toLowerCase().includes(query);
+        item.hidden = !matches;
+        // Auto-expand matches while actively searching so the answer is
+        // visible without an extra click; collapse again once cleared.
+        item.open = query ? matches : false;
+        if (matches) sectionHasMatch = true;
+      });
+
+      section.hidden = !sectionHasMatch;
+      if (sectionHasMatch) anyMatch = true;
+    });
+
+    if (emptyMessage) emptyMessage.hidden = !query || anyMatch;
+  }
+
+  searchInput?.addEventListener('input', runFaqSearch);
+</script>
+
 <style>
+@import "../styles/breakpoints.css";
+
 .card {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
   padding: 1.5rem;
+}
+
+.faq-search {
+  position: relative;
+  max-width: 380px;
+  margin: 1rem 0 2rem;
+}
+
+.faq-search-icon {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background-color: var(--primary);
+  mask-image: url(/images/icons/search.svg);
+  -webkit-mask-image: url(/images/icons/search.svg);
+  pointer-events: none;
+}
+
+.faq-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 1rem 0.65rem 3rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+}
+
+.faq-search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+.faq-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.4rem;
+  cursor: var(--cursor-pointer);
+  background-color: var(--primary);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.faq-search-empty {
+  font-family: "Quicksand", sans-serif;
+  color: var(--text);
+  margin: -1rem 0 2rem;
 }
 
 .faq-content {
@@ -149,14 +299,14 @@ import { faqCategories } from '../lib/faq-data';
 }
 
 .faq-item[open] {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 calc(8px * var(--shadow-blur-scale, 1)) calc(20px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.15 * var(--shadow-alpha-scale)));
 }
 
 .faq-item summary {
   font-family: "Quicksand", sans-serif;
   font-size: 1.05rem;
   font-weight: bold;
-  color: var(--primary-text);
+  color: var(--primary);
   cursor: var(--cursor-pointer);
   list-style: none;
   display: flex;
@@ -190,9 +340,99 @@ import { faqCategories } from '../lib/faq-data';
 }
 
 .faq-item p :global(a) {
-  color: var(--primary-text);
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.faq-videos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* A lone video card fills the row instead of leaving half of it empty. */
+.faq-videos > .faq-video-card:only-child {
+  grid-column: 1 / -1;
+}
+
+/* This card sits on the same background as its parent .faq-item card.
+   Light mode gives it its own resting shadow same as always; dark mode
+   drops that in favor of the outline below, since a shadow nested inside
+   the outer card's own shadow doesn't read well there the way it does in
+   light mode. */
+.faq-video-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  text-decoration: none;
+  color: inherit;
+  cursor: var(--cursor-pointer);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Expanding on hover always gets a (bigger) shadow — in dark mode this is
+   the only shadow it ever shows, a white glow mimicking the light-mode
+   hover lift since a dark one wouldn't show up. */
+.faq-video-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+.faq-video-logo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.faq-video-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.faq-video-title {
+  font-family: "Lili Love", cursive;
+  font-size: 1.05rem;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Video titles often come from YouTube in ALL CAPS, which reads oddly in
+     a handwriting font — display as sentence case without touching the
+     underlying title text stored in faq.yaml. */
+  text-transform: lowercase;
+}
+
+.faq-video-title::first-letter {
+  text-transform: uppercase;
+}
+
+.faq-video-creator {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.8rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rows of 2 on desktop/tablet; a single column on mobile since two cards
+   side by side get too cramped to read at that width. */
+@media (--mobile) {
+  .faq-videos {
+    grid-template-columns: 1fr;
+  }
 }
 
 </style>

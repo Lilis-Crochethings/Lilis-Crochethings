@@ -2,24 +2,34 @@ types:
   - id: crochet
     label: Crochet
     image: /images/icons/hook.svg
+    adjective: Crocheted
     children:
       - id: amigurumi
         label: Amigurumi
+        adjective: Amigurumi
       - id: clothes
         label: Clothes
+        adjective: Crocheted
       - id: bag
         label: Bag
+        adjective: Crochet
       - id: coaster
         label: Coaster
+        adjective: Crochet
       - id: flower
         label: Flower
+        adjective: Crochet
       - id: keychain
         label: Keychain
+        adjective: Crochet
       - id: misc
         label: Miscellaneous
+        adjective: Crochet
   - id: embroidery
     label: Embroidery
     image: /images/icons/embroidery.svg
+    adjective: Embroidered
     children:
       - id: cross-stitch
         label: Cross stitch
+        adjective: Cross-stitched

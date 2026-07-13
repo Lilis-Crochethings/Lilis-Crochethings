@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
 
 interface Props {
   title?: string;
@@ -35,6 +36,46 @@ const organizationSchema = {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Blocking + is:inline (emitted verbatim, first thing after charset) so
+         the theme is resolved before first paint — otherwise the page would
+         flash light before this script ever ran. window.__theme is the
+         shared API Navbar's toggle script calls into (separate <script>,
+         no shared JS scope with this one otherwise). -->
+    <script is:inline>
+      (function () {
+        var KEY = "theme";
+        var mq = window.matchMedia("(prefers-color-scheme: dark)");
+
+        function resolve(pref) {
+          if (pref === "light" || pref === "dark") return pref;
+          return mq.matches ? "dark" : "light";
+        }
+
+        function apply(pref) {
+          document.documentElement.setAttribute("data-theme", resolve(pref));
+          document.documentElement.setAttribute("data-theme-pref", pref);
+        }
+
+        function getPref() {
+          var stored = localStorage.getItem(KEY);
+          return stored === "light" || stored === "dark" || stored === "auto" ? stored : "auto";
+        }
+
+        apply(getPref());
+
+        mq.addEventListener("change", function () {
+          if (getPref() === "auto") apply("auto");
+        });
+
+        window.__theme = {
+          get: getPref,
+          set: function (pref) {
+            localStorage.setItem(KEY, pref);
+            apply(pref);
+          },
+        };
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Preload the fonts used above the fold on every page (body text +
          headings) so the browser starts fetching them immediately instead
@@ -73,6 +114,8 @@ const organizationSchema = {
       <slot />
     </main>
 
+    <Footer />
+
     <button id="scroll-to-top" type="button" aria-label="Scroll to top">↑</button>
   </body>
 </html>
@@ -94,7 +137,11 @@ const organizationSchema = {
      just a margin) would land at the content edge and the button would
      still straddle it instead of sitting fully in the gutter. */
   right: max(1.5rem, calc((100vw - var(--page-width)) / 2 - 1.5rem - 48px));
-  bottom: 1.5rem;
+  /* --footer-overlap (set in the script below) is how far the footer has
+     crept into the viewport from the bottom — 0 until you're near the end
+     of the page. Adding it here lifts the button clear of the footer
+     instead of floating on top of it once you scroll all the way down. */
+  bottom: calc(1.5rem + var(--footer-overlap, 0px));
   width: 48px;
   height: 48px;
   display: flex;
@@ -103,11 +150,11 @@ const organizationSchema = {
   border: none;
   border-radius: 50%;
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   font-size: 1.4rem;
   line-height: 1;
   cursor: var(--cursor-pointer);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.25 * var(--shadow-alpha-scale)));
   opacity: 0;
   pointer-events: none;
   transform: translateY(10px);
@@ -138,14 +185,24 @@ const organizationSchema = {
 
 <script>
   const scrollButton = document.getElementById('scroll-to-top');
+  const footer = document.querySelector('.site-footer');
   const SCROLL_THRESHOLD = 400;
 
   function updateVisibility() {
     scrollButton?.classList.toggle('visible', window.scrollY > SCROLL_THRESHOLD);
   }
 
+  function updateFooterOverlap() {
+    if (!footer) return;
+    const overlap = Math.max(0, window.innerHeight - footer.getBoundingClientRect().top);
+    document.documentElement.style.setProperty('--footer-overlap', `${overlap}px`);
+  }
+
   window.addEventListener('scroll', updateVisibility, { passive: true });
+  window.addEventListener('scroll', updateFooterOverlap, { passive: true });
+  window.addEventListener('resize', updateFooterOverlap);
   updateVisibility();
+  updateFooterOverlap();
 
   scrollButton?.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

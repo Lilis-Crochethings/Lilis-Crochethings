@@ -1,0 +1,74 @@
+---
+import { getCollection } from "astro:content";
+
+const general = (await getCollection("general"))[0];
+const year = new Date().getFullYear();
+const { foundedYear } = general.data;
+const yearLabel = year > foundedYear ? `${foundedYear}–${year}` : `${foundedYear}`;
+---
+
+<footer class="site-footer">
+  <div class="footer-top">
+    <p>&copy; {yearLabel} {general.data.name}</p>
+    <span class="dot" aria-hidden="true">·</span>
+    <a href="/privacy">Privacy Policy</a>
+  </div>
+  <p class="tagline">
+    Made with <span class="heart" aria-hidden="true">♥</span> by <span class="signature">Lili</span>
+  </p>
+</footer>
+
+<style>
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.5rem 1.25rem;
+  border-top: 1px solid var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-align: center;
+}
+
+.footer-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.footer-top p,
+.tagline {
+  margin: 0;
+}
+
+.dot {
+  color: var(--primary);
+}
+
+.heart {
+  color: var(--primary);
+  font-size: 1.2em;
+  display: inline-block;
+  vertical-align: -0.05em;
+}
+
+.signature {
+  font-family: "Lili Love", cursive;
+  font-size: 1.15rem;
+  color: var(--primary);
+}
+
+.site-footer a {
+  color: var(--primary);
+}
+
+/* Plain text link (no card/thumbnail around it to hover-enlarge) relies on
+   an underline for the hover affordance instead. */
+.site-footer a:hover {
+  text-decoration: underline;
+}
+</style>

@@ -1,0 +1,75 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.privacy;
+
+const privacyEntry = (await getCollection('privacy'))[0];
+const { lastUpdated, intro, sections } = privacyEntry.data;
+---
+
+<BaseLayout
+  title={pageMeta.title}
+  description={pageMeta.description}
+>
+  <h1>{pageMeta.title}</h1>
+  <p class="last-updated">Last updated: {lastUpdated}</p>
+
+  <div class="card">
+    <p class="intro" set:html={intro.html} />
+
+    {sections.map((section) => (
+      <section class="policy-section">
+        <h2>{section.heading}</h2>
+        <p set:html={section.body.html} />
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem 2rem 2rem;
+}
+
+.last-updated {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--primary);
+  margin: -0.75rem 0 1.25rem;
+}
+
+.intro {
+  font-family: "Quicksand", sans-serif;
+  color: var(--text);
+  margin: 0 0 1.5rem;
+}
+
+.policy-section {
+  margin-top: 1.5rem;
+}
+
+.policy-section h2 {
+  font-size: 1.3rem;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.policy-section p {
+  font-family: "Quicksand", sans-serif;
+  color: var(--text);
+  margin: 0;
+}
+
+.intro :global(a),
+.policy-section :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+</style>

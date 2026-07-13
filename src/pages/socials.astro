@@ -2,6 +2,7 @@
 import { parse } from "yaml";
 import socialsRaw from "../data/socials.yaml?raw";
 import "../styles/global.css";
+import { getCollection } from "astro:content";
 
 type LinkEntry = { name: string; href: string; icon: string; newTab?: boolean };
 type SocialsConfig = {
@@ -12,8 +13,8 @@ type SocialsConfig = {
 
 const { icons, socials, contacts } = parse(socialsRaw) as SocialsConfig;
 
-const title = "Socials — Lili's Crochethings";
-const description = "Follow Lili's Crochethings on social media and find all the ways to get in touch.";
+const pagesEntry = (await getCollection("pages"))[0];
+const { title, description } = pagesEntry.data.socials;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
 ---
@@ -107,7 +108,7 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
   .brand {
     font-size: 2rem;
     text-align: center;
-    color: var(--primary-text);
+    color: var(--primary);
     margin: 0 0 0.5rem;
   }
 
@@ -131,7 +132,7 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
 
   .section-title {
     font-size: 1.5rem;
-    color: var(--primary-text);
+    color: var(--primary);
     margin: 1rem 0 0.25rem;
   }
 
@@ -151,14 +152,20 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
     padding: 0.7rem 1rem;
     border-radius: 999px;
     color: var(--text);
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.2 * var(--shadow-alpha-scale)));
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
+  /* Hover shadow uses --inner-shadow-color/--inner-hover-blur-scale (not the
+     plain --shadow-color/--shadow-alpha-scale the resting shadow above
+     uses) — those are pinned to black/0 in dark mode so this reads as
+     "nothing" at rest there, but hovering it should still give some
+     visible feedback: a tight white glow, same as inner tiles get. */
   .link-pill:hover {
     transform: scale(1.03);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 calc(8px * var(--inner-hover-blur-scale, 1)) calc(20px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
   }
 
   .badge {

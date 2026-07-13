@@ -1,16 +1,17 @@
 ---
 import { toThumb } from "../../lib/images";
 
-const { image, alt, index } = Astro.props as {
+const { image, alt, index, href } = Astro.props as {
   image: string;
   alt: string;
   index: number;
+  href: string;
 };
 ---
 
-<button type="button" class="tile" data-gallery-index={index} aria-label={`View ${alt}`}>
+<a href={href} class="tile" data-gallery-index={index} aria-label={`View ${alt}`}>
   <img src={toThumb(image)} alt={alt} loading="lazy" decoding="async" />
-</button>
+</a>
 
 <style>
 .tile {
@@ -22,9 +23,11 @@ const { image, alt, index } = Astro.props as {
   background: none;
   font: inherit;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
   cursor: var(--cursor-pointer);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -36,8 +39,13 @@ const { image, alt, index } = Astro.props as {
   object-fit: cover;
 }
 
+/* Hover shadow uses --inner-shadow-color/--inner-hover-blur-scale (not the
+   plain --shadow-color/--shadow-alpha-scale the resting shadow above uses)
+   — those are pinned to black/0 in dark mode so this tile reads as
+   "nothing" at rest there, but hovering it should still give some visible
+   feedback: a tight white glow, same as inner tiles get. */
 .tile:hover {
   transform: scale(1.04);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
 }
 </style>

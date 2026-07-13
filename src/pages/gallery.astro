@@ -4,8 +4,7 @@ import GalleryImage from '../components/gallery/GalleryImage.astro';
 import LightboxChrome from '../components/LightboxChrome.astro';
 import LightboxStage from '../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
-import { getEffectiveTags, getTagLabel } from "../lib/tags";
-import { stripDescriptionLinks } from "../lib/description";
+import { getEffectiveTags, getTagChipData, getCreationAlt } from "../lib/tags";
 
 const creations = (await getCollection("creations")).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
@@ -17,21 +16,29 @@ const taxonomy = taxonomyEntry.data.tags;
 const typesEntry = (await getCollection("types"))[0];
 const typesTaxonomy = typesEntry.data.types;
 
+const pagesEntry = (await getCollection("pages"))[0];
+const pageMeta = pagesEntry.data.gallery;
+
 const items = creations.flatMap((creation) => {
   const effectiveTags = getEffectiveTags(creation.data.tags, taxonomy);
-  const typeLabels = [creation.data.type, ...(creation.data.subtypes ?? [])].map((id) => getTagLabel(id, typesTaxonomy));
-  const tagLabels = [...typeLabels, ...effectiveTags.map((id) => getTagLabel(id, taxonomy))];
+  const typeChips = [creation.data.type, ...(creation.data.subtypes ?? [])].map((id) => getTagChipData(id, typesTaxonomy));
+  const tagChips = [...typeChips, ...effectiveTags.map((id) => getTagChipData(id, taxonomy))];
 
-  return creation.data.images.map((image) => ({
+  const creationAlt = getCreationAlt(creation.data.title, creation.data.type, creation.data.subtypes, typesTaxonomy);
+
+  return creation.data.images.map((image, i) => ({
     image,
     title: creation.data.title,
+    alt: creation.data.images.length > 1
+      ? `${creationAlt} — photo ${i + 1} of ${creation.data.images.length}`
+      : creationAlt,
     href: `/creations/${creation.id}`,
     difficulty: creation.data.difficulty ?? null,
     dateLabel: creation.data.date ? creation.data.date.toLocaleDateString() : null,
     hoursSpent: creation.data.hoursSpent ?? null,
     hookSize: creation.data.hookSize ?? null,
-    description: stripDescriptionLinks(creation.data.description ?? ""),
-    tags: tagLabels,
+    description: creation.data.description.text,
+    tagChips,
   }));
 });
 
@@ -41,14 +48,14 @@ const items = creations.flatMap((creation) => {
 const itemsJson = JSON.stringify(items).replace(/</g, "\\u003c");
 ---
 <BaseLayout
-  title="Gallery"
-  description="Browse every photo of Lili's finished crochet creations — bags, amigurumi, blankets, and more handmade pieces."
+  title={pageMeta.title}
+  description={pageMeta.description}
 >
   <h1>Gallery</h1>
 
   <div class="grid">
     {items.map((item, index) => (
-      <GalleryImage image={item.image} alt={item.title} index={index} />
+      <GalleryImage image={item.image} alt={item.alt} index={index} href={item.href} />
     ))}
   </div>
 
@@ -67,15 +74,15 @@ const itemsJson = JSON.stringify(items).replace(/</g, "\\u003c");
       <div class="info-tags" id="gallery-info-tags"></div>
       <ul class="info-meta" id="gallery-info-meta">
         <li class="meta-date">
-          <span class="icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+          <span class="icon mask-icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
           <span id="gallery-info-date"></span>
         </li>
         <li class="meta-hours">
-          <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
+          <span class="icon mask-icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
           <span id="gallery-info-hours"></span>
         </li>
         <li class="meta-hook">
-          <span class="icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
+          <span class="icon mask-icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
           <span id="gallery-info-hook"></span>
         </li>
       </ul>
@@ -205,7 +212,7 @@ h1 {
   height: 100%;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 calc(8px * var(--shadow-blur-scale, 1)) calc(30px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.5 * var(--shadow-alpha-scale)));
 }
 
 .stage-frame img {
@@ -220,9 +227,10 @@ h1 {
   flex: 0 1 380px;
   min-width: 260px;
   max-width: 380px;
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.5 * var(--shadow-alpha-scale)));
   padding: 2rem;
 }
 
@@ -258,12 +266,6 @@ h1 {
   height: 20px;
   flex-shrink: 0;
   background-color: var(--primary);
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
 }
 
 .info-description {
@@ -293,7 +295,7 @@ h1 {
   align-items: center;
   gap: 0.4rem;
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.95rem;
@@ -310,7 +312,7 @@ h1 {
 
 .info-cta:hover {
   transform: scale(1.05);
-  background: var(--primary-text);
+  background: var(--primary);
 }
 
 /* Shared "stacked" layout: mobile and iPad portrait put the image on top
@@ -464,6 +466,8 @@ h1 {
 
 <script>
   import { initLightboxChrome } from "../lib/lightboxChrome";
+  import { renderTagChip, type TagChipData } from "../lib/chips";
+  import { DIFFICULTY_LABELS } from "../lib/difficulty";
 
   const overlay = document.getElementById("gallery-modal");
   const modalImg = document.getElementById("gallery-modal-img") as HTMLImageElement;
@@ -476,24 +480,23 @@ h1 {
   const infoHook = document.getElementById("gallery-info-hook") as HTMLElement;
   const infoDescription = document.getElementById("gallery-info-description") as HTMLElement;
   const infoTags = document.getElementById("gallery-info-tags") as HTMLElement;
-  const grid = document.querySelector(".grid");
+  const grid = document.querySelector<HTMLElement>(".grid");
 
   type GalleryItem = {
     image: string;
     title: string;
+    alt: string;
     href: string;
     difficulty: string | null;
     dateLabel: string | null;
     hoursSpent: number | null;
     hookSize: string | null;
     description: string;
-    tags: string[];
+    tagChips: TagChipData[];
   };
 
   const dataEl = document.getElementById("gallery-data");
   const items: GalleryItem[] = dataEl?.textContent ? JSON.parse(dataEl.textContent) : [];
-
-  const DIFFICULTY_LABELS: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
   function updateInfoCard(index: number) {
     const item = items[index];
@@ -522,7 +525,7 @@ h1 {
     infoDescription.hidden = !item.description;
     infoDescription.textContent = item.description;
 
-    infoTags.innerHTML = item.tags.map((tag) => `<span class="tag-chip">${tag}</span>`).join("");
+    infoTags.innerHTML = item.tagChips.map((tag) => renderTagChip(tag)).join("");
   }
 
   const chrome = overlay && stageFrame
@@ -530,7 +533,7 @@ h1 {
         overlay,
         frame: stageFrame,
         img: modalImg,
-        items: items.map((item) => ({ src: item.image, alt: item.title })),
+        items: items.map((item) => ({ src: item.image, alt: item.alt })),
         onChange: updateInfoCard,
       })
     : null;
@@ -538,6 +541,12 @@ h1 {
   grid?.addEventListener("click", (e) => {
     const tile = (e.target as HTMLElement).closest<HTMLElement>("[data-gallery-index]");
     if (!tile) return;
+    // Tiles are real <a href="/creations/..."> links now (so crawlers and
+    // no-JS visitors can still reach each creation's page directly) — only
+    // hijack a plain click into opening the lightbox. Ctrl/Cmd/Shift+click
+    // falls through to the browser's native "open in new tab" behavior.
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
     const index = Number(tile.dataset.galleryIndex);
     chrome?.open(index);
   });

@@ -8,8 +8,7 @@ import LightboxChrome from '../../components/LightboxChrome.astro';
 import LightboxStage from '../../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
 import { resolveYarn } from "../../lib/yarn";
-import { getEffectiveTags } from "../../lib/tags";
-import { descriptionToHtml } from "../../lib/description";
+import { getEffectiveTags, getCreationAlt, getTagLabel } from "../../lib/tags";
 
 export async function getStaticPaths() {
   const SIMILAR_LIMIT = 4;
@@ -128,6 +127,13 @@ const PLATFORM_ICONS: Record<string, string> = {
 // no background tile to round.
 const ROUNDED_PLATFORMS = new Set(["etsy"]);
 
+// These two are plain single-color glyphs, not real brand artwork (unlike
+// Etsy/YouTube/Instagram/Pinterest/Facebook/TikTok, which ship their own
+// multi-color logo and must render as-is) — rendered via mask-icon +
+// var(--primary) instead of a plain <img> so they stay in sync with theme
+// changes rather than being frozen at whatever color is baked into the file.
+const MASK_TINTED_PLATFORMS = new Set(["pattern", "website"]);
+
 const taxonomyEntry = (await getCollection("tags"))[0];
 const taxonomy = taxonomyEntry.data.tags;
 const effectiveTags = getEffectiveTags(data.tags, taxonomy);
@@ -138,6 +144,7 @@ const siteName = generalEntry.data.name;
 const typesEntry = (await getCollection("types"))[0];
 const typesTaxonomy = typesEntry.data.types;
 const typeChipIds = [data.type, ...(data.subtypes ?? [])];
+const creationAlt = getCreationAlt(data.title, data.type, data.subtypes, typesTaxonomy);
 
 const yarnTiles = (data.yarn ?? [])
   .map((y) => resolveYarn(y, yarnLines))
@@ -152,11 +159,35 @@ function isWhite(hex?: string): boolean {
   return clean === "fff" || clean === "ffffff";
 }
 
-const pageDescription = data.description || (
-  firstItem
-    ? `A handmade ${craftType} ${data.title}, made using the "${firstItem.name}" pattern${firstPattern?.creator ? ` by ${firstPattern.creator}` : ""}. Part of Lili's Crochethings' collection of handmade creations.`
-    : `A handmade ${craftType} ${data.title} by Lili's Crochethings.`
-);
+const baseDescription = data.description.text || `A handmade ${craftType} ${data.title} by Lili's Crochethings.`;
+
+// The site is branded "Crochethings," so a hand-written description that
+// never happens to say "embroidery" (most don't spell out the craft at all,
+// they're just describing the piece) leaves Google assuming crochet by
+// default — genuinely wrong for the cross-stitch pieces. Stated every time,
+// not just in the no-description fallback above.
+const typeLabels = typeChipIds.map((id) => getTagLabel(id, typesTaxonomy));
+const craftDescription = `Craft: ${typeLabels.join(", ")}.`;
+const tagLabels = effectiveTags.map((id) => getTagLabel(id, taxonomy));
+
+// Stated every time (not just the no-description fallback) so a pattern's
+// own name and designer are always exposed here — that alone often already
+// carries a searchable term (see Little Biscuit's "Corgi Puppy") without it
+// having to be retyped into searchTerms too.
+const patternDescription = firstItem
+  ? `Pattern: "${firstItem.name}"${firstPattern?.creator ? ` by ${firstPattern.creator}` : ""}.`
+  : null;
+
+// searchTerms exist specifically for terms nothing else here already covers
+// (a nickname, a broader category word) — append them rather than relying
+// on prose to naturally mention every one.
+const pageDescription = [
+  baseDescription,
+  craftDescription,
+  patternDescription,
+  tagLabels.length ? `Tags: ${tagLabels.join(", ")}.` : null,
+  data.searchTerms?.length ? `Also known as: ${data.searchTerms.join(", ")}.` : null,
+].filter(Boolean).join(" ");
 
 const creativeWorkSchema = {
   "@context": "https://schema.org",
@@ -167,21 +198,54 @@ const creativeWorkSchema = {
   ...(data.date ? { dateCreated: data.date.toISOString().slice(0, 10) } : {}),
   ...(firstPattern?.creator ? { creator: { "@type": "Person", name: firstPattern.creator, ...(firstPattern.creatorLink ? { url: new URL(firstPattern.creatorLink, Astro.site).toString() } : {}) } } : {}),
   ...(firstItem ? { about: firstItem.name } : {}),
+  ...(data.searchTerms?.length ? { alternateName: data.searchTerms } : {}),
+  genre: typeLabels,
+  ...(tagLabels.length ? { keywords: tagLabels } : {}),
 };
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: new URL("/", Astro.site).toString() },
+    { "@type": "ListItem", position: 2, name: "Creations", item: new URL("/creations", Astro.site).toString() },
+    { "@type": "ListItem", position: 3, name: data.title, item: Astro.url.toString() },
+  ],
+};
+
+// The <title> tag is the single strongest on-page signal for what a page
+// ranks for — a search like "Leafeon snuggler" needs "Snuggler" to actually
+// appear in it, not just in the meta description, or Google has much less
+// reason to surface this page over the homepage for that query.
+// Only the first searchTerm goes in the title, though — this same string is
+// reused for og:title/twitter:title, so it's what shows up as the browser
+// tab, the bookmark name, the headline in Google results, and the bold
+// headline on every Discord/Slack/iMessage link preview. Stacking every
+// searchTerm in there would clutter all of those; the full list still gets
+// exposed via the meta description and JSON-LD alternateName below, neither
+// of which renders as prominently.
+const pageTitle = data.searchTerms?.length ? `${data.title} (${data.searchTerms[0]})` : data.title;
 ---
 <BaseLayout
-  title={data.title}
+  title={pageTitle}
   description={pageDescription}
   image={data.images[0]}
 >
   <script type="application/ld+json" is:inline set:html={JSON.stringify(creativeWorkSchema)} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbSchema)} />
 
-  <a class="back-link" id="back-link" href="/creations">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5 8 12l7 7"/></svg>
-    Back
-  </a>
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+    <a href="/creations">Creations</a>
+    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+    <span aria-current="page">{data.title}</span>
+  </nav>
 
   <h1>{data.title}</h1>
+  {data.searchTerms?.length && (
+    <p class="also-known-as">{data.searchTerms.join(" · ")}</p>
+  )}
 
   <div class="layout">
     <div class="col-left">
@@ -189,15 +253,21 @@ const creativeWorkSchema = {
       <h2>Images</h2>
       <div class="gallery">
         {data.images.map((image, i) => (
-          <img src={image} alt={data.title} class="gallery-thumb" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+          <img
+            src={image}
+            alt={data.images.length > 1 ? `${creationAlt} — photo ${i + 1} of ${data.images.length}` : creationAlt}
+            class="gallery-thumb"
+            loading={i === 0 ? "eager" : "lazy"}
+            decoding="async"
+          />
         ))}
       </div>
     </div>
 
-    {data.description && (
+    {data.description.text && (
       <div class="card card-description">
         <h2>Description</h2>
-        <p class="description-text" set:html={descriptionToHtml(data.description)} />
+        <p class="description-text" set:html={data.description.html} />
       </div>
     )}
 
@@ -249,19 +319,19 @@ const creativeWorkSchema = {
       <ul class="info-list">
         {data.date && (
           <li>
-            <span class="icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+            <span class="icon mask-icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
             {data.date.toLocaleDateString()}
           </li>
         )}
         {data.hoursSpent && (
           <li>
-            <span class="icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
+            <span class="icon mask-icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
             {data.hoursSpent < 1 ? `${Math.round(data.hoursSpent * 60)}m` : `${data.hoursSpent}h`}
           </li>
         )}
         {data.hookSize && (
           <li>
-            <span class="icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
+            <span class="icon mask-icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
             {data.hookSize}
           </li>
         )}
@@ -288,7 +358,7 @@ const creativeWorkSchema = {
             <div class="credit-name">
               {group.creator === siteName
                 ? <img class="icon credit-logo" src="/images/Lilis-Crochethings-thumb.webp" alt="" />
-                : <span class="icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>}
+                : <span class="icon mask-icon" style="mask-image: url(/images/icons/person.svg); -webkit-mask-image: url(/images/icons/person.svg);"></span>}
               {group.creator
                 ? (group.creatorLink
                   ? <SmartLink href={group.creatorLink}>{group.creator}</SmartLink>
@@ -304,11 +374,23 @@ const creativeWorkSchema = {
                 // An explicit platform (if self-published somewhere later)
                 // still wins over this.
                 const platform = item.platform ?? (group.creator === siteName ? "pattern" : "website");
-                const icon = (
+                // "pattern"/"website" are plain single-color glyphs (not real
+                // brand artwork like Etsy/YouTube/etc.), so they're tinted via
+                // the site's usual mask-icon + var(--primary) technique —
+                // otherwise they'd stay frozen at whatever color is baked
+                // into the SVG file, out of sync with dark mode's --primary.
+                const icon = MASK_TINTED_PLATFORMS.has(platform) ? (
+                  <span class="platform-icon-slot">
+                    <span
+                      class="platform-icon mask-icon"
+                      style={`mask-image:url(${PLATFORM_ICONS[platform]}); -webkit-mask-image:url(${PLATFORM_ICONS[platform]});`}
+                    ></span>
+                  </span>
+                ) : (
                   <span class="platform-icon-slot">
                     <img
                       class="platform-icon"
-                      class:list={{ rounded: ROUNDED_PLATFORMS.has(platform), "platform-icon-website": platform === "website" }}
+                      class:list={{ rounded: ROUNDED_PLATFORMS.has(platform) }}
                       src={PLATFORM_ICONS[platform]}
                       alt=""
                     />
@@ -338,7 +420,7 @@ const creativeWorkSchema = {
 
     {(data.instagramLink || data.facebookLink || data.pinterestLink) && (
       <div class="card card-socials">
-        <h2>View on</h2>
+        <h2>Save on</h2>
         <ul class="socials-list">
           {data.instagramLink && (
             <li>
@@ -374,7 +456,7 @@ const creativeWorkSchema = {
         <h2>See also</h2>
         <div class="similar-grid">
           {similar.map((c) => (
-            <CreationCard creation={c} />
+            <CreationCard creation={c} typesTaxonomy={typesTaxonomy} />
           ))}
         </div>
       </div>
@@ -393,19 +475,6 @@ const creativeWorkSchema = {
 
 <script>
   import { initLightboxChrome } from "../../lib/lightboxChrome";
-
-  // Same-origin referrer (any page, not just /creations or /gallery) means
-  // there's real history to go back to — e.g. arriving via a "See also"
-  // card from another creation should return to that creation, not jump
-  // to an overview page. Falls back to the plain /creations link below
-  // for direct visits, new tabs, or external referrers.
-  const backLink = document.getElementById("back-link") as HTMLAnchorElement;
-  if (document.referrer && new URL(document.referrer).origin === location.origin) {
-    backLink?.addEventListener("click", (e) => {
-      e.preventDefault();
-      history.back();
-    });
-  }
 
   const lightbox = document.getElementById("lightbox");
   const lightboxFrame = document.getElementById("lightbox-frame") as HTMLElement;
@@ -430,26 +499,37 @@ const creativeWorkSchema = {
 <style>
 @import "../../styles/breakpoints.css";
 
-.back-link {
-  font-family: "Lili Love", cursive;
-  display: inline-flex;
+.breadcrumbs {
+  display: flex;
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 1rem;
-  color: var(--primary-text);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+}
+
+.breadcrumbs a {
+  color: var(--primary);
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--primary);
   font-weight: bold;
-  font-size: 1.2rem;
 }
 
-.back-link svg {
-  width: 22px;
-  height: 22px;
+.breadcrumb-sep {
+  color: var(--muted-text);
 }
 
-@media (min-width: 1078px) {
-  .back-link {
-    margin-left: -28px;
-  }
+.also-known-as {
+  margin: -0.75rem 0 1.25rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  color: var(--primary);
 }
 
 .layout {
@@ -466,9 +546,10 @@ const creativeWorkSchema = {
 }
 
 .card {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
   padding: 1.5rem;
 }
 
@@ -497,8 +578,12 @@ const creativeWorkSchema = {
   margin: 0;
 }
 
-.description-text a {
-  color: var(--primary-text);
+/* description.html is injected via set:html (raw string content), so any
+   <a> inside never gets Astro's scoped-style data attribute — a plain
+   ".description-text a" selector silently fails to match it and this rule
+   never actually applied. */
+.description-text :global(a) {
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -546,7 +631,7 @@ const creativeWorkSchema = {
   display: flex;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 calc(8px * var(--shadow-blur-scale, 1)) calc(30px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.5 * var(--shadow-alpha-scale)));
 }
 
 .lightbox-frame img {
@@ -570,7 +655,7 @@ const creativeWorkSchema = {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: var(--primary-text);
+  color: var(--primary);
 }
 
 .socials-list a:hover {
@@ -596,13 +681,19 @@ const creativeWorkSchema = {
   gap: 1rem;
 }
 
+/* Nested inside the outer .card-yarn card. Light mode gives it its own
+   resting shadow same as always; dark mode drops that in favor of the
+   outline below, since a shadow nested inside the outer card's own shadow
+   doesn't read well there the way it does in light mode. */
 .yarn-tile {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
   color: inherit;
   text-decoration: none;
 }
@@ -614,7 +705,7 @@ const creativeWorkSchema = {
   justify-content: center;
   background: none;
   border: 1px solid var(--primary);
-  color: var(--primary-text);
+  color: var(--primary);
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.7rem;
@@ -625,15 +716,19 @@ const creativeWorkSchema = {
 }
 
 a.yarn-tile {
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Expanding on hover always gets a (bigger) shadow — in dark mode this is
+   the only shadow it ever shows, a white glow mimicking the light-mode
+   hover lift since a dark one wouldn't show up. */
 a.yarn-tile:hover {
   transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
 }
 
 div.yarn-tile .line-name {
-  color: gray;
+  color: var(--muted-text);
 }
 
 .yarn-titles {
@@ -667,7 +762,7 @@ div.yarn-tile .line-name {
 }
 
 .swatch-bordered {
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-muted);
 }
 
 .swatch img {
@@ -688,7 +783,7 @@ div.yarn-tile .line-name {
   clear: right;
   font-family: "Quicksand", sans-serif;
   font-size: 0.95rem;
-  color: var(--primary-text);
+  color: var(--primary);
 }
 
 .tags-row {
@@ -700,12 +795,6 @@ div.yarn-tile .line-name {
 
 .icon {
   display: inline-block;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
 }
 
 .info-list, .designer-list {
@@ -741,7 +830,7 @@ div.yarn-tile .line-name {
   gap: 0.6rem;
   font-size: 1.1rem;
   font-weight: bold;
-  color: var(--primary-text);
+  color: var(--primary);
 }
 
 .credit-name .icon {
@@ -820,11 +909,16 @@ div.yarn-tile .line-name {
   border-radius: 5px;
 }
 
-/* The globe glyph reads smaller than the brand logos at the same box size
-   (thin outline vs. solid logo mark), so it gets a slightly larger cap. */
-.platform-icon-website {
-  max-width: 24px;
-  max-height: 24px;
+/* Mask-tinted glyphs (pattern/website — see MASK_TINTED_PLATFORMS) are a
+   <span>, not an <img>, so they need an explicit size instead of the
+   width/height:auto + max-width/height cap above, which only works for an
+   image's own intrinsic aspect ratio. Same 20px as every other platform
+   icon — no special-casing needed once these are the site's own tintable
+   glyphs instead of externally-sized brand logos. */
+.platform-icon.mask-icon {
+  width: 20px;
+  height: 20px;
+  background-color: var(--primary);
 }
 
 .info-list li {
@@ -942,7 +1036,7 @@ div.yarn-tile .line-name {
     grid-template-columns: repeat(4, 1fr);
   }
 
-  /* Info, Pattern, and View on always share one row on iPad, placed above
+  /* Info, Pattern, and Save on always share one row on iPad, placed above
      the description. */
   .pattern-social-row {
     display: flex;

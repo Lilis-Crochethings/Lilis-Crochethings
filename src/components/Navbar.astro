@@ -7,8 +7,9 @@ const navItems = [
   { href: "/creations", label: "Creations" },
   { href: "/patterns", label: "Patterns" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/about", label: "About me" },
+  { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
+  { href: "/contact", label: "Contact" },
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -17,16 +18,23 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 <nav class="nav">
   <div class="nav-inner">
     <a class="logo" href="/">
-      <img src="/images/Lilis-Crochethings-thumb.webp" alt="Profile pic" />
+      <img src="/images/Lilis-Crochethings-thumb.webp" alt="Lili's Crochethings logo" />
       <p>{general.data.name}</p>
     </a>
 
     <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
-      <span class="icon icon-menu"></span>
+      <span class="icon icon-menu mask-icon"></span>
       <span class="icon-close">✕</span>
     </button>
 
     <ul class="nav-links" id="nav-links">
+      <li class="nav-links-brand">
+        <a class="nav-links-logo" href="/">
+          <img src="/images/Lilis-Crochethings-thumb.webp" alt="Lili's Crochethings logo" />
+          <p>{general.data.name}</p>
+        </a>
+      </li>
+
       {navItems.map(({ href, label }) => {
         const isActive = currentPath === href || currentPath.startsWith(`${href}/`);
         return (
@@ -38,7 +46,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     </ul>
 
     <div class="nav-search" id="nav-search">
-      <span class="search-icon" id="search-icon-toggle" aria-hidden="true"></span>
+      <span class="search-icon mask-icon" id="search-icon-toggle" aria-hidden="true"></span>
       <input
         type="search"
         id="site-search"
@@ -55,6 +63,10 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
       <button class="search-close" id="search-close" type="button" aria-label="Close search"></button>
       <div class="search-results" id="search-results" role="listbox" hidden></div>
     </div>
+
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Theme: Auto (matches system)" title="Theme: Auto (matches system)">
+      <span class="icon icon-theme mask-icon" aria-hidden="true"></span>
+    </button>
   </div>
 </nav>
 
@@ -112,8 +124,9 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
   if (resultsPanel) bindFaqResultCardClicks(resultsPanel);
 
   // On tablet/mobile the search box collapses to just this icon; clicking it
-  // expands the real input to fill the available space (see the ≤1024px /
-  // --mobile rules in <style>). No-op on desktop, where it's always expanded.
+  // expands the real input to fill the available space (see the
+  // --nav-collapse-search / --nav-mobile rules in <style>). No-op on
+  // desktop, where it's always expanded.
   function expandSearch() {
     navSearch?.classList.add("expanded");
     // preventScroll: the collapsed input is a valid focus target even before
@@ -248,6 +261,68 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
   });
 </script>
 
+<script>
+  type ThemePref = "auto" | "light" | "dark";
+
+  declare global {
+    interface Window {
+      __theme: {
+        get: () => ThemePref;
+        set: (pref: ThemePref) => void;
+      };
+    }
+  }
+
+  const CYCLE: ThemePref[] = ["auto", "light", "dark"];
+  const LABEL: Record<ThemePref, string> = {
+    auto: "Theme: Auto (matches system)",
+    light: "Theme: Light",
+    dark: "Theme: Dark",
+  };
+  const ICON: Record<ThemePref, string> = {
+    auto: "/images/icons/sun-moon-auto.svg",
+    light: "/images/icons/sun.svg",
+    dark: "/images/icons/moon.svg",
+  };
+  // Sun and auto both draw thin rays around a modest-sized core shape, which
+  // reads visually smaller than the moon's solid crescent at the same box
+  // size (same reasoning as the website/pattern icon fix elsewhere) — scaled
+  // up to compensate rather than resizing the shared icon box for all three.
+  const ICON_SCALE: Record<ThemePref, number> = {
+    auto: 1.25,
+    light: 1.2,
+    dark: 1,
+  };
+
+  // Two buttons share this same cycling behavior — the row one (next to
+  // search on desktop/tablet) and the copy inside the mobile hamburger menu
+  // — kept in sync by painting every match rather than a single element.
+  const themeToggles = document.querySelectorAll<HTMLButtonElement>(".theme-toggle");
+
+  function paintToggle(pref: ThemePref) {
+    themeToggles.forEach((toggle) => {
+      const icon = toggle.querySelector<HTMLElement>(".icon-theme");
+      if (icon) {
+        icon.style.maskImage = `url(${ICON[pref]})`;
+        icon.style.setProperty("-webkit-mask-image", `url(${ICON[pref]})`);
+        icon.style.setProperty("--icon-scale", String(ICON_SCALE[pref]));
+      }
+      toggle.setAttribute("aria-label", LABEL[pref]);
+      toggle.setAttribute("title", LABEL[pref]);
+    });
+  }
+
+  paintToggle(window.__theme.get());
+
+  themeToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const next = CYCLE[(CYCLE.indexOf(window.__theme.get()) + 1) % CYCLE.length];
+      window.__theme.set(next);
+      paintToggle(next);
+    });
+  });
+</script>
+
 <style>
   @import "../styles/breakpoints.css";
 
@@ -273,7 +348,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     align-items: center;
     gap: 0.5rem;
     text-decoration: none;
-    color: var(--primary-text);
+    color: var(--primary);
   }
 
   .logo p {
@@ -296,12 +371,41 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     padding: 0;
   }
 
+  /* Only ever shown inside the mobile hamburger overlay (see --nav-mobile
+     below) — on every wider tier .nav-links is a plain horizontal row of
+     text links, and this extra item would just look like a stray nav item
+     sitting among "Creations/Patterns/...". */
+  .nav-links-brand {
+    display: none;
+  }
+
+  .nav-links-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    color: var(--primary);
+    font-family: "Lili Love", cursive;
+    font-weight: bold;
+  }
+
+  .nav-links-logo img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .nav-links-logo p {
+    margin: 0;
+    font-size: 1.3rem;
+  }
+
   .nav-links a {
     font-family: "Lili Love", cursive;
     font-weight: normal;
     font-size: 1.1rem;
     text-decoration: none;
-    color: var(--primary-text);
+    color: var(--primary);
     /* Without this, a link like "About me" wraps onto two lines once the
        row gets tight (e.g. just above the --nav-collapse-search cutoff,
        where the search bar is still full-size and squeezing the row) —
@@ -331,12 +435,6 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     background-color: var(--primary);
     mask-image: url(/images/icons/search.svg);
     -webkit-mask-image: url(/images/icons/search.svg);
-    mask-repeat: no-repeat;
-    mask-position: center;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    -webkit-mask-size: contain;
     pointer-events: none;
     z-index: 1;
   }
@@ -347,7 +445,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     padding: 0.5rem 1rem 0.5rem 3rem;
     border: 1.5px solid var(--primary);
     border-radius: 999px;
-    background: white;
+    background: var(--surface);
     color: var(--text);
     font: inherit;
     font-family: "Quicksand", sans-serif;
@@ -423,8 +521,9 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     max-height: 70vh;
     overflow-y: auto;
     background: var(--background);
+    border: 1px solid var(--card-border);
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 calc(10px * var(--shadow-blur-scale, 1)) calc(30px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.18 * var(--shadow-alpha-scale)));
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
@@ -436,8 +535,47 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: none;
   }
 
+  /* .list-item's own shadow (global.css) is this site's usual "outer card"
+     treatment — inside the dropdown (itself already a card with its own
+     shadow), this one's an inner tile instead: its own (smaller) resting
+     shadow in light mode, outline-only at rest in dark mode, same as every
+     other inner tile. Both re-declared explicitly (not just relying on
+     global.css's own rules) since equal specificity plus no :hover
+     exclusion on the resting rule would otherwise make cascade order
+     decide which one wins. */
   .search-results :global(.list-item) {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+    border-color: var(--border-muted);
+  }
+
+  .search-results :global(.list-item:hover) {
+    box-shadow: 0 calc(10px * var(--inner-hover-blur-scale, 1)) calc(24px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 21px;
+    height: 21px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: var(--cursor-pointer);
+    /* Pulls the toggle closer to the search box than the row's general
+       2.5rem gap would give it — every other pair of siblings still gets
+       the full gap, only this one edge is tightened. Reset back to 0 at
+       narrower tiers below, where the row's own gap is already much
+       smaller and doesn't need the same correction. */
+    margin-left: -1.25rem;
+  }
+
+  .theme-toggle .icon-theme {
+    width: 21px;
+    height: 21px;
+    background-color: var(--primary);
+    transform: scale(var(--icon-scale, 1));
   }
 
   .hamburger {
@@ -454,12 +592,6 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     width: 21px;
     height: 21px;
     background-color: var(--primary);
-    mask-repeat: no-repeat;
-    mask-position: center;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    -webkit-mask-size: contain;
   }
 
   .icon-menu {
@@ -471,7 +603,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: none;
     font-size: 1.8rem;
     line-height: 1;
-    color: var(--primary-text);
+    color: var(--primary);
   }
 
   .hamburger.open .icon-menu {
@@ -489,6 +621,19 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     .logo p {
       display: none;
     }
+
+    /* Without the wordmark, the desktop 2.5rem gap leaves an oversized gap
+       between the logo icon and the nav links — tighten it now that it's
+       just an icon, pulling the links closer to the logo. */
+    .nav-inner {
+      gap: 1.5rem;
+    }
+
+    /* This tier's own 1.5rem gap is already tight enough — the desktop-only
+       correction above would over-tighten it further. */
+    .theme-toggle {
+      margin-left: 0;
+    }
   }
 
   /* Narrower iPad range: the search bar itself now collapses to an icon
@@ -502,10 +647,17 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
       gap: 1.25rem;
     }
 
+    /* This tier's own 1.25rem gap is already tight enough — the
+       desktop-only correction above would over-tighten it further. */
+    .theme-toggle {
+      margin-left: 0;
+    }
+
     /* Tighter than the desktop 2rem — at the narrow end of this tier
-       (just above the --mobile cutoff) the expanded search box below needs
-       room to grow into without overlapping these links, and desktop's
-       roomier gap isn't visible here anyway to make the trade-off felt. */
+       (just above the --nav-mobile cutoff) the expanded search box below
+       needs room to grow into without overlapping these links, and
+       desktop's roomier gap isn't visible here anyway to make the
+       trade-off felt. */
     .nav-links {
       gap: 1rem;
     }
@@ -547,7 +699,7 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
       right: 1.25rem;
       transform: translateY(-50%);
       margin-left: 0;
-      width: min(300px, calc(100vw - 29rem));
+      width: min(300px, calc(100vw - 33rem));
       max-width: none;
       transition: width 0.25s ease;
     }
@@ -560,13 +712,35 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     .nav-search.expanded .search-close {
       display: block;
     }
+
+    /* Expanded search is anchored to this same right edge (right: 1.25rem,
+       above), which is exactly where the toggle normally sits — hide it
+       while searching rather than let the two overlap. */
+    .nav-inner:has(.nav-search.expanded) .theme-toggle {
+      display: none;
+    }
   }
 
-  /* Mobile */
-  @media (--mobile) {
+  /* Mobile (nav-specific threshold — see --nav-mobile in breakpoints.css) */
+  @media (--nav-mobile) {
     .nav-inner {
       flex-wrap: nowrap;
       gap: 0.75rem;
+    }
+
+    /* .nav-links becomes a full-screen overlay (z-index: 1000, see below)
+       that would otherwise cover the logo — same reason .hamburger already
+       carries a z-index, since it needs to stay clickable to close the menu.
+       Flex items honor z-index without needing position: relative/absolute.
+       Hidden (not just covered) once the menu is open — the toggle takes
+       its slot instead, see below — since a home link is already reachable
+       from inside the open menu (.nav-links-brand). */
+    .logo {
+      z-index: 1001;
+    }
+
+    body.nav-open .logo {
+      display: none;
     }
 
     .hamburger {
@@ -586,6 +760,21 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     .nav-search {
       order: 2;
       margin-left: auto;
+    }
+
+    /* The row's own toggle (next to search on every wider tier) is hidden
+       until the menu opens, at which point it takes over the logo's slot
+       (top-left, same z-index-over-the-overlay trick) instead of sitting
+       next to search — order: -1 puts it first regardless of its actual
+       DOM position between nav-search and the closing tag. */
+    .nav-inner > .theme-toggle {
+      display: none;
+      order: -1;
+      z-index: 1001;
+    }
+
+    body.nav-open .nav-inner > .theme-toggle {
+      display: flex;
     }
 
     /* Undo the tablet rule's position:absolute + transform: a transformed
@@ -641,6 +830,10 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     .nav-links.open {
       visibility: visible;
       opacity: 1;
+    }
+
+    .nav-links-brand {
+      display: flex;
     }
   }
 </style>

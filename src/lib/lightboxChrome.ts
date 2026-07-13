@@ -56,18 +56,20 @@ export function initLightboxChrome(refs: LightboxChromeRefs): LightboxChromeCont
   });
 
   let savedScrollY = 0;
+  // A history entry is pushed on open so the mobile browser/OS back button
+  // closes the lightbox instead of leaving the page — popstate fires either
+  // way (hardware back button, browser back gesture, or our own close()
+  // below calling history.back() to pop the entry again), so closeVisuals
+  // is the one place that actually tears the modal down, and historyPushed
+  // just tracks who still owes a history.back() call.
+  // Touch-only: a desktop mouse user has a visible forward button that would
+  // do nothing once the popped entry is behind them, which reads as broken.
+  // Touch back gestures/buttons don't expose an equivalent forward affordance,
+  // so there's nothing to look "stuck" there.
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+  let historyPushed = false;
 
-  function open(index: number) {
-    nav.show(index);
-    refs.overlay.classList.add("open");
-    document.body.classList.add("nav-open");
-    savedScrollY = window.scrollY;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${savedScrollY}px`;
-    document.body.style.width = "100%";
-  }
-
-  function close() {
+  function closeVisuals() {
     refs.overlay.classList.remove("open");
     document.body.classList.remove("nav-open");
     document.body.style.position = "";
@@ -75,6 +77,40 @@ export function initLightboxChrome(refs: LightboxChromeRefs): LightboxChromeCont
     document.body.style.width = "";
     window.scrollTo(0, savedScrollY);
   }
+
+  function open(index: number) {
+    const alreadyOpen = refs.overlay.classList.contains("open");
+    nav.show(index);
+    if (alreadyOpen) return;
+
+    refs.overlay.classList.add("open");
+    document.body.classList.add("nav-open");
+    savedScrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = "100%";
+
+    if (isTouchDevice) {
+      history.pushState({ lightboxOpen: true }, "");
+      historyPushed = true;
+    }
+  }
+
+  function close() {
+    if (!refs.overlay.classList.contains("open")) return;
+    closeVisuals();
+    if (historyPushed) {
+      historyPushed = false;
+      history.back();
+    }
+  }
+
+  window.addEventListener("popstate", () => {
+    if (historyPushed) {
+      historyPushed = false;
+      closeVisuals();
+    }
+  });
 
   refs.overlay.addEventListener("click", close);
   stage.addEventListener("click", (e) => e.stopPropagation());

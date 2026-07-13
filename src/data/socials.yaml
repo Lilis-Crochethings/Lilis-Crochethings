@@ -31,8 +31,8 @@ socials:
     icon: facebook
 
 contacts:
-  - name: Mail
-    href: mailto:lilis.crochethings@gmail.com
+  - name: Contact form
+    href: /contact
     icon: mail
   - name: Messenger
     href: https://www.messenger.com/t/465517986647818

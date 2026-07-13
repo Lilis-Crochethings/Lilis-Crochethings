@@ -7,12 +7,19 @@
 @custom-media --tablet-only (min-width: 651px) and (max-width: 1024px);
 @custom-media --desktop-up (min-width: 1025px);
 
-/* Nav-specific, split into two independent thresholds rather than one
+/* Nav-specific, split into three independent thresholds rather than one
    combined tier — the wordmark alone frees up enough room to hold off
    collapsing the search bar to an icon until a good deal narrower:
-     >1085          full navbar (wordmark, expanded search bar)
-     851px–1085px   wordmark hidden, search bar still expanded
-     651px–850px    search also collapses to an icon (nav links still text)
-     ≤650px (--mobile) nav links move into the hamburger menu too */
-@custom-media --nav-hide-wordmark (max-width: 1085px);
-@custom-media --nav-collapse-search (max-width: 850px);
+     >1180          full navbar (wordmark, expanded search bar)
+     926px–1180px   wordmark hidden, search bar still expanded
+     751px–925px    search also collapses to an icon (nav links still text)
+     ≤750px (--nav-mobile) nav links move into the hamburger menu too
+   1180, 925, and 750 (not round numbers) match real-device widths where
+   the 6-item nav row starts crowding the expanded search box — see
+   Navbar.astro. --nav-mobile is deliberately its own threshold rather than
+   reusing the site-wide --mobile (650px) below — this only ever gates
+   Navbar.astro's own hamburger-mode styles, so moving it doesn't affect
+   every other page's card-stacking breakpoint. */
+@custom-media --nav-hide-wordmark (max-width: 1180px);
+@custom-media --nav-collapse-search (max-width: 925px);
+@custom-media --nav-mobile (max-width: 750px);

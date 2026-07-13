@@ -1,7 +1,8 @@
 import { escapeHtml, highlight } from "./search";
 import { isExternalLink } from "./links";
 
-export type FaqQuestion = { question: string; answer: string };
+export type FaqVideo = { url: string; title: string; creator?: string };
+export type FaqQuestion = { question: string; answer: string; videos?: FaqVideo[] };
 export type FaqCategory = { id: string; title: string; questions: FaqQuestion[] };
 
 export function getFaqQuestionId(categoryId: string, index: number): string {

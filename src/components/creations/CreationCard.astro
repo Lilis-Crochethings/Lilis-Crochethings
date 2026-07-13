@@ -1,14 +1,16 @@
 ---
 import TileCarousel from "../TileCarousel.astro";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
 
-const { creation } = Astro.props as {
+const { creation, typesTaxonomy } = Astro.props as {
   creation: any;
+  typesTaxonomy: TagCategory[];
 };
 ---
 
 <TileCarousel
   images={creation.data.images}
-  alt={creation.data.title}
+  alt={getCreationAlt(creation.data.title, creation.data.type, creation.data.subtypes, typesTaxonomy)}
   href={`/creations/${creation.id}`}
 />
 
@@ -22,22 +24,30 @@ const { creation } = Astro.props as {
    button transform, in particular) otherwise out-specifies a plain
    :global() class selector regardless of source order — unlike the
    lightbox pages, there's no natural per-instance id here to scope by
-   instead (many tiles share one page). */
+   instead (many tiles share one page). This component is only ever used
+   inside creations/[slug].astro's .card-similar. Light mode gives it its
+   own resting shadow same as always; dark mode drops that
+   (--inner-rest-shadow-scale: 0) in favor of the outline below, since a
+   shadow-on-shadow card-in-a-card doesn't read well there the way it does
+   in light mode. Expanding on hover always gets a (bigger) shadow — in
+   dark mode this is the only shadow it ever shows, a white glow mimicking
+   the light-mode hover lift since a dark one wouldn't show up. */
 :global(.tile-carousel) {
   /* On its own container (not just the <img>) so this box keeps a stable
      height even mid-slide, when the sliding image pair goes
      position:absolute and would otherwise collapse an aspect-ratio set
      only on them — see the height-chaining comment in TileCarousel.astro. */
   aspect-ratio: 1 / 1 !important;
+  border: 1px solid var(--border-muted) !important;
   border-radius: 16px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale))) !important;
   overflow: hidden !important;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
 :global(.tile-carousel:hover) {
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2) !important;
   transform: scale(1.04) !important;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Slide-in-on-hover only makes sense where hover is a real, mouse-driven

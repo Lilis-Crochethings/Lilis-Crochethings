@@ -4,7 +4,7 @@ import AboutCard from '../components/main/AboutCard.astro';
 import CreationsCard from '../components/main/CreationsCard.astro';
 import GalleryCard from '../components/main/GalleryCard.astro';
 import { getCollection } from 'astro:content';
-import { getEffectiveTags } from '../lib/tags';
+import { getEffectiveTags, getCreationAlt } from '../lib/tags';
 
 const allCreations = (await getCollection('creations')).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
@@ -29,23 +29,50 @@ const creationPreviews = allCreations.slice(0, 4).map((creation) => ({
 // seamless-loop duplicate), which only gets worse as the collection grows.
 const MARQUEE_IMAGES_PER_CREATION = 2;
 const galleryImages = allCreations.flatMap((creation) =>
-  creation.data.images.slice(0, MARQUEE_IMAGES_PER_CREATION).map((image) => ({ image, title: creation.data.title }))
+  creation.data.images.slice(0, MARQUEE_IMAGES_PER_CREATION).map((image) => ({
+    image,
+    alt: getCreationAlt(creation.data.title, creation.data.type, creation.data.subtypes, typesTaxonomy),
+  }))
 );
+
+// Lets Google optionally show a search box directly under the site's search
+// result (a "sitelinks search box"), letting people search the site without
+// leaving Google first. Google decides whether to actually render it — this
+// just makes it possible. Belongs on the homepage specifically, not every
+// page, per Google's own guidance for this markup.
+const generalEntry = (await getCollection('general'))[0];
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.home;
+
+const aboutEntry = (await getCollection('about'))[0];
+const { summaryBio } = aboutEntry.data;
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  url: Astro.site?.toString(),
+  name: generalEntry.data.name,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${new URL("/search", Astro.site)}?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
 ---
 
 <BaseLayout
-  description="Lili's Crochethings — handmade crochet bags, amigurumi, and blankets, plus free interactive crochet patterns to make your own."
+  description={pageMeta.description}
 >
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(websiteSchema)} />
 
 <div class="home-stack">
 <AboutCard
   name="Lili"
-  bio={[
-    "Hi, I'm Lili and I found my love for crochet in the summer of 2023. I then started to share my crochet pieces on Instagram and have been expanding my socials since.",
-    "You can take a look around on my website where you can find my creations and my patterns. They're specially designed to be interactive on the web.",
-    "If you like my stuff, you can give me a follow on my socials.",
-    "However, currently the site is still work in progress...",
-  ]}
+  bio={summaryBio}
   image="/images/Lilis-Crochethings-thumb.webp"
 />
 

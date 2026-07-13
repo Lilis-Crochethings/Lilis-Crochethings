@@ -1,0 +1,33 @@
+home:
+  description: "Lili's Crochethings — handmade crochet items like bags, amigurumi, and cross-stitch pieces. Browse the full collection, with free interactive patterns on the way."
+about:
+  title: "About"
+  description: "Meet Lili, the crocheter behind Lili's Crochethings — her story, her craft, and how she started sharing her creations."
+patterns:
+  title: "Patterns"
+  description: "Free crochet patterns from Lili's Crochethings, coming soon — interactive, easy-to-follow instructions for bags, amigurumi, and more."
+gallery:
+  title: "Gallery"
+  description: "Browse every photo of Lili's finished crochet and cross-stitch creations — bags, amigurumi, and more handmade pieces."
+creations:
+  title: "Creations"
+  description: "Browse Lili's finished crochet and cross-stitch creations — bags, amigurumi, and more handmade pieces."
+faq:
+  title: "FAQ"
+  description: "Frequently asked questions about Lili's Crochethings — patterns, crochet help, and using the website."
+socials:
+  # socials.astro builds its own <head> instead of using BaseLayout, so
+  # unlike every other page's title here, this one is the complete <title>
+  # tag text already — BaseLayout's " — Lili's Crochethings" auto-suffix
+  # doesn't apply to it.
+  title: "Socials — Lili's Crochethings"
+  description: "Follow Lili's Crochethings on social media and find all the ways to get in touch."
+contact:
+  title: "Contact"
+  description: "Get in touch with Lili's Crochethings — send a message, or reach out on Messenger or Instagram."
+contactThanks:
+  title: "Message sent"
+  description: "Your message to Lili's Crochethings was sent successfully."
+privacy:
+  title: "Privacy Policy"
+  description: "What information Lili's Crochethings collects through the contact form, why, and how to request it be changed or removed."

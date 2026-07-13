@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.contactThanks;
+---
+
+<BaseLayout
+  title={pageMeta.title}
+  description={pageMeta.description}
+>
+  <div class="success-card">
+    <h1>Message sent!</h1>
+    <p>Thanks! I'll get back to you soon.</p>
+    <a class="back-link" href="/">Back to home</a>
+  </div>
+</BaseLayout>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.success-card {
+  max-width: 480px;
+  margin: 3rem auto;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+
+.success-card p {
+  font-family: "Quicksand", sans-serif;
+  color: var(--text);
+  margin: 0 0 1.5rem;
+}
+
+.back-link {
+  display: inline-block;
+  padding: 0.7rem 1.5rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.95rem;
+  transition: transform 0.2s ease;
+}
+
+.back-link:hover {
+  transform: scale(1.03);
+}
+
+@media (--mobile) {
+  .success-card {
+    margin: 1.5rem 0;
+    padding: 2rem 1.25rem;
+  }
+}
+</style>

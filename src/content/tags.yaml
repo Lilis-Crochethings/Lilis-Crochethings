@@ -15,8 +15,8 @@ tags:
         label: Goose
       - id: whale
         label: Whale
-      - id: lamb
-        label: Lamb
+      - id: sheep
+        label: Sheep
       - id: lion
         label: Lion
       - id: pig

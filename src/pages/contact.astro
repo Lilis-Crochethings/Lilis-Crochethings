@@ -1,0 +1,439 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SmartLink from '../components/SmartLink.astro';
+import { parse } from 'yaml';
+import socialsRaw from '../data/socials.yaml?raw';
+import { getCollection } from 'astro:content';
+
+type LinkEntry = { name: string; href: string; icon: string };
+type SocialsConfig = {
+  icons: Record<string, { src: string; pad?: number; radius?: string }>;
+  contacts: LinkEntry[];
+};
+
+const { icons, contacts } = parse(socialsRaw) as SocialsConfig;
+// This page IS the contact form entry — don't list it again below.
+const otherContacts = contacts.filter((c) => c.href !== '/contact');
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.contact;
+
+const contactEntry = (await getCollection('contact'))[0];
+const { intro, categoryOptions } = contactEntry.data;
+
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/xwvgkogd";
+---
+
+<BaseLayout
+  title={pageMeta.title}
+  description={pageMeta.description}
+>
+  <h1>{pageMeta.title}</h1>
+
+  <div class="layout">
+    <div class="card card-form">
+      {intro.map((paragraph) => (
+        <p class="intro" set:html={paragraph.html.replace(/\n/g, "<br />")} />
+      ))}
+
+      <form id="contact-form" action={FORMSPREE_ENDPOINT} method="POST">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" autocomplete="name" maxlength="250" required />
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required />
+        <p class="warning">⚠️ Please make sure your email address is correct — otherwise I won't be able to respond.</p>
+
+        <label for="category">Category</label>
+        <select id="category" name="category" required>
+          {categoryOptions.map((option) => (
+            <option value={option}>{option}</option>
+          ))}
+        </select>
+
+        <label for="subject">Subject</label>
+        <input type="text" id="subject" name="subject" maxlength="250" required />
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="5" minlength="10" maxlength="1500" required></textarea>
+
+        <!-- Formspree reads this reserved field as the notification email's
+             subject line — computed from category + subject just before
+             submit (see script below) so the inbox shows "[Category]: Subject". -->
+        <input type="hidden" id="computed-subject" name="_subject" />
+
+        <!-- Honeypot: hidden from real visitors via CSS, but bots that fill
+             every field trip it — Formspree silently drops submissions
+             where this is non-empty. -->
+        <input type="text" name="_gotcha" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+        <button type="submit">Send message</button>
+        <p id="form-status" role="status" aria-live="polite" hidden></p>
+      </form>
+    </div>
+
+    <div class="card card-contact">
+      <h2>Alternatives</h2>
+      <ul class="link-list">
+        {otherContacts.map((c) => (
+          <li>
+            <SmartLink href={c.href}>
+              <span class="badge" style={`padding:${icons[c.icon].pad ?? 0}px`}>
+                <img src={icons[c.icon].src} alt="" style={`border-radius:${icons[c.icon].radius ?? 0}`} />
+              </span>
+              {c.name}
+            </SmartLink>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</BaseLayout>
+
+<script is:inline define:vars={{ errorMessage: "Something went wrong — please try one of the other options below instead.", validationErrorMessage: "Please check the highlighted field(s) below." }}>
+  const contactForm = document.getElementById('contact-form');
+  const status = document.getElementById('form-status');
+
+  function clearFieldErrors() {
+    contactForm.querySelectorAll('.field-invalid').forEach((el) => el.classList.remove('field-invalid'));
+    contactForm.querySelectorAll('.field-error').forEach((el) => el.remove());
+  }
+
+  // Our field ids match Formspree's field names exactly (id="email"
+  // name="email", etc.), so the field an error is about is just
+  // document.getElementById(field) — no separate name-to-element map needed.
+  function showFieldError(field, message) {
+    const el = document.getElementById(field);
+    if (!el) return false;
+    el.classList.add('field-invalid');
+    const errorEl = document.createElement('p');
+    errorEl.className = 'field-error';
+    errorEl.textContent = message;
+    el.insertAdjacentElement('afterend', errorEl);
+    return true;
+  }
+
+  contactForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!status) return;
+    status.textContent = '';
+    status.className = '';
+    status.hidden = true;
+    clearFieldErrors();
+
+    const submitButton = contactForm.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+
+    const category = document.getElementById('category');
+    const subject = document.getElementById('subject');
+    const computedSubject = document.getElementById('computed-subject');
+    if (category && subject && computedSubject) {
+      computedSubject.value = `[${category.value}]: ${subject.value}`;
+    }
+
+    try {
+      const res = await fetch(contactForm.action, {
+        method: 'POST',
+        body: new FormData(contactForm),
+        headers: { Accept: 'application/json' },
+      });
+      if (res.ok) {
+        // Full navigation (not an inline message) — a success message tucked
+        // under the button was easy to miss, a dedicated page isn't.
+        window.location.href = '/contact/thanks';
+        return;
+      }
+
+      // 422 responses carry field-specific validation reasons. Anything
+      // matching a real field on the page gets shown right under that
+      // field; anything that doesn't (e.g. an error keyed to the hidden
+      // _subject field) falls back to the generic status message below.
+      let specificMessage = '';
+      let matchedAnyField = false;
+      try {
+        const data = await res.json();
+        if (Array.isArray(data.errors) && data.errors.length > 0) {
+          for (const err of data.errors) {
+            if (err.field && showFieldError(err.field, err.message)) {
+              matchedAnyField = true;
+            } else if (err.message) {
+              specificMessage += (specificMessage ? ' ' : '') + err.message;
+            }
+          }
+        } else if (typeof data.error === 'string') {
+          specificMessage = data.error;
+        }
+      } catch {
+        // Response wasn't JSON (or had no useful error shape) — fall through
+        // to the generic errorMessage below.
+      }
+      if (matchedAnyField && !specificMessage) {
+        specificMessage = validationErrorMessage;
+      }
+      status.textContent = specificMessage || errorMessage;
+      status.className = 'form-status error';
+      status.hidden = false;
+    } catch {
+      status.textContent = errorMessage;
+      status.className = 'form-status error';
+      status.hidden = false;
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
+</script>
+
+<style>
+@import "../styles/breakpoints.css";
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-width);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+  font-family: "Lili Love", cursive;
+}
+
+.card-contact {
+  font-family: "Lili Love", cursive;
+}
+
+.intro {
+  font-family: "Quicksand", sans-serif;
+  color: var(--text);
+  margin: 0 0 1.25rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+label {
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-top: 0.6rem;
+}
+
+label:first-of-type {
+  margin-top: 0;
+}
+
+input, textarea, select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+select {
+  cursor: var(--cursor-pointer);
+  /* Native arrow replaced with a custom chevron so it can get its own
+     breathing room from the edge — the browser default sits flush right. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.75rem;
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23B7718D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+/* :global — showFieldError() below creates these <p> elements at runtime,
+   so they never carry Astro's scoping attribute; a normally-scoped rule
+   here would silently never match them. Element+class (not just .field-invalid
+   alone) because Astro's own scoping attribute on the "input, textarea,
+   select" rule above raises its specificity past a bare class selector. */
+:global(input.field-invalid), :global(textarea.field-invalid), :global(select.field-invalid) {
+  border-color: var(--error);
+}
+
+:global(input.field-invalid:focus), :global(textarea.field-invalid:focus), :global(select.field-invalid:focus) {
+  box-shadow: 0 0 0 1.5px var(--error);
+}
+
+:global(.field-error) {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--error);
+  margin: 0;
+}
+
+/* Customizable Select API (Chrome/Edge only as of writing) — lets the open
+   popup itself be styled instead of using the OS-native list. Wrapped in
+   @supports so it's a no-op progressive enhancement: unsupported browsers
+   (Firefox, Safari) silently keep their normal native dropdown. */
+@supports (appearance: base-select) {
+  select {
+    appearance: base-select;
+  }
+
+  /* Base-select still draws its own default arrow alongside the
+     background-image chevron above — hide it so there's only one. */
+  select::picker-icon {
+    display: none;
+  }
+
+  select::picker(select) {
+    border: 1.5px solid var(--primary);
+    border-radius: 10px;
+    box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.15 * var(--shadow-alpha-scale)));
+  }
+
+  select option {
+    padding: 0.5rem 0.9rem;
+    border-radius: 6px;
+  }
+
+  select option:hover {
+    background: var(--accent);
+    color: var(--text);
+  }
+
+  select option:checked {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+}
+
+.warning {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--primary);
+  margin: 0;
+}
+
+.hp {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+button[type="submit"] {
+  align-self: flex-start;
+  margin-top: 1rem;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: var(--cursor-pointer);
+  transition: transform 0.2s ease;
+}
+
+button[type="submit"]:hover {
+  transform: scale(1.03);
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.form-status {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.form-status.error {
+  color: var(--error);
+}
+
+.link-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 1rem;
+}
+
+.link-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--primary);
+}
+
+/* Plain text links (no card/thumbnail around them to hover-enlarge) rely on
+   an underline for the hover affordance instead. */
+.link-list a:hover {
+  text-decoration: underline;
+}
+
+.badge {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@media (--mobile) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .link-list {
+    font-size: 1.15rem;
+  }
+}
+
+@media (--tablet-only) and (orientation: portrait) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+</style>

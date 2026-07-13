@@ -1,11 +1,545 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import SmartLink from '../components/SmartLink.astro';
+import TagChip from '../components/creations/TagChip.astro';
+import CreationTile from '../components/creations/CreationTile.astro';
+import { parse } from 'yaml';
+import socialsRaw from '../data/socials.yaml?raw';
+import { getCollection, getEntry } from 'astro:content';
+import { getEffectiveTags } from '../lib/tags';
+
+type LinkEntry = { name: string; href: string; icon: string };
+type SocialsConfig = {
+  icons: Record<string, { src: string; pad?: number; radius?: string }>;
+  socials: LinkEntry[];
+  contacts: LinkEntry[];
+};
+
+const { icons, socials, contacts } = parse(socialsRaw) as SocialsConfig;
+// The linktree page's "Website" entry doesn't belong here — this page IS the website.
+const socialLinks = socials.filter((s) => s.icon !== "home");
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.about;
+
+const aboutEntry = (await getCollection('about'))[0];
+const { bio, summaryBio } = aboutEntry.data;
+
+const taxonomyEntry = (await getCollection('tags'))[0];
+const taxonomy = taxonomyEntry.data.tags;
+
+const typesEntry = (await getCollection('types'))[0];
+const typesTaxonomy = typesEntry.data.types;
+
+const firstProjects = (
+  await Promise.all(aboutEntry.data.firstProjects.map((id) => getEntry('creations', id)))
+).filter((creation) => creation !== undefined)
+  .map((creation) => ({
+    creation,
+    effectiveTags: getEffectiveTags(creation.data.tags, taxonomy),
+  }));
+
+// Set to "square" to switch back to the original icon-on-top tile.
+const yarnTileStyle = "row" as "square" | "row";
+
+const favoriteYarns = aboutEntry.data.favoriteYarns.map((yarn) => {
+  // Fit each icon inside its rowBox × rowBox bounding box (for the "row"
+  // tile's fixed swatch) while preserving aspect ratio, so wide icons like
+  // Toucan don't overflow the pink square.
+  let rowHeight = yarn.rowBox;
+  let rowWidth = rowHeight * yarn.aspectRatio;
+  if (rowWidth > yarn.rowBox) {
+    rowWidth = yarn.rowBox;
+    rowHeight = rowWidth / yarn.aspectRatio;
+  }
+  return { ...yarn, rowWidth, rowHeight };
+});
 ---
 
 <BaseLayout
-  title="About"
-  description="Meet Lili, the crocheter behind Lili's Crochethings — her story, her craft, and how she started sharing her creations."
+  title={pageMeta.title}
+  description={pageMeta.description}
 >
   <h1>About</h1>
-  <span class="coming-soon">Coming soon</span>
+
+  <div class="layout">
+    <div class="col-left">
+      <div class="card card-bio">
+        <button type="button" id="tldr-toggle" class="tldr-btn" aria-pressed="false" title="Too long, didn't read">
+          TL;DR
+        </button>
+        <p class="bio" id="bio-full" set:html={bio.html} />
+        <p class="bio" id="bio-summary" set:html={summaryBio.html} hidden />
+      </div>
+
+      <div class="card card-projects">
+        <h2>First projects</h2>
+        <div class="projects-grid">
+          {firstProjects.map(({ creation, effectiveTags }) => (
+            <CreationTile
+              creation={creation}
+              effectiveTags={effectiveTags}
+              taxonomy={taxonomy}
+              typesTaxonomy={typesTaxonomy}
+              href={`/creations/${creation.id}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div class="card card-yarns">
+        <h2>Favorite yarns</h2>
+        <div class="yarns-grid" class:list={{ "yarns-grid-row": yarnTileStyle === "row" }}>
+          {yarnTileStyle === "square" ? favoriteYarns.map((yarn) => (
+            <SmartLink class="yarn-tile" href={yarn.link}>
+              <TagChip label={yarn.type} class="yarn-tag" />
+              <span class="yarn-icon mask-icon" style={`aspect-ratio:${yarn.aspectRatio}; mask-image:url(${yarn.icon}); -webkit-mask-image:url(${yarn.icon});`}></span>
+              <span class="yarn-name">{yarn.name}</span>
+              <span class="yarn-brand">Hobbii</span>
+              <span class="yarn-hook">
+                <span class="yarn-hook-icon mask-icon"></span>
+                {yarn.hookSize}
+              </span>
+            </SmartLink>
+          )) : favoriteYarns.map((yarn) => (
+            <SmartLink class="yarn-tile-row" href={yarn.link}>
+              <TagChip label={yarn.type} class="yarn-tag" />
+              <span class="yarn-swatch">
+                <span class="yarn-icon-row mask-icon" style={`width:${yarn.rowWidth}px; height:${yarn.rowHeight}px; mask-image:url(${yarn.icon}); -webkit-mask-image:url(${yarn.icon});`}></span>
+              </span>
+              <span class="yarn-info-row">
+                <span class="yarn-name">{yarn.name}</span>
+                <span class="yarn-brand">Hobbii</span>
+              </span>
+            </SmartLink>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="card card-profile">
+        <img class="profile-pic" src="/images/Lilis-Crochethings-thumb.webp" alt="Lili" />
+        <h3>Lili</h3>
+      </div>
+
+      <div class="card card-socials">
+        <h2>Socials</h2>
+        <ul class="link-list">
+          {socialLinks.map((s) => (
+            <li>
+              <SmartLink href={s.href}>
+                <span class="badge" style={`padding:${icons[s.icon].pad ?? 0}px`}>
+                  <img src={icons[s.icon].src} alt="" style={`border-radius:${icons[s.icon].radius ?? 0}`} />
+                </span>
+                {s.name}
+              </SmartLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="card card-contact">
+        <h2>Contact</h2>
+        <ul class="link-list">
+          {contacts.map((c) => (
+            <li>
+              <SmartLink href={c.href}>
+                <span class="badge" style={`padding:${icons[c.icon].pad ?? 0}px`}>
+                  <img src={icons[c.icon].src} alt="" style={`border-radius:${icons[c.icon].radius ?? 0}`} />
+                </span>
+                {c.name}
+              </SmartLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </div>
 </BaseLayout>
+
+<style>
+@import "../styles/breakpoints.css";
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-width);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.col-left, .col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.card-profile { order: 1; }
+.card-bio { order: 2; }
+.card-projects { order: 3; }
+.card-yarns { order: 4; }
+.card-socials { order: 5; }
+.card-contact { order: 6; }
+
+.card-socials, .card-contact {
+  font-family: "Lili Love", cursive;
+}
+
+/* Floated (not position:absolute) so the bio text wraps around it instead
+   of needing a margin-top reservation that would push the whole bio down —
+   the negative margin still tucks it closer to the card's true corner than
+   its normal flow position, same outlined-square → filled-on-active
+   treatment as the creations page's filters button. */
+.tldr-btn {
+  float: right;
+  margin: -0.6rem -0.6rem 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.9rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  background: none;
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: var(--cursor-pointer);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.tldr-btn.active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.bio {
+  white-space: pre-line;
+  margin: 0;
+  font-family: "Quicksand", sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* bio.html/summaryBio.html are injected via set:html (raw string content),
+   so any <a> inside never gets Astro's scoped-style data attribute — same
+   reasoning as the .yarn-tag :global() rule above — a plain ".bio a"
+   selector would silently fail to match it. */
+.bio :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Same 2-col/4-col split as the home page's creations card — see the
+   tablet-up override below — so these highlighted tiles read the same way
+   regardless of which page they show up on. */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (--tablet-up) {
+  .projects-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.yarns-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+/* Nested inside the outer .card-yarns card. Light mode gives it its own
+   resting shadow same as always; dark mode drops that in favor of the
+   outline below, since a shadow nested inside the outer card's own shadow
+   doesn't read well there the way it does in light mode. */
+.yarn-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem 1rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  text-decoration: none;
+  color: inherit;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Expanding on hover always gets a (bigger) shadow — in dark mode this is
+   the only shadow it ever shows, a white glow mimicking the light-mode
+   hover lift since a dark one wouldn't show up. */
+.yarn-tile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+/* :global — TagChip renders via set:html, so the injected span never gets
+   Astro's scoped-style data attribute. */
+:global(.yarn-tag) {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+}
+
+.yarn-icon {
+  height: 60px;
+  width: auto;
+  background-color: var(--text);
+}
+
+.yarn-name {
+  font-family: "Lili Love", cursive;
+  font-weight: bold;
+  color: var(--primary);
+  margin-top: 0.5rem;
+}
+
+.yarn-brand {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--text);
+  margin-top: 0.15rem;
+}
+
+.yarn-hook {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-top: 0.9rem;
+}
+
+.yarn-hook-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+  mask-image: url(/images/icons/hook.svg);
+  -webkit-mask-image: url(/images/icons/hook.svg);
+}
+
+/* "Row" yarn tile variant — swatch on the left, name/brand on the right,
+   matching the creations detail page's yarn tiles. */
+.yarns-grid-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Same reasoning as .yarn-tile above — nested inside .card-yarns. */
+.yarn-tile-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.yarn-tile-row:hover {
+  transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+.yarn-swatch {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yarn-icon-row {
+  background-color: var(--primary);
+}
+
+.yarn-info-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.yarn-info-row .yarn-name {
+  margin-top: 0;
+}
+
+.card-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.profile-pic {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.card-profile h3 {
+  margin: 0;
+  font-family: "Lili Love", cursive;
+  font-size: 1.8rem;
+}
+
+.link-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 1rem;
+}
+
+.link-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--primary);
+}
+
+/* Plain text links (no card/thumbnail around them to hover-enlarge) rely on
+   an underline for the hover affordance instead. */
+.link-list a:hover {
+  text-decoration: underline;
+}
+
+.badge {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Matches the creations pages' breakpoint: the 1fr + var(--sidebar-width)
+   split holds all the way down to --mobile so the content column is the
+   same width as those pages at every size in between, then stacks. */
+@media (--mobile) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .col-left, .col-right {
+    display: contents;
+  }
+
+  .profile-pic {
+    width: 200px;
+  }
+
+  .yarns-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .link-list {
+    font-size: 1.15rem;
+  }
+}
+
+/* iPad tier (both orientations — a fixed var(--sidebar-width) side column
+   doesn't fit here, but there's still too much width to fall back to the
+   mobile single-column stack). A dedicated layout rather than either
+   extreme: bio + profile share the top row 70/30, first projects and
+   favorite yarns each take a full-width row in the middle, then socials and
+   contact split the bottom row 50/50. 10 columns just gives exact integer
+   spans for both the 70/30 and 50/50 splits from the same grid. */
+@media (--tablet-only) {
+  .layout {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1.5rem;
+  }
+
+  .col-left, .col-right {
+    display: contents;
+  }
+
+  .card-bio {
+    grid-column: 1 / 8;
+    grid-row: 1;
+  }
+
+  .card-profile {
+    grid-column: 8 / 11;
+    grid-row: 1;
+  }
+
+  .card-projects {
+    grid-column: 1 / 11;
+    grid-row: 2;
+  }
+
+  .card-yarns {
+    grid-column: 1 / 11;
+    grid-row: 3;
+  }
+
+  .card-socials {
+    grid-column: 1 / 6;
+    grid-row: 4;
+  }
+
+  .card-contact {
+    grid-column: 6 / 11;
+    grid-row: 4;
+  }
+}
+</style>
+
+<script>
+  const tldrToggle = document.getElementById('tldr-toggle');
+  const bioFull = document.getElementById('bio-full');
+  const bioSummary = document.getElementById('bio-summary');
+
+  tldrToggle?.addEventListener('click', () => {
+    const showSummary = tldrToggle.classList.toggle('active');
+    tldrToggle.setAttribute('aria-pressed', String(showSummary));
+    bioFull?.toggleAttribute('hidden', showSummary);
+    bioSummary?.toggleAttribute('hidden', !showSummary);
+  });
+</script>

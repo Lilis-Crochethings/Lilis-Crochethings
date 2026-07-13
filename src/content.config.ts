@@ -4,6 +4,19 @@ import { z } from 'astro/zod'
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { stripDescriptionLinks, descriptionToHtml } from "./lib/description";
+
+// Creation/pattern descriptions can reference other pages inline using
+// markdown-style link syntax ([label](url)) — see lib/description.ts. Parsing
+// that once here, at load time, means every consumer (list tiles, gallery
+// cards, search index, meta descriptions, the detail page, ...) automatically
+// gets safe plain text via `.text` — or real links via `.html` for the one
+// place that renders them — without each call site having to remember to
+// strip/render the syntax itself.
+const richText = z.string().transform((text) => ({
+  text: stripDescriptionLinks(text),
+  html: descriptionToHtml(text),
+}));
 
 // Read the tag taxonomy synchronously so its ids can back a Zod enum below —
 // this is what turns a typo'd tag in a creation/pattern file into a build error
@@ -74,7 +87,84 @@ const yarnTypeId = z.enum(YARN_TYPE_IDS as [string, ...string[]]);
 const general = defineCollection({
   loader: glob({ pattern: "general.md", base: "./src/content" }),
   schema: z.object({
-    name: z.string()
+    name: z.string(),
+    foundedYear: z.number(),
+  }),
+});
+
+const pageMeta = z.object({
+  title: z.string().optional(),
+  description: z.string(),
+});
+
+// Every page's <title>/description that isn't auto-generated from other
+// content (the creation detail page's description IS auto-generated — see
+// pageDescription in [slug].astro — so it deliberately has no entry here).
+const pages = defineCollection({
+  loader: glob({ pattern: "pages.yaml", base: "./src/content" }),
+  schema: z.object({
+    home: pageMeta,
+    about: pageMeta,
+    patterns: pageMeta,
+    gallery: pageMeta,
+    creations: pageMeta,
+    faq: pageMeta,
+    socials: pageMeta,
+    contact: pageMeta,
+    contactThanks: pageMeta,
+    privacy: pageMeta,
+  }),
+});
+
+const about = defineCollection({
+  loader: glob({ pattern: "about.yaml", base: "./src/content" }),
+  schema: z.object({
+    // Same block-scalar-with-blank-lines convention as a creation's
+    // description (see richText above) — blank lines in the YAML become
+    // paragraph breaks via the same white-space: pre-line rendering, so bio
+    // updates don't need to be split into a YAML list by hand.
+    bio: richText,
+    // Short version shown on the home page card and behind the About page's
+    // TL;DR toggle — hand-written rather than derived from `bio`, since a
+    // good summary highlights different things than a truncated excerpt
+    // would.
+    summaryBio: richText,
+    // A fixed, hand-picked list of creation ids — not the 4 most recent —
+    // so "first projects ever made" stays true regardless of what gets
+    // added to the creations collection later.
+    firstProjects: z.array(z.string()),
+    favoriteYarns: z.array(z.object({
+      name: z.string(),
+      icon: z.string(),
+      aspectRatio: z.number(),
+      rowBox: z.number(),
+      link: z.string(),
+      hookSize: z.string(),
+      type: z.string(),
+    })),
+  }),
+});
+
+const contact = defineCollection({
+  loader: glob({ pattern: "contact.yaml", base: "./src/content" }),
+  schema: z.object({
+    intro: z.array(richText),
+    // The actual selectable categories — content that can change (a new
+    // category added) — unlike the form's field labels/messages, which are
+    // fixed UI chrome and just live directly in contact.astro.
+    categoryOptions: z.array(z.string()),
+  }),
+});
+
+const privacy = defineCollection({
+  loader: glob({ pattern: "privacy.yaml", base: "./src/content" }),
+  schema: z.object({
+    lastUpdated: z.string(),
+    intro: richText,
+    sections: z.array(z.object({
+      heading: z.string(),
+      body: richText,
+    })),
   }),
 });
 
@@ -84,7 +174,7 @@ const patterns = defineCollection({
     title: z.string(),
     difficulty: z.enum(["easy", "medium", "hard"]),
     image: z.string(),
-    description: z.string().optional(),
+    description: richText.optional(),
     yarn: z.string().optional(),
     hookSize: z.string().optional(),
     tags: z.array(tagId).optional(),
@@ -124,7 +214,15 @@ const creations = defineCollection({
   schema: z.object({
     title: z.string(),
     images: z.array(z.string()).min(1),
-    description: z.string(),
+    description: richText,
+    // Other terms people might search this creation by — a pattern's own
+    // alternate name, a nickname, or a broader category word (e.g. "Plushie"
+    // for an amigurumi) — that the hand-written description above doesn't
+    // happen to mention. Folded into the page's meta description and JSON-LD
+    // alternateName so those search terms are actually exposed, not just
+    // known to Lili. Purely a per-creation, typed-by-hand list — unrelated
+    // to tags.yaml/types.yaml, which are for the filter UI, not this.
+    searchTerms: z.array(z.string()).optional(),
     difficulty: z.enum(["easy", "medium", "hard"]).optional(),
     type: typeId,
     subtypes: z.array(subtypeId).optional(),
@@ -157,6 +255,9 @@ const tagNode = z.object({
   label: z.string(),
   image: z.string().optional(),
   color: z.string().optional(),
+  // Only meaningful on the types.yaml taxonomy — e.g. "Cross-stitched" for
+  // cross-stitch — used to build image alt text like "Cross-stitched Bloom".
+  adjective: z.string().optional(),
 });
 
 const tagCategory = z.object({
@@ -164,6 +265,7 @@ const tagCategory = z.object({
   label: z.string(),
   image: z.string().optional(),
   color: z.string().optional(),
+  adjective: z.string().optional(),
   children: z.array(tagNode).optional(),
 });
 
@@ -239,5 +341,9 @@ export const collections = {
   types,
   colors,
   yarnTypes: yarnTypesCollection,
-  general
+  general,
+  pages,
+  about,
+  contact,
+  privacy,
 };

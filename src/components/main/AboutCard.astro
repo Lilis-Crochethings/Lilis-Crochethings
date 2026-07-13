@@ -1,60 +1,43 @@
 ---
 // src/components/cards/AboutCard.astro
 const { name, bio, image } = Astro.props;
-const paragraphs = Array.isArray(bio) ? bio : [bio];
 ---
 
-<a class="card" href="/about">
-  <h2>About me</h2>
-
-  <div class="content">
-    <div class="bio">
-      {paragraphs.map((paragraph) => <p>{paragraph}</p>)}
-    </div>
-    <div class="profile">
-      <img src={image} alt={name} />
-      <h3>{name}</h3>
-    </div>
+<a class="home-card" href="/about">
+  <div class="profile">
+    <img src={image} alt={name} />
+    <h3>{name}</h3>
   </div>
+  <h2>About me</h2>
+  <div class="bio" set:html={bio.html} />
 </a>
 
 <style>
 @import "../../styles/breakpoints.css";
 
-.card {
-  display: block;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 16px;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
+/* Floated at the very top of the card — a sibling of h2, not nested under
+   it — so "About me" sits next to the photo first, then the bio text
+   continues wrapping around it below. Must come first in the DOM for the
+   float to affect the siblings that follow it. The negative margin tucks
+   it closer to the card's true top-right corner than its normal flow
+   position would place it. */
 .profile {
+  float: right;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   gap: 0.5rem;
-}
-
-.content {
-  display: flex;
-  gap: 1.5rem;
-  align-items: start;
+  margin: -0.75rem -0.75rem 0.75rem 1.5rem;
 }
 
 .bio {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
+  white-space: pre-line;
 }
 
-.bio p {
-  margin: 0;
+.bio :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 img {
@@ -64,27 +47,35 @@ img {
   object-fit: cover;
 }
 
-.card:hover {
-  transform: scale(1.01);
-}
-
 h2 {
   margin-top: 0;
 }
 
 @media (--mobile) {
-  .card {
-    padding: 1rem;
-  }
-
-  .content {
+  /* Reproduces the pre-float stacked layout (title, then centered photo,
+     then bio) despite the DOM now putting .profile first — order moves the
+     heading back in front, align-self opts it (and .bio) out of the
+     container's own centering so they stay left-aligned/full-width like
+     every other breakpoint, and only the photo+name block is centered. */
+  .home-card {
+    display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
   }
 
-  .profile {
+  h2 {
     order: -1;
+    align-self: stretch;
+  }
+
+  .bio {
+    align-self: stretch;
+  }
+
+  .profile {
+    float: none;
+    margin: 0;
   }
 
   .profile h3 {

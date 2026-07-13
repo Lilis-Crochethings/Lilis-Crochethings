@@ -2,8 +2,7 @@
 import TagChip from "./TagChip.astro";
 import DifficultyChip from "./DifficultyChip.astro";
 import TileCarousel from "../TileCarousel.astro";
-import type { TagCategory } from "../../lib/tags";
-import { stripDescriptionLinks } from "../../lib/description";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
 
 const { creation, effectiveTags = [], taxonomy, typesTaxonomy } = Astro.props as {
   creation: any;
@@ -16,6 +15,7 @@ const difficulty: string | undefined = creation.data.difficulty;
 const type: string = creation.data.type;
 const typeChipIds = [type, ...(creation.data.subtypes ?? [])];
 const href = `/creations/${creation.id}`;
+const creationAlt = getCreationAlt(creation.data.title, type, creation.data.subtypes, typesTaxonomy);
 ---
 
 <div
@@ -32,11 +32,11 @@ const href = `/creations/${creation.id}`;
   <div class="list-item" role="link" tabindex="0">
     <DifficultyChip difficulty={difficulty} hideOnMobile />
     <div class="thumb">
-      <TileCarousel images={creation.data.images} alt={creation.data.title} href={href} />
+      <TileCarousel images={creation.data.images} alt={creationAlt} href={href} />
     </div>
     <div class="body">
       <h2 class="title">{creation.data.title}</h2>
-      {creation.data.description && <p class="preview">{stripDescriptionLinks(creation.data.description)}</p>}
+      {creation.data.description.text && <p class="preview">{creation.data.description.text}</p>}
       {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
         <div class="tags">
           {typeChipIds.map((id) => (

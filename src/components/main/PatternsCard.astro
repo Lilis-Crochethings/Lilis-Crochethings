@@ -4,7 +4,7 @@ import { toThumb } from "../../lib/images";
 const { patterns } = Astro.props;
 ---
 
-<a class="card" href="/patterns">
+<a class="home-card" href="/patterns">
   <h2>Patterns <span class="coming-soon">Coming soon</span></h2>
 
   <div class="grid">
@@ -18,23 +18,6 @@ const { patterns } = Astro.props;
 
 <style>
 @import "../../styles/breakpoints.css";
-
-.card {
-  display: block;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 16px;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@media (--mobile) {
-  .card {
-    padding: 1rem;
-  }
-}
 
 .grid {
   display: grid;
@@ -50,7 +33,4 @@ const { patterns } = Astro.props;
   border-radius: 10px;
 }
 
-.card:hover {
-  transform: scale(1.01);
-}
 </style>

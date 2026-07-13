@@ -9,25 +9,25 @@ const rowB = creations.filter((_: any, i: number) => i % 3 === 1).reverse();
 const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
 ---
 
-<a class="card" href="/gallery">
+<a class="home-card" href="/gallery">
   <h2>Gallery</h2>
 
   <div class="marquee">
     <div class="row row-1">
       <div class="track track-left" style={`--count: ${rowA.length}`}>
-        {rowA.map((c: any) => (<img src={toThumb(c.image)} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowA.map((c: any) => (<img src={toThumb(c.image)} alt={c.alt} loading="lazy" decoding="async" />))}
         {rowA.map((c: any) => (<img src={toThumb(c.image)} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
     <div class="row row-2">
       <div class="track track-right" style={`--count: ${rowB.length}`}>
-        {rowB.map((c: any) => (<img src={toThumb(c.image)} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowB.map((c: any) => (<img src={toThumb(c.image)} alt={c.alt} loading="lazy" decoding="async" />))}
         {rowB.map((c: any) => (<img src={toThumb(c.image)} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
     <div class="row row-3">
       <div class="track track-left" style={`--count: ${rowC.length}`}>
-        {rowC.map((c: any) => (<img src={toThumb(c.image)} alt={c.title} loading="lazy" decoding="async" />))}
+        {rowC.map((c: any) => (<img src={toThumb(c.image)} alt={c.alt} loading="lazy" decoding="async" />))}
         {rowC.map((c: any) => (<img src={toThumb(c.image)} alt="" aria-hidden="true" loading="lazy" decoding="async" />))}
       </div>
     </div>
@@ -36,17 +36,6 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
 
 <style>
 @import "../../styles/breakpoints.css";
-
-.card {
-  display: block;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 16px;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
 
 .marquee {
   --img-size: 140px;
@@ -94,12 +83,6 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
   flex-shrink: 0;
 }
 
-@media (--mobile) {
-  .card {
-    padding: 1rem;
-  }
-}
-
 @media (--tablet-up) {
   .marquee {
     --img-size: 150px;
@@ -115,10 +98,6 @@ const rowC = creations.filter((_: any, i: number) => i % 3 === 2);
 @keyframes scroll-right {
   from { transform: translateX(-50%); }
   to { transform: translateX(0); }
-}
-
-.card:hover {
-  transform: scale(1.01);
 }
 
 @media (prefers-reduced-motion: reduce) {

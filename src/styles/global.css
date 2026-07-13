@@ -1,9 +1,27 @@
 /* src/styles/global.css */
 @import "./breakpoints.css";
+@import "./colors.css";
 
 *, *::before, *::after {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Shared base for every "colored icon drawn via mask-image" span across the
+   site (calendar/clock/hook/hamburger/search/etc.) — every one of those was
+   independently redeclaring this same set of mask-repeat/position/size
+   properties. Add this class alongside a per-icon one that sets
+   mask-image/-webkit-mask-image (and usually width/height/background-color).
+   Not usable on ::before/::after pseudo-elements (e.g. the search box's
+   native ::-webkit-search-cancel-button) since those can't carry a class —
+   those keep their own self-contained rule. */
+.mask-icon {
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
 }
 
 
@@ -36,21 +54,139 @@
 }
 
 :root {
-  --primary: #B7718D;
-  /* Darker variant of --primary for text/links on white or --background —
-     #B7718D only hits ~3.65:1 contrast there, short of WCAG AA's 4.5:1 for
-     normal text. Use --primary for backgrounds/borders/icons (already ≥3:1,
-     the non-text threshold); use --primary-text for anything readable. */
-  --primary-text: #9d486a;
-  --background: #fffaf7;
-  --text: #2b2b2b;
-  --accent: #F0C7D7;
+  /* One brand color for everything — text/links, icons, borders, focus
+     rings. Used to be split into --primary (icons/borders) and a darker
+     --primary-text (readable text) because #B7718D alone only hit ~3.65:1
+     on --background, short of WCAG AA's 4.5:1 for text. Now --primary
+     itself is that AA-safe shade, so every use of it is readable as text
+     too — no second variable needed. */
+  --primary: var(--primary-color-light);
+  --background: var(--background-light);
+  --text: var(--text-light);
+  --accent: var(--accent-light);
+  /* Text/icon color for anything sitting on a solid var(--primary)
+     background (buttons, active states) — white reads fine there in light
+     mode, but once dark mode lightens --primary, white text on top of it
+     fails contrast and needs to go dark instead. */
+  --on-primary: var(--on-primary-light);
+  /* Text color for anything sitting on a solid var(--accent) background
+     (mark, ...) — not just color:inherit, since --accent itself doesn't
+     currently change between themes but --text does, so inherited text
+     could otherwise end up unreadable against it in one theme. */
+  --on-accent: var(--on-accent-light);
   /* Shared page content width, so every page's <main> — and every
      two-column page's sidebar — renders at the same width instead of each
      page hardcoding its own close-but-not-quite value. */
   --page-width: 1046px;
   --sidebar-width: 300px;
   --cursor-pointer: pointer;
+
+  /* Card/tile backgrounds — replaces literal "background: white" so those
+     surfaces can go dark below. */
+  --surface: var(--surface-light);
+  /* RGB triplet (no rgba() wrapper) so every existing "rgba(0, 0, 0, X)"
+     shadow becomes a mechanical "rgba(var(--shadow-color), calc(X *
+     var(--shadow-alpha-scale)))" swap, each call site's own alpha left
+     untouched — --shadow-alpha-scale is the single knob for dialing the
+     whole site's shadow intensity up/down per theme without hand-editing
+     every alpha. 1 here is a no-op (X * 1 = X). --shadow-blur-scale does the
+     same for every shadow's offset-Y/blur length, so dark mode can pull
+     shadows in tighter (see below) without touching each declaration. */
+  --shadow-color: 0, 0, 0;
+  --shadow-alpha-scale: 1;
+  --shadow-blur-scale: 1;
+  /* Outer/top-level cards only (.card, .home-card, .list-item, etc.) — a
+     drop shadow is this site's elevation cue for them in light mode, so
+     this stays transparent here (dark mode too, see below — no border
+     there either in the end). Inner/nested tiles (yarn tiles, creation
+     cards inside another card, FAQ video cards, ...) use
+     var(--border-muted) directly instead of this variable. */
+  --card-border: var(--card-border-light);
+  /* Separate shadow system for inner/nested tiles — distinct from the
+     outer-card one above because the two need to diverge in dark mode:
+     inner tiles keep a resting shadow in light mode (same as always), but
+     go outline-only at rest in dark mode (--inner-rest-shadow-scale: 0),
+     while still getting a hover-triggered glow (white, since that's what
+     actually shows up against a dark page) to mimic the light-mode hover
+     lift. --shadow-alpha-scale can't be reused for this since it's already
+     pinned to 0 for outer cards in dark mode. */
+  --inner-shadow-color: 0, 0, 0;
+  --inner-rest-shadow-scale: 1;
+  /* Multiplies the hover shadow's offset/blur (not its alpha) — lets dark
+     mode's white hover glow stay tight/contained rather than spreading out
+     the same distance light mode's black one does, since a wide soft white
+     halo reads as much more of a "glow" than the same spread in black. */
+  --inner-hover-blur-scale: 1;
+  --error: var(--error-text-light);
+  --muted-text: var(--muted-text-light);
+  --border-muted: var(--border-muted-light);
+  /* Fixed dark tooltip background (paired with literal white text) — kept
+     the same in both themes, since --text itself flips to a light color in
+     dark mode and would otherwise leave white tooltip text unreadable on a
+     now-light background. A slight transparency softens it against
+     whatever's behind it, so it reads less harshly than a flat opaque
+     block in both themes — color-mix rather than an rgba() in colors.css,
+     since that file is hex-only. */
+  --tooltip-bg: color-mix(in srgb, var(--tooltip-background) 88%, transparent);
+}
+
+/* Dark theme — set on <html> by the inline script in BaseLayout.astro
+   before first paint. --primary is lighter here than in light mode (see
+   colors.css) — the original light-mode brand hex reads noticeably
+   flatter/lower-contrast against the dark background than it does on the
+   light one. */
+html[data-theme="dark"] {
+  --background: var(--background-dark);
+  --text: var(--text-dark);
+  --primary: var(--primary-color-dark);
+  --accent: var(--accent-dark);
+  --on-primary: var(--on-primary-dark);
+  --on-accent: var(--on-accent-dark);
+  --surface: var(--surface-dark);
+  /* No shadow and no border for outer cards here — black shadow is
+     invisible against an already-dark page, white read as an unwanted
+     glow, and a border of its own read as too harsh. Outer cards' only
+     elevation cue in dark mode ends up being --surface-dark reading
+     visibly lighter than --background-dark on its own. */
+  --shadow-alpha-scale: 0;
+  --card-border: var(--card-border-dark);
+  /* Inner tiles: no resting shadow (outline only, --border-muted below
+     handles that), but still get a hover-triggered glow — white, since
+     that's the only shadow color that actually shows up here, unlike the
+     outer-card shadow this is only ever momentary/interactive rather than
+     a persistent glow sitting on the page. */
+  --inner-shadow-color: 255, 255, 255;
+  --inner-rest-shadow-scale: 0;
+  --inner-hover-blur-scale: 0.4;
+  --error: var(--error-text-dark);
+  --muted-text: var(--muted-text-dark);
+  --border-muted: var(--border-muted-dark);
+}
+
+/* No-JS fallback: data-theme is only ever set by the inline script, so
+   html:not([data-theme]) naturally matches whenever that script hasn't run
+   (JS disabled) — falls back to OS preference, can never be toggled or
+   persisted, but every other interactive feature here already needs JS.
+   Mirrors html[data-theme="dark"] above token-for-token (not just value-for-
+   value) so the two can never silently drift apart again. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --background: var(--background-dark);
+    --text: var(--text-dark);
+    --primary: var(--primary-color-dark);
+    --accent: var(--accent-dark);
+    --on-primary: var(--on-primary-dark);
+    --on-accent: var(--on-accent-dark);
+    --surface: var(--surface-dark);
+    --shadow-alpha-scale: 0;
+    --card-border: var(--card-border-dark);
+    --inner-shadow-color: 255, 255, 255;
+    --inner-rest-shadow-scale: 0;
+    --inner-hover-blur-scale: 0.4;
+    --error: var(--error-text-dark);
+    --muted-text: var(--muted-text-dark);
+    --border-muted: var(--border-muted-dark);
+  }
 }
 
 html {
@@ -82,8 +218,12 @@ body {
   color: var(--text);
   display: flex;
   align-items: stretch;
-  justify-content: center;
   flex-direction: column;
+  /* Together with main's flex-grow below, this is what pins the footer to
+     the bottom of the viewport on short pages instead of it trailing right
+     after a half-empty <main> — on tall pages main's own content height
+     just exceeds this and the page scrolls normally. */
+  min-height: 100vh;
 }
 
 @media (--tablet-max) {
@@ -98,7 +238,7 @@ body.nav-open {
 }
 
 a {
-  color: var(--primary-text);
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -113,16 +253,20 @@ h1, h2, h3 {
     padding: 1rem 1rem 6rem;
     max-width: var(--page-width);
     align-self: center;
+    /* Grows to fill leftover vertical space so the footer (body's third
+       flex child) lands at the bottom of the viewport on short pages. */
+    flex: 1 0 auto;
   }
 
+/* Fixed in both themes, same as the difficulty badges — its own
+   background/text pair (colors.css) rather than --accent/--on-accent,
+   which are for in-flow content like <mark> below. */
 .coming-soon {
   display: inline-block;
   padding: 0.3rem 0.9rem;
   border-radius: 999px;
-  background: var(--accent);
-  /* Darker than --primary: at this size/weight, --primary on --accent only
-     hits 2.4:1 contrast (WCAG AA needs 4.5:1 for text this small). */
-  color: #7a4459;
+  background: var(--coming-soon-bg);
+  color: var(--coming-soon-text);
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.85rem;
@@ -131,22 +275,28 @@ h1, h2, h3 {
 
 mark {
   background: var(--accent);
-  color: inherit;
+  color: var(--on-accent);
   border-radius: 3px;
   padding: 0 0.1em;
 }
 
 /* Shared "list tile" widget — used by the creations list view and the
    search results dropdown (which builds this markup at runtime, so it
-   can't reuse the CreationListItem.astro component directly). */
+   can't reuse the CreationListItem.astro component directly). Both
+   contexts hand it a different amount of room at the same viewport width
+   (the full content column vs. the fixed-width search dropdown), so it
+   checks its own rendered width via container queries below rather than
+   the viewport's — see the @container block. */
 .list-item {
+  container-type: inline-size;
   position: relative;
   display: flex;
   gap: 1rem;
   padding: 0.9rem;
   border-radius: 16px;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
   text-decoration: none;
   color: inherit;
   /* On the creations page this is a <div role="link"> (not a real <a>), so
@@ -156,9 +306,14 @@ mark {
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Hover shadow uses --inner-shadow-color/--inner-hover-blur-scale (not the
+   plain --shadow-color/--shadow-alpha-scale the resting shadow above uses)
+   — those are pinned to black/0 in dark mode so this outer card reads as
+   "nothing" at rest there, but hovering it should still give some visible
+   feedback: a tight white glow, same as inner tiles get. */
 .list-item:hover {
   transform: scale(1.01);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 calc(10px * var(--inner-hover-blur-scale, 1)) calc(24px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
 }
 
 .list-item .thumb {
@@ -239,7 +394,11 @@ mark {
   flex-shrink: 0;
 }
 
-@media (--mobile) {
+/* Same threshold the mobile breakpoint used to gate this on — kept as a
+   container query so it fires off .list-item's own rendered width instead
+   of the viewport's, e.g. inside the ~640px-wide search dropdown even on a
+   desktop-width viewport. */
+@container (max-width: 500px) {
   .list-item .thumb {
     width: 92px;
     height: 92px;
@@ -272,7 +431,7 @@ mark {
   display: inline-block;
   background: none;
   border: 1px solid var(--primary);
-  color: var(--primary-text);
+  color: var(--primary);
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.75rem;
@@ -280,6 +439,13 @@ mark {
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
   white-space: nowrap;
+}
+
+/* Smaller variant (TagChip's size="small" prop) — used where chips sit
+   alongside dense content, e.g. the homepage Creations card's tiles. */
+.tag-chip-small {
+  font-size: 0.65rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .tag-chip-icon {
@@ -294,12 +460,6 @@ mark {
   height: 1em;
   margin-right: 0.35rem;
   margin-top: -0.1em;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
 }
 
 /* Difficulty chip — used on creation/pattern tiles and search results. Filled
@@ -321,21 +481,23 @@ mark {
 }
 
 .difficulty-easy {
-  background-color: #c2e7ca;
-  color: #004913;
+  background-color: var(--difficulty-easy-bg);
+  color: var(--difficulty-easy-text);
 }
 
 .difficulty-medium {
-  background-color: #ffe8b8;
-  color: #634200;
+  background-color: var(--difficulty-medium-bg);
+  color: var(--difficulty-medium-text);
 }
 
 .difficulty-hard {
-  background-color: #f5cbcd;
-  color: #7f0a11;
+  background-color: var(--difficulty-hard-bg);
+  color: var(--difficulty-hard-text);
 }
 
-@media (--mobile) {
+/* Only ever used on the chip inside .list-item (see CreationListItem.astro),
+   so it rides that same container query rather than the viewport. */
+@container (max-width: 500px) {
   .difficulty-chip.hide-on-mobile {
     display: none;
   }
@@ -346,9 +508,10 @@ mark {
    under its own class names so it doesn't collide with other .card uses. */
 .faq-result-card {
   display: block;
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
   padding: 1.5rem;
   text-decoration: none;
   color: inherit;
@@ -356,9 +519,11 @@ mark {
   transition: box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Hover/focus shadow uses --inner-shadow-color/--inner-hover-blur-scale —
+   see .list-item:hover above for why this differs from the resting shadow. */
 .faq-result-card:hover,
 .faq-result-card:focus-visible {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 calc(10px * var(--inner-hover-blur-scale, 1)) calc(24px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
 }
 
 .faq-result-card:focus-visible {
@@ -370,7 +535,7 @@ mark {
   font-family: "Quicksand", sans-serif;
   font-size: 1.05rem;
   font-weight: bold;
-  color: var(--primary-text);
+  color: var(--primary);
   margin: 0;
 }
 
@@ -382,7 +547,7 @@ mark {
 }
 
 .faq-result-answer a {
-  color: var(--primary-text);
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -394,7 +559,7 @@ mark {
   font-family: "Lili Love", cursive;
   font-size: 1.3rem;
   font-weight: bold;
-  color: var(--primary-text);
+  color: var(--primary);
   margin: 0.4rem 0 0;
   padding-left: 0.3rem;
 }
@@ -408,4 +573,36 @@ mark {
   font-size: 0.95rem;
   color: var(--text);
   padding: 0.5rem 0.25rem;
+}
+
+/* Home page's four top-level cards (About/Patterns/Gallery/Creations) —
+   AboutCard/PatternsCard/GalleryCard/CreationsCard each independently
+   defined this exact same block. Named distinctly from the many other
+   ".card"-ish containers around the site (about.astro, faq.astro, the
+   creation detail page, ...) since those use different radius/shadow
+   values on purpose and shouldn't pick this up too. */
+.home-card {
+  display: block;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* No hover-specific shadow bump in light mode (the resting shadow above
+   already carries it) — this exists for dark mode, where the resting
+   shadow is zeroed out and hovering would otherwise show nothing at all. */
+.home-card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 calc(10px * var(--inner-hover-blur-scale, 1)) calc(24px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
+}
+
+@media (--mobile) {
+  .home-card {
+    padding: 1rem;
+  }
 }

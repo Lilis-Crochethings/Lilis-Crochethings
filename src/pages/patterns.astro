@@ -1,10 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.patterns;
 ---
 
 <BaseLayout
-  title="Patterns"
-  description="Free crochet patterns from Lili's Crochethings — interactive, easy-to-follow instructions for bags, amigurumi, and more."
+  title={pageMeta.title}
+  description={pageMeta.description}
 >
   <h1>Patterns</h1>
   <span class="coming-soon">Coming soon</span>

@@ -1,21 +1,32 @@
 ---
 import { findTag } from "../../lib/tags";
 import type { TagCategory } from "../../lib/tags";
+import { renderTagChip, type ChipSize } from "../../lib/chips";
 
-const { id, taxonomy } = Astro.props as { id: string; taxonomy: TagCategory[] };
-const tag = findTag(id, taxonomy);
-const label = tag?.label ?? id;
-const image = tag?.image;
-const color = tag?.color;
+interface Props {
+  // Either resolve a tag/type id against a taxonomy...
+  id?: string;
+  taxonomy?: TagCategory[];
+  // ...or render a chip directly from already-known label/icon/color (e.g.
+  // a yarn type, which isn't part of the tag taxonomy at all).
+  label?: string;
+  icon?: string;
+  color?: string;
+  size?: ChipSize;
+  class?: string;
+}
+
+const { id, taxonomy, label, icon, color, size, class: className } = Astro.props as Props;
+const resolved = id !== undefined ? findTag(id, taxonomy ?? []) : undefined;
+
+const html = renderTagChip(
+  {
+    label: resolved?.label ?? label ?? id ?? "",
+    icon: resolved?.image ?? icon,
+    color: resolved?.color ?? color,
+  },
+  { size, extraClass: className }
+);
 ---
 
-<span class="tag-chip">
-  {image && (
-    <span
-      class="tag-chip-icon"
-      style={`background-color: ${color ?? "var(--primary)"}; mask-image: url(${image}); -webkit-mask-image: url(${image});`}
-    ></span>
-  )}
-  {label}
-</span>
-
+<Fragment set:html={html} />

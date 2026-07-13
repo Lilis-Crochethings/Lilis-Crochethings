@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
-import { getTagLabel } from "../lib/tags";
+import { getTagChipData } from "../lib/tags";
 import type { SearchDoc } from "../lib/search";
 
 export const prerender = true;
@@ -19,21 +19,22 @@ export const GET: APIRoute = async () => {
     type: "pattern",
     href: `/patterns/${pattern.id}`,
     title: pattern.data.title,
-    description: pattern.data.description,
-    tags: (pattern.data.tags ?? []).map((id) => getTagLabel(id, taxonomy)),
+    description: pattern.data.description?.text,
+    tags: (pattern.data.tags ?? []).map((id) => getTagChipData(id, taxonomy)),
     image: pattern.data.image,
     difficulty: pattern.data.difficulty,
   }));
 
   const creationDocs: SearchDoc[] = creations.map((creation) => {
     const patternGroups = creation.data.patterns ?? [];
-    const typeLabels = [creation.data.type, ...(creation.data.subtypes ?? [])].map((id) => getTagLabel(id, typesTaxonomy));
+    const typeChips = [creation.data.type, ...(creation.data.subtypes ?? [])].map((id) => getTagChipData(id, typesTaxonomy));
     return {
       type: "creation",
       href: `/creations/${creation.id}`,
       title: creation.data.title,
-      description: creation.data.description,
-      tags: [...typeLabels, ...(creation.data.tags ?? []).map((id) => getTagLabel(id, taxonomy))],
+      description: creation.data.description.text,
+      tags: [...typeChips, ...(creation.data.tags ?? []).map((id) => getTagChipData(id, taxonomy))],
+      searchTerms: creation.data.searchTerms,
       designer: patternGroups.map((g) => g.creator).filter((c) => c).join(", ") || undefined,
       patternName: patternGroups.flatMap((g) => g.items.map((i) => i.name)).join(", ") || undefined,
       image: creation.data.images[0],

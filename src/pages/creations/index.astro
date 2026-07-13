@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import CreationListItem from '../../components/creations/CreationListItem.astro';
 import { getCollection } from "astro:content";
 import { getEffectiveTags } from "../../lib/tags";
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_DOT_COLORS } from "../../lib/difficulty";
 
 // Tiebreak by title whenever two creations share a date (or both lack one)
 // so the initial server-rendered order is deterministic — matching the
@@ -27,9 +28,8 @@ const colorPalette = colorsEntry.data.colors;
 const yarnTypesEntry = (await getCollection("yarnTypes"))[0];
 const yarnTypesTaxonomy = yarnTypesEntry.data.yarnTypes;
 
-// Same colors as the difficulty-chip styling in global.css — reused here so
-// the active-filters row's difficulty dots match the chips shown on cards.
-const DIFFICULTY_COLORS: Record<string, string> = { easy: "#8dc399", medium: "#f3c368", hard: "#cb8184" };
+const pagesEntry = (await getCollection("pages"))[0];
+const pageMeta = pagesEntry.data.creations;
 
 const creationsWithTags = creations.map((creation) => ({
   creation,
@@ -37,16 +37,15 @@ const creationsWithTags = creations.map((creation) => ({
 }));
 ---
 <BaseLayout
-  title="Creations"
-  description="Browse Lili's finished crochet creations — bags, amigurumi, blankets, and more handmade pieces."
+  title={pageMeta.title}
+  description={pageMeta.description}
 >
   <div class="layout">
     <div class="content-header">
       <h1>Creations</h1>
       <div class="content-controls">
-        <button id="filters-toggle" type="button" class="filters-btn" aria-expanded="false">
-          <span class="icon icon-filter"></span>
-          Filters
+        <button id="filters-toggle" type="button" class="filters-btn" aria-expanded="false" aria-label="Filters">
+          <span class="icon icon-filters-alt mask-icon"></span>
         </button>
       </div>
     </div>
@@ -130,11 +129,11 @@ const creationsWithTags = creations.map((creation) => ({
 
           <h3 class="filter-subheading">Difficulty</h3>
           <div class="difficulty-options">
-            {(["easy", "medium", "hard"] as const).map((level) => {
-              const label = level.charAt(0).toUpperCase() + level.slice(1);
+            {DIFFICULTY_LEVELS.map((level) => {
+              const label = DIFFICULTY_LABELS[level];
               return (
                 <label class:list={["taxonomy-item", `difficulty-${level}`]}>
-                  <input type="checkbox" value={level} class="difficulty-filter" data-color={DIFFICULTY_COLORS[level]} data-label={label} />
+                  <input type="checkbox" value={level} class="difficulty-filter" data-color={DIFFICULTY_DOT_COLORS[level]} data-label={label} />
                   {label}
                   <span class="filter-count"></span>
                 </label>
@@ -265,47 +264,40 @@ const creationsWithTags = creations.map((creation) => ({
 
 .filters-btn .icon {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background-color: var(--primary);
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
   transition: background-color 0.2s ease;
 }
 
 .filters-btn.active .icon {
-  background-color: white;
+  background-color: var(--on-primary);
 }
 
-.icon-filter {
-  mask-image: url(/images/icons/filter.svg);
-  -webkit-mask-image: url(/images/icons/filter.svg);
+/* Sliders, not a funnel — this button also holds the sort options, so the
+   old funnel-shaped "filter" icon undersold what it actually opens. */
+.icon-filters-alt {
+  mask-image: url(/images/icons/filters-alt.svg);
+  -webkit-mask-image: url(/images/icons/filters-alt.svg);
 }
 
 .filters-btn {
   display: none;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   border: 1.5px solid var(--primary);
-  border-radius: 999px;
+  border-radius: 10px;
   background: none;
-  color: var(--primary-text);
-  padding: 0.5rem 0.9rem 0.4rem;
-  font: inherit;
-  font-family: "Quicksand", sans-serif;
-  font-size: 0.95rem;
-  line-height: 1;
+  padding: 0;
   cursor: var(--cursor-pointer);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .filters-btn.active {
   background: var(--primary);
-  color: white;
 }
 
 .layout {
@@ -358,7 +350,7 @@ const creationsWithTags = creations.map((creation) => ({
 .results-count {
   font-family: "Quicksand", sans-serif;
   font-size: 0.9rem;
-  color: var(--primary-text);
+  color: var(--primary);
   margin: 0;
 }
 
@@ -369,14 +361,15 @@ const creationsWithTags = creations.map((creation) => ({
 }
 
 .filters-panel {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
 }
 
 .filters-panel-inner {
   padding: 0 1.5rem 1.5rem;
-  scrollbar-color: var(--accent) white;
+  scrollbar-color: var(--accent) var(--surface);
 }
 
 :global(.filters-panel-inner::-webkit-scrollbar) {
@@ -384,7 +377,7 @@ const creationsWithTags = creations.map((creation) => ({
 }
 
 :global(.filters-panel-inner::-webkit-scrollbar-track) {
-  background: white;
+  background: var(--surface);
 }
 
 :global(.filters-panel-inner::-webkit-scrollbar-thumb) {
@@ -425,8 +418,7 @@ const creationsWithTags = creations.map((creation) => ({
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--primary-text);
-  opacity: 0.75;
+  color: var(--primary);
   margin: 0 0 0.6rem;
 }
 
@@ -454,7 +446,7 @@ const creationsWithTags = creations.map((creation) => ({
   padding: 0;
   border: none;
   background: none;
-  color: var(--primary-text);
+  color: var(--primary);
   cursor: var(--cursor-pointer);
 }
 
@@ -471,7 +463,7 @@ const creationsWithTags = creations.map((creation) => ({
   left: 0;
   width: max-content;
   max-width: 200px;
-  background: var(--text);
+  background: var(--tooltip-bg);
   color: white;
   font-weight: normal;
   text-transform: none;
@@ -508,15 +500,15 @@ const creationsWithTags = creations.map((creation) => ({
 }
 
 .taxonomy-item.difficulty-easy input::before {
-  background-color: #8dc399;
+  background-color: var(--difficulty-easy-dot);
 }
 
 .taxonomy-item.difficulty-medium input::before {
-  background-color: #f3c368;
+  background-color: var(--difficulty-medium-dot);
 }
 
 .taxonomy-item.difficulty-hard input::before {
-  background-color: #cb8184;
+  background-color: var(--difficulty-hard-dot);
 }
 
 .difficulty-options .taxonomy-item {
@@ -580,7 +572,7 @@ const creationsWithTags = creations.map((creation) => ({
   gap: 0.4rem;
   background: none;
   border: 1px solid var(--primary);
-  color: var(--primary-text);
+  color: var(--primary);
   font-family: "Quicksand", sans-serif;
   font-weight: bold;
   font-size: 0.85rem;
@@ -594,12 +586,6 @@ const creationsWithTags = creations.map((creation) => ({
   width: 14px;
   height: 14px;
   background-color: var(--primary);
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
   flex-shrink: 0;
 }
 
@@ -608,7 +594,7 @@ const creationsWithTags = creations.map((creation) => ({
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(var(--shadow-color), calc(0.2 * var(--shadow-alpha-scale)));
   flex-shrink: 0;
 }
 
@@ -640,7 +626,7 @@ const creationsWithTags = creations.map((creation) => ({
 .reset-filters {
   border: none;
   background: none;
-  color: var(--primary-text);
+  color: var(--primary);
   font-family: "Quicksand", sans-serif;
   font-size: 0.9rem;
   font-weight: bold;
@@ -656,7 +642,7 @@ const creationsWithTags = creations.map((creation) => ({
   display: none;
   /* iOS Safari tints unstyled buttons with the system accent (blue) when no
      color is set explicitly — this button only had font-size/line-height. */
-  color: var(--primary-text);
+  color: var(--primary);
 }
 
 .sort-options {
@@ -718,7 +704,7 @@ const creationsWithTags = creations.map((creation) => ({
 .filter-count {
   margin-left: -0.25rem;
   font-size: 0.85em;
-  color: var(--primary-text);
+  color: var(--primary);
 }
 
 .taxonomy-row .taxonomy-item {
@@ -731,7 +717,7 @@ const creationsWithTags = creations.map((creation) => ({
   justify-content: center;
   border: none;
   background: none;
-  color: var(--primary-text);
+  color: var(--primary);
   padding: 0.25rem;
   cursor: var(--cursor-pointer);
   flex-shrink: 0;
@@ -815,7 +801,7 @@ const creationsWithTags = creations.map((creation) => ({
     width: 100%;
     max-height: 82vh;
     overflow-y: auto;
-    background: white;
+    background: var(--surface);
     border-radius: 16px 16px 0 0;
     padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
   }
@@ -872,7 +858,7 @@ const creationsWithTags = creations.map((creation) => ({
     width: 100%;
     height: 82vh;
     overflow-y: auto;
-    background: white;
+    background: var(--surface);
     border-radius: 16px 16px 0 0;
     padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
     display: flex;
@@ -1157,7 +1143,7 @@ const creationsWithTags = creations.map((creation) => ({
       chip.appendChild(dot);
     } else if (cb.dataset.icon) {
       const icon = document.createElement('span');
-      icon.className = 'active-filter-icon';
+      icon.className = 'active-filter-icon mask-icon';
       icon.style.maskImage = `url(${cb.dataset.icon})`;
       icon.style.setProperty('-webkit-mask-image', `url(${cb.dataset.icon})`);
       chip.appendChild(icon);

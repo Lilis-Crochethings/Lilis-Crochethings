@@ -1,0 +1,55 @@
+bio: |-
+  Hi there! I'm Lili, and welcome to the website for Lili's Crochethings!
+
+  I'm a fairly new crocheter who discovered her love for the craft in the summer of 2023. (I sound like a grandma already, haha.) Speaking of grandmas though, mine actually tried to teach me how to crochet back in middle school. Unfortunately, I just couldn't wrap my head around it. Where do you even insert the hook? What is a stitch? Yeah... I was hopeless.
+
+  Then, throughout all my years of using Pinterest, crochet projects just kept appearing on my timeline, almost as if they were taunting me. I kept thinking, "It would be so nice if I could crochet... but I already tried, and I couldn't do it." Then one day I realized: That was in middle school. You're in university now. Surely you can give it another try, right?
+
+  So I picked up a crochet hook again, grabbed some scrap yarn I had lying around, searched for the first YouTube tutorial on the basic stitches, and just went for it! After a few practice swatches, I felt confident enough to start my first real project.
+
+  I still had some green yarn left over, so why not crochet a little [sprout](/creations/sprout) for my headset? That turned out pretty well! Hmm... maybe it's time for some amigurumi? Oh, this [octopus](/creations/octopus) looks cute! Ah, I don't have any safety eyes. Oh well, buttons will do. Yep, I'm basically a pro now...
+
+  You know what? Let me use that faux fur yarn I bought specifically for when I'd finally learn to crochet and make the [loaf bunny](/creations/bunny-loaf) I'd been dreaming about. What could possibly go wrong? Oh. My. God. You can't see *anything* with this yarn! How does anyone make anything with this stuff?? Oh wait... you're supposed to *feel* your stitches?!  Well... if you can't see the stitches, you can't see my mistakes either. 😏
+
+  So that's the story of how I learned to crochet. The story behind this website is a little different.
+
+  About a year later, in September 2024, I started a crochet Instagram account. Whenever I told people about my new hobby, they would always ask what I'd made. That got me thinking: why not create a social media account dedicated entirely to my crochet projects? That way, I wouldn't have to endlessly scroll through my camera roll whenever someone asked to see them. Everything would be in one place. But then I realized my grandparents don't have Instagram, and they like seeing my crochet projects too. Alright then, I'll automatically share everything to Facebook as well. Hmm... most crafters find inspiration on Pinterest, so I should probably post there too. Okay, but now I need a separate email address... You know what? We've come this far already—why not just build a website that brings everything together?
+
+  Being both an IT enthusiast and a crocheter, I also felt that traditional crochet patterns were missing something. I kept thinking they could do more to help the maker. That's why I created interactive crochet patterns that guide you through your projects more easily. They let you check off each completed row, so you'll never have to count rows over and over again to figure out where you left off. They also solve another common frustration: making a pattern in different colors than the original. Instead of constantly translating color names in your head, you can simply choose the colors you're using, and the pattern updates to match your project.
+
+  It's my way of combining my two biggest passions, IT and crochet, to create something that's both fun and practical for fellow makers.
+
+summaryBio: |-
+  Hi there! I'm Lili, and welcome to the website for Lili's Crochethings!
+  
+  I first tried learning to crochet back in middle school when my grandma patiently attempted to teach me. Unfortunately, I just couldn't wrap my head around it at the time. Years later, in the summer of 2023, I decided to give it another chance—and this time it finally clicked.
+
+  Since then, my crochet hobby has steadily grown. What started as sharing my projects on Instagram expanded to Facebook and Pinterest, and eventually inspired me to create this website. As someone with a background in IT and a passion for crochet, I wanted to bring both worlds together by creating a place where creativity meets technology, including interactive crochet patterns that make crafting even more enjoyable.
+
+firstProjects:
+  - "sprout"
+  - "octopus"
+  - "bunny-loaf"
+  - "granny-squares"
+favoriteYarns:
+  - name: "Honey Bunny"
+    icon: "/images/icons/honey-bunny.svg"
+    aspectRatio: 0.716
+    rowBox: 40
+    link: "https://hobbii.be/collections/chenille-yarn/products/hp-1005670-honey-bunny"
+    hookSize: "7mm"
+    type: "Chenille"
+  - name: "Toucan"
+    icon: "/images/icons/toucan.svg"
+    aspectRatio: 1.641
+    rowBox: 48
+    link: "https://hobbii.be/collections/chenille-yarn/products/hp-1007324-toucan"
+    hookSize: "7mm"
+    type: "Chenille"
+  - name: "Baby Snuggle"
+    icon: "/images/icons/baby-snuggle.svg"
+    aspectRatio: 1.365
+    rowBox: 48
+    link: "https://hobbii.be/collections/chenille-yarn/products/hp-1003682-baby-snuggle-solid"
+    hookSize: "7mm"
+    type: "Chenille"
