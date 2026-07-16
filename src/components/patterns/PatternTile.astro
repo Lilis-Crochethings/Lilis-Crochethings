@@ -1,0 +1,152 @@
+---
+// A single pattern preview tile: thumbnail + difficulty chip + title/date/tags.
+// Same shape and same self-adjusting container-query tags row as the
+// creations grid's CreationTile.astro — kept as its own file rather than
+// generalizing that one, since the two collections' fields (images[] vs.
+// images[], but pattern has no `subtypes` overlap guarantee with creations,
+// etc.) already diverge enough elsewhere that a shared prop type would need
+// its own union anyway.
+import DifficultyChip from "../creations/DifficultyChip.astro";
+import NewBadge from "../creations/NewBadge.astro";
+import TagChip from "../creations/TagChip.astro";
+import { toThumb } from "../../lib/images";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  pattern: CollectionEntry<"patterns">;
+  effectiveTags?: string[];
+  taxonomy: TagCategory[];
+  typesTaxonomy: TagCategory[];
+  // Renders the tile as its own link when set — omit when the tile already
+  // sits inside a parent <a> (e.g. the home page's whole-card link) to avoid
+  // nesting anchors.
+  href?: string;
+}
+
+const { pattern, effectiveTags = [], taxonomy, typesTaxonomy, href } = Astro.props;
+
+const typeChipIds = [pattern.data.type, ...(pattern.data.subtypes ?? [])];
+const Tag = href ? "a" : "div";
+---
+
+<Tag class="tile" href={href}>
+  <div class="thumb">
+    <img src={toThumb(pattern.data.images[0])} alt={getCreationAlt(pattern.data.title, pattern.data.type, pattern.data.subtypes, typesTaxonomy)} loading="lazy" decoding="async" />
+    <DifficultyChip difficulty={pattern.data.difficulty} />
+    <NewBadge uploadDate={pattern.data.uploadDate} />
+  </div>
+  <div class="body">
+    <h3 class="title">{pattern.data.title}</h3>
+    {pattern.data.date && (
+      <p class="date">
+        <span class="icon mask-icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
+        {pattern.data.date.toLocaleDateString()}
+      </p>
+    )}
+    {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
+      <div class="tags">
+        {typeChipIds.map((id) => (
+          <TagChip id={id} taxonomy={typesTaxonomy} size="small" />
+        ))}
+        {effectiveTags.map((id) => (
+          <TagChip id={id} taxonomy={taxonomy} size="small" />
+        ))}
+      </div>
+    )}
+  </div>
+</Tag>
+
+<style>
+/* Identical to CreationTile.astro's own rules — see that file's comments
+   for the reasoning behind each one. */
+.tile {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.tile {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+a.tile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.body {
+  padding: 0.75rem 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.title {
+  font-family: "Lili Love", cursive;
+  font-size: 1.15rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.date .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow: hidden;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+  width: 100%;
+  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+}
+
+.tags :global(.tag-chip) {
+  flex-shrink: 0;
+}
+
+@container (max-width: 200px) {
+  .tags {
+    display: none;
+  }
+}
+</style>

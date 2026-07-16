@@ -1,0 +1,173 @@
+---
+// Dedicated "Congratulations" mini-card for the pattern detail page.
+// Self-contained (pulls its own social links rather than taking them as
+// props) so its blurb can be edited here without touching the page that
+// renders it.
+import SmartLink from "../SmartLink.astro";
+import SocialBadge from "../SocialBadge.astro";
+import { socialIcons, followSocials } from "../../lib/socials";
+
+// No name/title in here — a pattern's own outro (below) almost always
+// already opens with its own congratulations line, so this default text is
+// just the constant follow-up ask rather than repeating that greeting.
+const CONGRATS_TEXT =
+  "I'd love to see how it turned out! If you share your creation on social media, please tag me and credit me as the pattern designer. That way I can admire your work and share in your accomplishment!";
+
+// A pattern's own optional custom "you're done!" content (src/content.config.ts's
+// `outro` field) — a mix of prose and finished-piece photos, shown in the
+// order given between the title and the card's own default text/socials
+// below. Absent for most patterns, which just get the default text.
+type OutroEntry = { text: string } | { images: string[] };
+
+const { outro } = Astro.props as { outro?: OutroEntry[] };
+---
+
+<div class="card card-congrats">
+  <img class="congrats-pic" src="/images/Lilis-Crochethings-thumb.webp" alt="Lili" />
+  <div class="congrats-body">
+    <h2>Congratulations! 🎉</h2>
+    {outro && outro.length > 0 && (
+      <div class="congrats-outro">
+        {outro.map((entry) => (
+          "text" in entry ? (
+            <p class="congrats-text">{entry.text}</p>
+          ) : (
+            <div class="congrats-outro-images" class:list={{ "single-image": entry.images.length === 1 }}>
+              {entry.images.map((src) => (
+                <img src={src} alt="" class="gallery-thumb congrats-outro-image" loading="lazy" decoding="async" />
+              ))}
+            </div>
+          )
+        ))}
+      </div>
+    )}
+    <p class="congrats-text">{CONGRATS_TEXT}</p>
+    <ul class="congrats-socials">
+      {followSocials.map((s) => (
+        <li>
+          <SmartLink href={s.href}>
+            <SocialBadge icon={socialIcons[s.icon]} size={28} />
+            {s.handle ?? s.name}
+          </SmartLink>
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card-congrats {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-family: "Lili Love", cursive;
+}
+
+.congrats-pic {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* Pinned to the top of the row instead of .card-congrats's own
+   align-items: center, once a pattern's custom outro content can make
+   .congrats-body run a lot taller than the photo — otherwise the photo
+   drifts down to whatever the body's new vertical center happens to be.
+   Scoped to tablet-up only: at mobile, .card-congrats switches to a
+   centered column stack (see patterns/[slug].astro's own mobile block),
+   where align-items: center is exactly what keeps the photo centered above
+   the text instead of pinned to one side. */
+@media (--tablet-up) {
+  .congrats-pic {
+    align-self: flex-start;
+  }
+}
+
+.congrats-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.congrats-body h2 {
+  margin-bottom: 0.5rem;
+}
+
+.congrats-text {
+  margin: 0 0 1rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* Two per row, reset to a single full-width column on mobile below — same
+   convention as PatternInstructions.astro's own .row-images. */
+.congrats-outro-images {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+}
+
+.congrats-outro-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: var(--cursor-pointer);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.congrats-outro-image:hover {
+  transform: scale(1.04);
+}
+
+@media (--mobile) {
+  /* Same 2-column grid as tablet/desktop (the default above) — only the
+     single-image case below still gets mobile's own full-width override,
+     so one lone outro photo still reads as a big highlight instead of a
+     half-width tile with an empty cell beside it. */
+  .congrats-outro-images {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .congrats-outro-images.single-image {
+    grid-template-columns: 1fr;
+  }
+}
+
+.congrats-socials {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.congrats-socials a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--primary);
+}
+
+.congrats-socials a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+</style>

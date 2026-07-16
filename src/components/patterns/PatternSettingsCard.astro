@@ -1,0 +1,658 @@
+---
+// Lets a visitor swap a pattern's suggested yarn colors/names for their own
+// — shown right under the "Pattern" title (rendered by PatternInstructions.astro,
+// which owns this component's slug/yarns props), since it's the thing to set
+// up before reading the instructions below it.
+// A picked color re-colors that yarn's swatch and any inline instruction
+// text referencing it; a typed name replaces the yarn's own name wherever
+// it's referenced inline (e.g. `[body]`) the same way. Overrides are
+// session-only (see ../../lib/yarnOverrides.ts): they're meant as a quick
+// "what would this look like in my colors" preview, not a saved plan that
+// persists indefinitely, so Reset clears them outright.
+import type { PatternYarn } from "../../lib/patternInstructions";
+
+const { slug, yarns, previewBase, previewDefaultHexes } = Astro.props as {
+  slug: string;
+  yarns: PatternYarn[];
+  previewBase?: string;
+  // A yarn's real resolved product hex (PatternInstructions.astro), keyed by
+  // yarn id — the preview's default tint before a visitor picks their own;
+  // see the script below and defaultPreviewHex() for the full fallback chain.
+  previewDefaultHexes?: Record<string, string>;
+};
+
+// Only worth rendering the live canvas preview once there's both a base
+// photo and at least one yarn with a region mask to recolor onto it — see
+// the matching content.config.ts superRefine check, which guarantees these
+// two never disagree with each other on a given pattern. When there's no
+// preview to show, the whole preview column (box + its own Reset) is
+// skipped rather than left rendering an empty placeholder box, and the
+// color/name rows below get to spread into the two-column grid that frees
+// up instead.
+const hasPreview = Boolean(previewBase) && yarns.some((yarn) => yarn.mask);
+
+// A long single column of color/name rows reads worse than two shorter
+// ones once there are enough of them — independent of whether a preview is
+// taking up the sidebar, since even the narrower main column left beside
+// one still fits a 2-up grid once there's this many rows to show.
+const MANY_COLORS_THRESHOLD = 5;
+const manyColors = yarns.length >= MANY_COLORS_THRESHOLD;
+---
+
+<div class="card card-pattern-settings" data-pattern-slug={slug}>
+  <div class="settings-columns">
+    <div class="settings-main">
+      <div class="settings-header-row">
+        <span class="settings-title-group">
+          <h2>Settings</h2>
+          <span class="info-tooltip">
+            <button type="button" class="info-icon-btn" aria-describedby="pattern-settings-tooltip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="11" x2="12" y2="16" />
+                <circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+            <span class="tooltip-text" id="pattern-settings-tooltip" role="tooltip">
+              The colors that you choose here override the colors used in the pattern. Make sure you use ones that are visible against the background.
+            </span>
+          </span>
+        </span>
+        {/* No preview column to hold its own Reset button below (see the
+            markup further down) — this is its only home instead. */}
+        {!hasPreview && (
+          <button
+            type="button"
+            class="reset-settings"
+            id="pattern-settings-reset"
+            title="Clears every color and name you've picked here — nothing is kept"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      <div class="settings-list" class:list={{ "settings-list-grid-full": !hasPreview, "settings-list-grid-many": hasPreview && manyColors }}>
+        {yarns.map((yarn) => (
+          <div
+            class="settings-row"
+            data-yarn-id={yarn.id}
+            data-default-name={yarn.name}
+            data-default-color-light={yarn.color.light}
+            data-default-color-dark={yarn.color.dark}
+            data-mask={yarn.mask}
+            data-preview-default-hex={previewDefaultHexes?.[yarn.id]}
+          >
+            <p class="settings-row-label">{yarn.info ?? yarn.name}</p>
+            <div class="settings-row-controls">
+              <span class="yarn-swatch-wrap">
+                <input type="color" class="yarn-swatch settings-color-input" aria-label={`Your color for ${yarn.info ?? yarn.name}`} />
+                <span class="yarn-swatch-icon mask-icon" style="mask-image: url(/images/icons/color-picker.svg); -webkit-mask-image: url(/images/icons/color-picker.svg);" aria-hidden="true"></span>
+              </span>
+              <input type="text" class="settings-name-input" aria-label={`Your name for ${yarn.info ?? yarn.name}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+    {hasPreview && (
+      <div class="settings-preview">
+        <button
+          type="button"
+          class="reset-settings"
+          id="pattern-settings-reset"
+          title="Clears every color and name you've picked here — nothing is kept"
+        >
+          Reset
+        </button>
+        {/* A visitor's color picks above are tinted live onto colorPreviewBase
+            through each yarn's own mask — see the script below. */}
+        <div class="settings-preview-box" aria-hidden="true">
+          <canvas class="settings-preview-canvas" data-preview-base={previewBase}></canvas>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+
+<script>
+  import { readYarnOverrides, writeYarnOverrides, clearYarnOverrides } from "../../lib/yarnOverrides";
+
+  // Same theme-detection helper as the Materials card's own script — a
+  // native <input type="color"> only ever holds one hex, so an unset row
+  // prefills from whichever of the yarn's light/dark pair matches what's
+  // currently on screen.
+  function currentThemeIsDark(): boolean {
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr === "dark") return true;
+    if (attr === "light") return false;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  }
+
+  // "color" (the Photoshop-style blend: hue+saturation from what's drawn,
+  // luminosity from what's already there) keeps the base photo's own
+  // highlights/shadows intact through a tint — "multiply" can only ever
+  // darken, so it washes out highlights and reads muddier the more
+  // saturated the picked color is. Support landed in every evergreen
+  // browser a while ago (Safari last, in 15.4), but isn't universal, so this
+  // feature-detects rather than assuming it: setting an unrecognized
+  // globalCompositeOperation value is a no-op per spec, leaving the
+  // previous ("source-over") in place instead of erroring — so if the
+  // readback doesn't match what was just set, it silently wasn't applied.
+  function supportsColorBlend(): boolean {
+    const probe = document.createElement("canvas").getContext("2d");
+    if (!probe) return false;
+    probe.globalCompositeOperation = "color";
+    return probe.globalCompositeOperation === "color";
+  }
+  const TINT_BLEND_MODE = supportsColorBlend() ? "color" : "multiply";
+  // How strongly the "color" pass (see drawPreview() below) corrects hue/
+  // saturation back on top of the "multiply" pass underneath it — tuned by
+  // eye, not derived from anything. 1 (full "color") blows out highlights to
+  // near-white/neon; 0 is just plain "multiply" (muddier, no hue
+  // correction). No-op when supportsColorBlend() is false, since both passes
+  // are then the same "multiply" operation regardless of alpha.
+  const TINT_ALPHA = 0.5;
+
+  document.querySelectorAll<HTMLElement>(".card-pattern-settings").forEach((card) => {
+    const slug = card.dataset.patternSlug;
+    if (!slug) return;
+
+    const rows = Array.from(card.querySelectorAll<HTMLElement>(".settings-row"));
+
+    // Live recolor preview — see the .settings-preview-canvas markup above.
+    // Absent (canvas null) on a pattern with no colorPreviewBase/masks
+    // prepared, in which case every function below is a harmless no-op.
+    const canvas = card.querySelector<HTMLCanvasElement>(".settings-preview-canvas");
+    const previewCtx = canvas?.getContext("2d") ?? null;
+    // Scratch canvas reused for every yarn's tint layer each draw, rather
+    // than allocated fresh per yarn per frame.
+    const tintCanvas = document.createElement("canvas");
+    const tintCtx = tintCanvas.getContext("2d");
+
+    let baseImg: HTMLImageElement | null = null;
+    const maskImages = new Map<string, HTMLImageElement>();
+    const rowsByYarnId = new Map<string, HTMLElement>();
+    rows.forEach((row) => { if (row.dataset.yarnId) rowsByYarnId.set(row.dataset.yarnId, row); });
+
+    if (canvas && previewCtx && canvas.dataset.previewBase) {
+      baseImg = new Image();
+      baseImg.onload = drawPreview;
+      baseImg.src = canvas.dataset.previewBase;
+
+      rows.forEach((row) => {
+        const yarnId = row.dataset.yarnId;
+        const maskSrc = row.dataset.mask;
+        if (!yarnId || !maskSrc) return;
+        const maskImg = new Image();
+        maskImg.onload = drawPreview;
+        maskImg.src = maskSrc;
+        maskImages.set(yarnId, maskImg);
+      });
+    }
+
+    // A masked yarn's preview tint before a visitor picks their own: the
+    // real product hex behind its `yarn` credit if it has one (baked into
+    // data-preview-default-hex by PatternInstructions.astro — the same real
+    // color the Materials card's own swatch shows), else the same themed
+    // light/dark pair the color-input swatch/instruction text already fall
+    // back to (defaultHex) — never left untinted, so the preview always
+    // starts looking like *some* real answer to "what color is this," not a
+    // blank/neutral photo.
+    function defaultPreviewHex(row: HTMLElement): string {
+      return row.dataset.previewDefaultHex ?? defaultHex(row);
+    }
+
+    // Draws colorPreviewBase, then tints each masked yarn on top of it —
+    // a visitor's own pick (readYarnOverrides) if they've made one,
+    // otherwise defaultPreviewHex(). A no-op until the base photo has
+    // actually loaded — each image's own onload re-triggers this, so the
+    // preview fills in piece by piece as its assets arrive rather than
+    // needing every one loaded up front.
+    function drawPreview() {
+      if (!canvas || !previewCtx || !tintCtx || !baseImg?.complete || baseImg.naturalWidth === 0) return;
+
+      canvas.width = baseImg.naturalWidth;
+      canvas.height = baseImg.naturalHeight;
+      previewCtx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+
+      const overrides = readYarnOverrides(slug!);
+      maskImages.forEach((maskImg, yarnId) => {
+        if (!maskImg.complete || maskImg.naturalWidth === 0) return;
+        const row = rowsByYarnId.get(yarnId);
+        const hex = overrides[yarnId]?.hex ?? (row ? defaultPreviewHex(row) : undefined);
+        if (!hex) return;
+
+        // Clips a solid fill of the picked color down to the mask's own
+        // alpha shape ("source-in": keep only where the just-drawn mask was
+        // already opaque, replaced with whatever's drawn next).
+        tintCanvas.width = canvas.width;
+        tintCanvas.height = canvas.height;
+        tintCtx.clearRect(0, 0, canvas.width, canvas.height);
+        tintCtx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+        tintCtx.globalCompositeOperation = "source-in";
+        tintCtx.fillStyle = hex;
+        tintCtx.fillRect(0, 0, canvas.width, canvas.height);
+        tintCtx.globalCompositeOperation = "source-over";
+
+        // TINT_BLEND_MODE (not a plain overwrite) so the base photo's own
+        // shading/texture (fibers, shadows, highlights) still shows through
+        // the picked color, instead of flattening that region to one solid
+        // swatch. "color" blend forces the *backdrop's* luminosity to carry
+        // the source's hue/saturation at full strength everywhere, even the
+        // photo's brightest highlight pixels — those already sit close to
+        // white, so full-strength saturated color there reads as blown-out/
+        // neon rather than a highlight. Two passes tame that: TINT_ALPHA's
+        // partial-strength "color" pass leaves it letting some of the
+        // original neutral gray show through (softening highlights back
+        // down), and the full-strength "multiply" pass underneath grounds
+        // the result with real proportional shading (true darkening in
+        // shadows, which "color" alone doesn't add).
+        previewCtx.globalCompositeOperation = "multiply";
+        previewCtx.drawImage(tintCanvas, 0, 0);
+
+        previewCtx.globalCompositeOperation = TINT_BLEND_MODE;
+        previewCtx.globalAlpha = TINT_ALPHA;
+        previewCtx.drawImage(tintCanvas, 0, 0);
+        previewCtx.globalAlpha = 1;
+        previewCtx.globalCompositeOperation = "source-over";
+      });
+    }
+
+    function defaultHex(row: HTMLElement): string {
+      const light = row.dataset.defaultColorLight ?? "#000000";
+      const dark = row.dataset.defaultColorDark ?? "#000000";
+      return currentThemeIsDark() ? dark : light;
+    }
+
+    // The name input's own text renders in the yarn's current color — so
+    // typing (or picking) a color you can't actually read is obvious
+    // immediately, no separate contrast check needed.
+    function paint(row: HTMLElement, hex: string, name: string) {
+      const colorInput = row.querySelector<HTMLInputElement>(".settings-color-input");
+      const nameInput = row.querySelector<HTMLInputElement>(".settings-name-input");
+      if (colorInput) colorInput.value = hex;
+      if (nameInput) {
+        nameInput.value = name;
+        nameInput.style.color = hex;
+      }
+    }
+
+    function render() {
+      const overrides = readYarnOverrides(slug!);
+      rows.forEach((row) => {
+        const yarnId = row.dataset.yarnId;
+        if (!yarnId) return;
+        const override = overrides[yarnId];
+        paint(row, override?.hex ?? defaultHex(row), override?.name ?? row.dataset.defaultName ?? "");
+      });
+    }
+
+    function commit(yarnId: string, partial: { hex?: string; name?: string }) {
+      const all = readYarnOverrides(slug!);
+      writeYarnOverrides(slug!, { ...all, [yarnId]: { ...all[yarnId], ...partial } });
+    }
+
+    render();
+    drawPreview();
+
+    // Unlike every other themed color on this page (swatches, instruction
+    // text, ...), which carry both a light AND dark value as CSS custom
+    // properties and let a plain html[data-theme] selector pick between them
+    // for free, these two can't do that: a native <input type="color"> only
+    // ever holds one hex, and the canvas preview is baked to real pixels at
+    // draw time — both have to be explicitly repainted when the theme
+    // changes instead of just reacting to CSS. render()/drawPreview() already
+    // recompute the right color from scratch each time they're called (via
+    // defaultHex()'s currentThemeIsDark() check), so simply re-running them
+    // here is enough — a visitor's own override is untouched either way,
+    // since it's already theme-invariant (see paint()'s call site above).
+    new MutationObserver(() => {
+      render();
+      drawPreview();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    rows.forEach((row) => {
+      const yarnId = row.dataset.yarnId;
+      if (!yarnId) return;
+      const colorInput = row.querySelector<HTMLInputElement>(".settings-color-input");
+      const nameInput = row.querySelector<HTMLInputElement>(".settings-name-input");
+
+      // "input" (not "change") — the picker's own live drag preview should
+      // feel immediate, same as every other color input on this page.
+      colorInput?.addEventListener("input", () => {
+        if (nameInput) nameInput.style.color = colorInput.value;
+        commit(yarnId, { hex: colorInput.value });
+        drawPreview();
+      });
+
+      nameInput?.addEventListener("input", () => {
+        commit(yarnId, { name: nameInput.value });
+      });
+    });
+
+    card.querySelector<HTMLButtonElement>("#pattern-settings-reset")?.addEventListener("click", () => {
+      clearYarnOverrides(slug!);
+      render();
+      drawPreview();
+    });
+  });
+</script>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+/* The card's two "columns" — .settings-main (title/list) and
+   .settings-preview (Reset + the preview box) — stacked at mobile, side by
+   side from tablet up. The explanation/header sit in the left column too,
+   so the preview can start right at the top of the card (not pushed down
+   below a full-width explanation) and stretch to match whatever height the
+   left column ends up needing, rather than forcing extra height of its own
+   below it. */
+.settings-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (--tablet-up) {
+  .settings-columns {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .settings-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .settings-preview {
+    width: 260px;
+    flex-shrink: 0;
+  }
+}
+
+@media (--mobile) {
+  /* Floated out of .settings-preview's own flow (which is now a full-width
+     block stacked below .settings-main, not a side column starting level
+     with the header row) and pinned to .card's own padding box instead —
+     top/right match .card's 1.5rem padding exactly, so it lands in the
+     same visual corner as the "Settings" title's row above it. Scoped to
+     .settings-preview's own Reset — the no-preview case's Reset already
+     lives inline in .settings-header-row (see the markup and
+     .settings-header-row's justify-content below), so it has no separate
+     block to float out of here. */
+  .settings-preview .reset-settings {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+  }
+}
+
+.settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-header-row {
+  display: flex;
+  align-items: center;
+  /* Only ever has a second child (the no-preview case's inline Reset) when
+     .settings-preview isn't rendered at all — see the markup above — so
+     this pushes that button to the row's far end without affecting the
+     title-group's own position when Reset lives in the sidebar instead. */
+  justify-content: space-between;
+}
+
+/* Reset sits at the top of the preview column, flush to its right edge —
+   the card's actual top-right corner once that column sits beside
+   .settings-main from tablet up. Pushes .settings-preview-box down/smaller
+   to fit under it (that box gets its own align-self: stretch below, to
+   stay full-width despite this column's flex-end, which is only meant to
+   pull Reset over). At mobile, .settings-preview stacks below .settings-main
+   full-width instead (see .settings-columns above), which would otherwise
+   drop Reset down to the top of that second block rather than the card's
+   real top-right corner — .reset-settings goes position: absolute there
+   instead (see the mobile block below), floating it back up to .card's own
+   corner regardless of where .settings-preview ends up in the stack. */
+.settings-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* font-size: 1.17em here is the browser default h3 size (relative to the
+   ambient body font-size) — matches the <h3> part titles in the pattern
+   cards below (PatternInstructions.astro), since this "Settings" heading
+   is itself an h2 and would otherwise render larger than its neighbors.
+   Carried on the group itself, with the h2 below reset to 1em, so the info
+   icon can size itself relative to 1em too and land on the exact same
+   computed size as the title, not a hardcoded guess at it. */
+.settings-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.17em;
+}
+
+.settings-header-row h2 {
+  margin: 0;
+  font-size: 1em;
+}
+
+/* Same info-icon-plus-tooltip pattern as the patterns list page's "Time
+   spent" filter heading — replaces the card's old always-visible
+   explanation paragraph with a hover/focus-revealed hint instead, kept
+   local since Astro scopes <style> per component. Sized relative to em
+   (not that convention's fixed 15px) so it scales with the "Settings"
+   title's own size — see .settings-title-group above for why 1em lands on
+   that exact size; bumped past 1em here to sit larger than the title text. */
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  cursor: var(--cursor-pointer);
+}
+
+.info-icon-btn svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
+  width: max-content;
+  max-width: 200px;
+  background: var(--tooltip-bg);
+  color: white;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.info-icon-btn:hover + .tooltip-text,
+.info-icon-btn:focus-visible + .tooltip-text {
+  opacity: 1;
+}
+
+.reset-settings {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.reset-settings:hover {
+  text-decoration: underline;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Full-width case (no preview column competing for space) gets the 2-up
+   grid as soon as there's a side-by-side layout at all — .settings-many
+   below needs desktop's extra room instead, since it's sharing the row
+   with a 260px preview sidebar rather than having the full card width to
+   itself. Both stay a single flex column at mobile regardless (inherited
+   from .settings-list above), matching every other card on this page. */
+@media (--tablet-up) {
+  .settings-list-grid-full {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.5rem;
+  }
+}
+
+@media (--desktop-up) {
+  .settings-list-grid-many {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.5rem;
+  }
+}
+
+.settings-row-label {
+  margin: 0 0 0.5rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.settings-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Same 48px/10px-radius swatch box as the Materials card's yarn tiles —
+   Astro scopes <style> per component, so shared-looking chrome like this
+   gets redeclared locally rather than imported (same convention every
+   other card component on this page already follows). */
+.yarn-swatch-wrap {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--border-muted);
+  overflow: hidden;
+}
+
+.yarn-swatch {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: var(--cursor-pointer);
+}
+
+.yarn-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.yarn-swatch::-webkit-color-swatch {
+  border: none;
+}
+
+.yarn-swatch::-moz-color-swatch {
+  border: none;
+}
+
+/* Pointer-events:none so clicks reach the <input type="color"> underneath —
+   reduced opacity, same treatment as every other swatch glyph on this page. */
+.yarn-swatch-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  background-color: black;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.settings-name-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.settings-name-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+/* Only ever rendered for a pattern that actually has a preview now (see the
+   markup above) — same solid card-border treatment as every other
+   card-in-card box on the pattern page. border-radius + overflow: hidden
+   here is what keeps the canvas's own square corners rounded to match, so
+   don't drop either while touching this. */
+.settings-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  aspect-ratio: 1;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.settings-preview-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+</style>

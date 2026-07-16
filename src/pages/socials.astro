@@ -3,10 +3,11 @@ import { parse } from "yaml";
 import socialsRaw from "../data/socials.yaml?raw";
 import "../styles/global.css";
 import { getCollection } from "astro:content";
+import SocialBadge from "../components/SocialBadge.astro";
 
 type LinkEntry = { name: string; href: string; icon: string; newTab?: boolean };
 type SocialsConfig = {
-  icons: Record<string, { src: string; pad?: number; radius?: string }>;
+  icons: Record<string, { src: string; pad?: number; radius?: string; tinted?: boolean }>;
   socials: LinkEntry[];
   contacts: LinkEntry[];
 };
@@ -58,9 +59,7 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
       <div class="links">
         {socials.map((s) => (
           <a class="link-pill" href={s.href} target={s.newTab ? "_blank" : undefined} rel={s.newTab ? "noopener noreferrer" : undefined}>
-            <span class="badge" style={`padding:${icons[s.icon].pad ?? 0}px`}>
-              <img src={icons[s.icon].src} alt="" style={`border-radius:${icons[s.icon].radius ?? 0}`} />
-            </span>
+            <SocialBadge icon={icons[s.icon]} size={28} />
             <span>{s.name}</span>
           </a>
         ))}
@@ -70,9 +69,7 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
       <div class="links">
         {contacts.map((c) => (
           <a class="link-pill" href={c.href} target={c.newTab ? "_blank" : undefined} rel={c.newTab ? "noopener noreferrer" : undefined}>
-            <span class="badge" style={`padding:${icons[c.icon].pad ?? 0}px`}>
-              <img src={icons[c.icon].src} alt="" style={`border-radius:${icons[c.icon].radius ?? 0}`} />
-            </span>
+            <SocialBadge icon={icons[c.icon]} size={28} />
             <span>{c.name}</span>
           </a>
         ))}
@@ -168,19 +165,4 @@ const imageURL = new URL("/images/Lilis-Crochethings.webp", Astro.site);
     box-shadow: 0 calc(8px * var(--inner-hover-blur-scale, 1)) calc(20px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.15);
   }
 
-  .badge {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .badge img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
 </style>

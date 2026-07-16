@@ -27,7 +27,7 @@ types:
         adjective: Crochet
   - id: embroidery
     label: Embroidery
-    image: /images/icons/embroidery.svg
+    image: /images/icons/needle.svg
     adjective: Embroidered
     children:
       - id: cross-stitch

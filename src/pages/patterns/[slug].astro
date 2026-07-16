@@ -1,0 +1,1338 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CreationCard from '../../components/creations/CreationCard.astro';
+import ImagesCard from '../../components/ImagesCard.astro';
+import DescriptionCard from '../../components/DescriptionCard.astro';
+import InfoCard from '../../components/InfoCard.astro';
+import LightboxChrome from '../../components/LightboxChrome.astro';
+import LightboxStage from '../../components/LightboxStage.astro';
+import PatternInstructions from '../../components/patterns/PatternInstructions.astro';
+import PatternProgressBar from '../../components/patterns/PatternProgressBar.astro';
+import PatternAbbreviationsDrawer from '../../components/patterns/PatternAbbreviationsDrawer.astro';
+import AboutMeCard from '../../components/patterns/AboutMeCard.astro';
+import CongratsCard from '../../components/patterns/CongratsCard.astro';
+import PatternCard from '../../components/patterns/PatternCard.astro';
+import { getCollection } from "astro:content";
+import { getEffectiveTags, getCreationAlt, getTagLabel } from "../../lib/tags";
+import { formatHours } from "../../lib/time";
+import { YARN_WEIGHT_LABELS } from "../../lib/yarnWeight";
+import { resolveYarn } from "../../lib/yarn";
+import { seededShuffle } from "../../lib/seededShuffle";
+
+export async function getStaticPaths() {
+  // Same cap as the creations detail page's own "See also" card.
+  const USED_IN_LIMIT = 4;
+  const SIMILAR_LIMIT = 4;
+
+  const patterns = await getCollection("patterns");
+  const creations = await getCollection("creations");
+
+  return patterns.map((pattern) => {
+    // A creation credits a self-designed pattern by linking straight to its
+    // detail page (see e.g. bunny.yaml's `link: "/patterns/jumbo-bunny"") —
+    // that internal link is already a stable, unambiguous key back to this
+    // pattern, unlike its free-text item name (which a creation is free to
+    // word differently, e.g. pluralized or shortened).
+    // Most recent first, then capped — a popular pattern with many makes
+    // shows its newest ones rather than an arbitrary/collection-order slice.
+    const usedIn = creations
+      .filter((creation) =>
+        (creation.data.patterns ?? []).some((group) =>
+          group.items.some((item) => item.link === `/patterns/${pattern.id}`)
+        )
+      )
+      .sort((a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0))
+      .slice(0, USED_IN_LIMIT);
+
+    const others = patterns.filter((p) => p.id !== pattern.id);
+
+    // Same scoring idea as the creations detail page's own "See also" card:
+    // tags + subtypes count together (the type itself, "crochet"/
+    // "embroidery", is too broad a signal on its own — every pattern of that
+    // craft would get a free point of similarity regardless of subject),
+    // plus a Jaccard-scaled color overlap so a fully-matching small palette
+    // doesn't lose to a partially-matching large one. No creator/pattern-name
+    // bonus here (unlike creations) — every entry in this collection is
+    // already Lili's own pattern, so that signal has nothing to distinguish.
+    const ownTags = new Set([...(pattern.data.tags ?? []), ...(pattern.data.subtypes ?? [])]);
+    const ownColors = new Set(pattern.data.colors ?? []);
+
+    function similarityScore(other: (typeof others)[number]): number {
+      let score = 0;
+
+      const otherTags = [...(other.data.tags ?? []), ...(other.data.subtypes ?? [])];
+      score += otherTags.filter((tag) => ownTags.has(tag)).length;
+
+      const otherColors = other.data.colors ?? [];
+      const sharedColors = otherColors.filter((color) => ownColors.has(color)).length;
+      const unionColors = new Set([...ownColors, ...otherColors]).size;
+      if (unionColors > 0) score += sharedColors / unionColors;
+
+      return score;
+    }
+
+    // Shuffle first (seeded per-pattern) so ties between equally-similar
+    // patterns land in a stable-but-varied order instead of always favoring
+    // whichever comes first in the collection.
+    const similar = seededShuffle(others, pattern.id)
+      .sort((a, b) => similarityScore(b) - similarityScore(a))
+      .slice(0, SIMILAR_LIMIT);
+
+    return {
+      params: { slug: pattern.id },
+      props: { pattern, usedIn, similar },
+    };
+  });
+}
+
+const { pattern, usedIn, similar } = Astro.props;
+const data = pattern.data;
+
+const taxonomyEntry = (await getCollection("tags"))[0];
+const taxonomy = taxonomyEntry.data.tags;
+const effectiveTags = getEffectiveTags(data.tags, taxonomy);
+
+const typesEntry = (await getCollection("types"))[0];
+const typesTaxonomy = typesEntry.data.types;
+const typeChipIds = [data.type, ...(data.subtypes ?? [])];
+const patternAlt = getCreationAlt(data.title, data.type, data.subtypes, typesTaxonomy);
+
+const materialsEntry = (await getCollection("materials"))[0];
+const materialsCatalog = materialsEntry.data.materials;
+const materialTiles = (data.materials?.items ?? [])
+  .map((id) => materialsCatalog.find((material) => material.id === id))
+  .filter((material) => material !== undefined);
+const patternYarns = data.materials?.yarns ?? [];
+const patternSafetyEyes = data.materials?.safetyEyes ?? [];
+// Every distinct hook size this pattern needs, in first-appearance order —
+// shown as its own tile (like safety eyes) so a visitor doesn't have to dig
+// through the yarn list to see what hooks they'll need.
+const hookSizes = [...new Set(data.materials?.hooks ?? [])];
+const hasMaterials = materialTiles.length > 0 || patternYarns.length > 0 || patternSafetyEyes.length > 0;
+
+const yarnLinesEntry = (await getCollection("yarns"))[0];
+const yarnLines = yarnLinesEntry.data.yarns;
+
+// Each suggested yarn slot also doubles as a record of what Lili actually
+// used, once it sets its own `yarn` field — a catalog reference (resolved
+// via resolveYarn(), same helper a creation's own "Yarns used" card uses) or
+// a one-off inline yarn. Resolved once per yarn here rather than in the
+// markup below so the tile JSX stays plain field access.
+const resolvedPatternYarns = patternYarns.map((yarn) => ({
+  yarn,
+  resolved: yarn.yarn ? resolveYarn(yarn.yarn, yarnLines) : null,
+}));
+
+// Same purpose as the creation detail page's identical helper — a light
+// swatch needs a border to stay visible against the card background, and
+// its yarn-ball fallback icon needs a darker tint instead of white.
+function isWhiteHex(hex?: string): boolean {
+  if (!hex) return false;
+  const clean = hex.replace("#", "").toLowerCase();
+  return clean === "fff" || clean === "ffffff";
+}
+
+const abbreviationsEntry = (await getCollection("abbreviations"))[0];
+const abbreviationsCatalog = abbreviationsEntry.data.abbreviations;
+// Kept in the order the pattern lists them (not the glossary's own order) —
+// that's usually the order the abbreviations first show up in the
+// instructions themselves.
+const patternAbbreviations = (data.abbreviations ?? [])
+  .map((id) => abbreviationsCatalog.find((abbr) => abbr.id === id))
+  .filter((abbr) => abbr !== undefined);
+
+const hasPatternInstructions = Boolean(data.pattern && data.pattern.length > 0);
+
+const infoItems = [
+  data.date && { icon: "/images/icons/calendar.svg", label: data.date.toLocaleDateString(), title: "Published" },
+  data.lastModified && { icon: "/images/icons/last-modified.svg", label: data.lastModified.toLocaleDateString(), title: "Last updated" },
+  data.hoursSpent && { icon: "/images/icons/clock.svg", label: formatHours(data.hoursSpent), title: "Time spent" },
+  data.hookSize && { icon: "/images/icons/hook.svg", label: data.hookSize, title: "Hook size" },
+].filter((item): item is { icon: string; label: string; title: string } => Boolean(item));
+
+// Glossary entries are written lowercase in the yaml (natural to type) —
+// capitalized here at render time rather than duplicating each label in
+// two cases in the source data.
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function yarnTitle(name: string, amount?: string): string {
+  return amount ? `${amount} of ${name}` : name;
+}
+// Second line under a yarn tile's title — the catalog line it's from (when
+// resolved via its own `yarn` field) and the weight it's suggested in.
+function yarnSubtitle(brand: string | undefined, weight: string | undefined): string {
+  const weightLabel = weight ? YARN_WEIGHT_LABELS[weight] : null;
+  return [brand, weightLabel].filter(Boolean).join(" · ");
+}
+
+const craftType = data.type;
+
+const baseDescription = data.description?.text || `A free ${craftType} pattern for ${data.title} by Lili's Crochethings.`;
+
+// Same reasoning as the creation detail page's identical line — the craft
+// type is stated every time (not just the no-description fallback) so a
+// cross-stitch pattern's page never reads as crochet-by-default to Google.
+const typeLabels = typeChipIds.map((id) => getTagLabel(id, typesTaxonomy));
+const craftDescription = `Craft: ${typeLabels.join(", ")}.`;
+const tagLabels = effectiveTags.map((id) => getTagLabel(id, taxonomy));
+
+const pageDescription = [
+  baseDescription,
+  craftDescription,
+  tagLabels.length ? `Tags: ${tagLabels.join(", ")}.` : null,
+  data.searchTerms?.length ? `Also known as: ${data.searchTerms.join(", ")}.` : null,
+].filter(Boolean).join(" ");
+
+const creativeWorkSchema = {
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  name: data.title,
+  description: pageDescription,
+  image: data.images.map((image) => new URL(image, Astro.site).toString()),
+  ...(data.date ? { dateCreated: data.date.toISOString().slice(0, 10) } : {}),
+  ...(data.lastModified ? { dateModified: data.lastModified.toISOString().slice(0, 10) } : {}),
+  ...(data.searchTerms?.length ? { alternateName: data.searchTerms } : {}),
+  genre: typeLabels,
+  ...(tagLabels.length ? { keywords: tagLabels } : {}),
+};
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: new URL("/", Astro.site).toString() },
+    { "@type": "ListItem", position: 2, name: "Patterns", item: new URL("/patterns", Astro.site).toString() },
+    { "@type": "ListItem", position: 3, name: data.title, item: Astro.url.toString() },
+  ],
+};
+
+// Same reasoning as the creation detail page's identical line — only the
+// first searchTerm goes in the title (reused for og:title/twitter:title too),
+// the full list is still exposed via the meta description and JSON-LD
+// alternateName below.
+const pageTitle = data.searchTerms?.length ? `${data.title} (${data.searchTerms[0]})` : data.title;
+---
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  image={data.images[0]}
+>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(creativeWorkSchema)} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbSchema)} />
+
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+    <a href="/patterns">Patterns</a>
+    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+    <span aria-current="page">{data.title}</span>
+  </nav>
+
+  <h1>{data.title}</h1>
+  {data.searchTerms?.length && (
+    <p class="also-known-as">{data.searchTerms.join(" · ")}</p>
+  )}
+
+  <p class="print-notice">
+    This pattern is only viewable on {new URL("/patterns/" + pattern.id, Astro.site).toString()} — printing and saving as a PDF aren't supported. Please visit the site to follow along.
+  </p>
+
+  <div class="layout">
+    <div class="col-left">
+    <ImagesCard images={data.images} alt={patternAlt} />
+
+    {data.description?.text && <DescriptionCard html={data.description.html} />}
+
+    {hasMaterials && (
+      <div class="card card-materials" data-pattern-slug={pattern.id}>
+        <h2>Materials</h2>
+        {(materialTiles.length > 0 || patternSafetyEyes.length > 0 || hookSizes.length > 0) && (
+          <div class="materials-grid">
+            {materialTiles.map((material) => (
+              <div class="material-tile">
+                <span class="material-icon-box">
+                  <span class="material-icon mask-icon" style={`mask-image:url(${material.icon}); -webkit-mask-image:url(${material.icon});`}></span>
+                </span>
+                <span class="material-info">
+                  <span class="material-label">{material.label}</span>
+                </span>
+              </div>
+            ))}
+            {patternSafetyEyes.map((eyes) => (
+              <div class="material-tile">
+                <span class="material-icon-box">
+                  <span class="material-icon mask-icon" style="mask-image: url(/images/icons/eye.svg); -webkit-mask-image: url(/images/icons/eye.svg);"></span>
+                </span>
+                <span class="material-info">
+                  <span class="material-label">{eyes.amount ? `${eyes.amount}x Safety eyes` : "Safety eyes"}</span>
+                  <span class="material-sublabel">{eyes.size}</span>
+                </span>
+              </div>
+            ))}
+            {hookSizes.map((size) => (
+              <div class="material-tile">
+                <span class="material-icon-box">
+                  <span class="material-icon mask-icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
+                </span>
+                <span class="material-info">
+                  <span class="material-label">Crochet hook</span>
+                  <span class="material-sublabel">{size}</span>
+                </span>
+              </div>
+            ))}
+            {resolvedPatternYarns.map(({ yarn, resolved }) => {
+              const displayName = resolved?.colorName ?? yarn.name;
+              const title = yarnTitle(displayName, yarn.amount);
+              const subtitle = yarnSubtitle(resolved?.lineName, yarn.weight);
+              const link = resolved?.link;
+              const Tag = link ? "a" : "div";
+              return (
+                <Tag
+                  class="material-tile yarn-material-tile"
+                  data-yarn-id={yarn.id}
+                  data-default-color-light={yarn.color.light}
+                  data-default-color-dark={yarn.color.dark}
+                  {...(link ? { href: link, target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  {resolved ? (
+                    <span class="used-yarn-swatch" class:list={{ "swatch-bordered": isWhiteHex(resolved.hex) }} style={`background-color:${resolved.hex ?? "var(--accent)"}`}>
+                      {resolved.image && (
+                        <img
+                          src={resolved.image}
+                          alt=""
+                          onerror="this.nextElementSibling?.removeAttribute('hidden'); this.remove()"
+                        />
+                      )}
+                      <img
+                        class="used-yarn-swatch-icon"
+                        class:list={{ "used-yarn-swatch-icon-dark": isWhiteHex(resolved.hex) }}
+                        src="/images/icons/yarn.svg"
+                        alt=""
+                        hidden={!!resolved.image}
+                      />
+                    </span>
+                  ) : (
+                    <span class="yarn-swatch-box" style={`--swatch-color-light: ${yarn.color.light}; --swatch-color-dark: ${yarn.color.dark}`}>
+                      <span class="yarn-swatch-icon mask-icon" style="mask-image: url(/images/icons/yarn.svg); -webkit-mask-image: url(/images/icons/yarn.svg);" aria-hidden="true"></span>
+                    </span>
+                  )}
+                  <span class="used-yarn-titles">
+                    {resolved?.type && <span class="type-chip-small">{resolved.type}</span>}
+                    <span class="material-label">{title}</span>
+                    <span class="material-sublabel" hidden={!subtitle}>{subtitle}</span>
+                  </span>
+                </Tag>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    )}
+
+    {hasPatternInstructions && <PatternInstructions pattern={pattern} />}
+    </div>
+
+    <div class="col-right">
+    <InfoCard
+      items={infoItems}
+      typeChipIds={typeChipIds}
+      effectiveTags={effectiveTags}
+      typesTaxonomy={typesTaxonomy}
+      taxonomy={taxonomy}
+      difficulty={data.difficulty}
+    />
+
+    <AboutMeCard />
+
+    {usedIn.length > 0 && (
+      <div class="card card-creations">
+        <h2>Pattern makes</h2>
+        <div class="creations-grid">
+          {usedIn.map((creation) => (
+            <CreationCard creation={creation} typesTaxonomy={typesTaxonomy} />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {similar.length > 0 && (
+      <div class="card card-similar-patterns">
+        <h2>See also</h2>
+        <div class="creations-grid">
+          {similar.map((p) => (
+            <PatternCard pattern={p} typesTaxonomy={typesTaxonomy} />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {(hasPatternInstructions || patternAbbreviations.length > 0) && (
+      <div class="col-right-sticky">
+        {patternAbbreviations.length > 0 && (
+          <div class="card card-abbreviations">
+            <h2>Abbreviations</h2>
+            <dl class="abbr-table">
+              {patternAbbreviations.map((abbr) => (
+                <>
+                  <dt class="abbr-key">{abbr.id.toUpperCase()}:</dt>
+                  <dd class="abbr-meaning">{capitalize(abbr.label)}</dd>
+                </>
+              ))}
+            </dl>
+          </div>
+        )}
+        {hasPatternInstructions && <PatternProgressBar />}
+      </div>
+    )}
+    </div>
+
+    <CongratsCard outro={data.outro} />
+  </div>
+
+  <div id="copy-block-toast" class="copy-block-toast" role="status" aria-live="polite">
+    Printing and copying are disabled for this pattern.
+  </div>
+
+  {hasPatternInstructions && patternAbbreviations.length > 0 && (
+    <PatternAbbreviationsDrawer abbreviations={patternAbbreviations} />
+  )}
+
+  <LightboxChrome id="lightbox">
+    <LightboxStage>
+      <div class="lightbox-frame" id="lightbox-frame">
+        <img id="lightbox-img" src="" alt="" />
+      </div>
+    </LightboxStage>
+  </LightboxChrome>
+</BaseLayout>
+
+<script>
+  import { initLightboxChrome } from "../../lib/lightboxChrome";
+
+  const lightbox = document.getElementById("lightbox");
+  const lightboxFrame = document.getElementById("lightbox-frame") as HTMLElement;
+  const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement;
+  const thumbs = Array.from(document.querySelectorAll<HTMLImageElement>(".gallery-thumb"));
+
+  const chrome = lightbox
+    ? initLightboxChrome({
+        overlay: lightbox,
+        frame: lightboxFrame,
+        img: lightboxImg,
+        items: thumbs.map((thumb) => ({ src: thumb.src, alt: thumb.alt })),
+        freezeFrameSize: true,
+      })
+    : null;
+
+  thumbs.forEach((thumb, index) => {
+    thumb.addEventListener("click", () => chrome?.open(index));
+  });
+</script>
+
+<script>
+  // Deterrents only, not real protection — the pattern still has to be sent
+  // to the browser as plain HTML for a legitimate visitor to read it, so
+  // anyone determined (view-source, disabling JS, a screenshot) gets past
+  // this regardless. This just stops the casual "Ctrl+P to PDF" or
+  // right-click-copy path; the @media print rule below is the actual
+  // backstop for the browser's own Print menu, which never fires a JS event
+  // this script could intercept.
+  const protectedArea = document.querySelector(".layout");
+  const toast = document.getElementById("copy-block-toast");
+  let toastTimer: number | undefined;
+
+  function showToast() {
+    if (!toast) return;
+    toast.classList.add("visible");
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 3000);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && (key === "p" || key === "s")) {
+      e.preventDefault();
+      showToast();
+    }
+  });
+
+  protectedArea?.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    showToast();
+  });
+
+  protectedArea?.addEventListener("copy", (e) => {
+    e.preventDefault();
+    showToast();
+  });
+</script>
+
+<script>
+  import { readYarnOverrides, isLightHex } from "../../lib/yarnOverrides";
+
+  // The main tile swatch shows a yarn's real light/dark pair via CSS custom
+  // properties (see .yarn-swatch-box in this file's <style>, which switches
+  // between them the same way ColoredSegments.astro's instruction-text spans
+  // do) — a visitor's color override (set on PatternSettingsCard.astro) is a
+  // single hex, so it's passed as both light and dark here to display the
+  // same either way.
+  //
+  // The overlay icon's contrast (white vs. black) is decided the same
+  // theme-reactive way, via --icon-bg-light/-dark custom properties (see
+  // .yarn-swatch-icon below) rather than a class toggled once here — a class
+  // picked from the *current* theme would go stale the instant a visitor
+  // toggles the theme afterward, since nothing re-runs this function on that
+  // toggle. Precomputing both variants up front and letting CSS pick means
+  // it can never go stale.
+  function setSwatchColorPair(box: HTMLElement | null, light: string, dark: string) {
+    if (!box) return;
+    box.style.setProperty("--swatch-color-light", light);
+    box.style.setProperty("--swatch-color-dark", dark);
+    const icon = box.querySelector<HTMLElement>(".yarn-swatch-icon");
+    icon?.style.setProperty("--icon-bg-light", isLightHex(light) ? "black" : "white");
+    icon?.style.setProperty("--icon-bg-dark", isLightHex(dark) ? "black" : "white");
+  }
+
+  document.querySelectorAll<HTMLElement>(".card-materials").forEach((card) => {
+    const slug = card.dataset.patternSlug;
+    if (!slug) return;
+
+    function repaint() {
+      const overrides = readYarnOverrides(slug!);
+      card.querySelectorAll<HTMLElement>(".yarn-material-tile").forEach((tile) => {
+        const yarnId = tile.dataset.yarnId;
+        if (!yarnId) return;
+        // Only present on a tile with no resolved "real" yarn (see the
+        // markup below) — a resolved tile shows that yarn's actual photo/
+        // hex instead, which a visitor's instruction-text color override
+        // has no bearing on.
+        const box = tile.querySelector<HTMLElement>(".yarn-swatch-box");
+        const overrideHex = overrides[yarnId]?.hex;
+        if (overrideHex) {
+          setSwatchColorPair(box, overrideHex, overrideHex);
+        } else {
+          setSwatchColorPair(box, tile.dataset.defaultColorLight ?? "", tile.dataset.defaultColorDark ?? "");
+        }
+      });
+    }
+
+    repaint();
+    document.addEventListener("pattern-yarn-override-change", (e) => {
+      const detail = (e as CustomEvent<{ slug?: string }>).detail;
+      if (detail?.slug !== slug) return;
+      repaint();
+    });
+  });
+</script>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+}
+
+.breadcrumbs a {
+  color: var(--primary);
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.breadcrumb-sep {
+  color: var(--muted-text);
+}
+
+.also-known-as {
+  margin: -0.75rem 0 1.25rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  color: var(--primary);
+}
+
+/* Hidden on screen, shown only under @media print below — the actual
+   backstop against "save as PDF" via the browser's own Print menu, which
+   (unlike Ctrl+P/Cmd+P) never fires a JS event the script above could
+   intercept. Text selection/copy on the pattern content is also blocked in
+   the print stylesheet's scope below, alongside this notice. */
+.print-notice {
+  display: none;
+}
+
+.copy-block-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translate(-50%, 10px);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.9rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.25 * var(--shadow-alpha-scale)));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 900;
+}
+
+.copy-block-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media print {
+  :global(nav),
+  :global(.site-footer),
+  :global(#scroll-to-top) {
+    display: none !important;
+  }
+
+  .breadcrumbs,
+  .also-known-as,
+  .layout {
+    display: none !important;
+  }
+
+  .print-notice {
+    display: block;
+    font-family: "Quicksand", sans-serif;
+  }
+}
+
+/* Casual deterrent, not real protection (see the script above) — makes
+   select-and-copy a little less convenient on the pattern's own materials/
+   instructions content, without touching the rest of the page (nav, Info,
+   About Me, ...). */
+.card-materials,
+:global(.pattern-instructions) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Two plain grid columns, one flowing item each — no explicit rows. Left
+   (Images/Description/Materials/Instructions) is the tall column; right
+   (Info/About Me/Pattern makes/See also/the sticky Abbreviations+Progress
+   group) is naturally much shorter. Grid items default to align-items:
+   stretch (not overridden here the way it used to be), so .col-right's own
+   box stretches to match .col-left's full height even though its content
+   doesn't fill it — that stretched box is what gives .col-right-sticky
+   below room to keep traveling (and staying stuck) all the way down through
+   Instructions, instead of unsticking the moment its own short content runs
+   out. Congrats is a third item (see below), column-1-width only, that
+   auto-places into its own row underneath .col-left once it's done, rather
+   than living inside it — it's the closing note for the pattern itself, not
+   part of the sticky Progress card's bounds. */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-width);
+  gap: 1.5rem;
+}
+
+.col-left {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Column 1 only, not full width — kept outside .col-left's own flex column
+   (rather than nested as its last child) so it doesn't stretch .col-right's
+   sticky bounds along with it (see the .layout comment above), but still
+   confined to the left column's own width like the pattern content above
+   it. No explicit grid-row: it auto-places into a fresh row once row 1's
+   column-1 cell is taken by .col-left, leaving column 2 of that row empty
+   rather than pulling it in beside the sticky Progress card. */
+:global(.card-congrats) {
+  grid-column: 1;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+/* These order values only matter once .col-left goes display:contents
+   (mobile, tablet-only portrait — see below) and its cards become direct
+   flex children of .layout alongside Instructions/Info/Abbreviations (which
+   are already direct children at every viewport size): DOM order alone
+   would stack col-left's cards (Images, Description, Materials) before
+   Info, so explicit order interleaves everything into the requested
+   Info -> Images -> Description -> Materials -> Instructions ->
+   Abbreviations sequence instead. Same technique as creations/[slug].astro. */
+:global(.card-images) { order: 2; }
+:global(.card-description) { order: 3; }
+.card-materials { order: 4; }
+:global(.pattern-instructions) { order: 5; }
+
+/* Info, About Me, Pattern makes, See also, and the sticky Abbreviations+
+   Progress group all flow as one continuous column now (no more splitting
+   Info off into its own grid row) — reset to display:contents at mobile/
+   tablet-portrait below, exposing all of them as their own ordered flex
+   items alongside Images/Description/etc., same as .col-left. */
+.col-right {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+:global(.card-info) {
+  order: 1;
+}
+
+/* Same order as Info — ties are broken by source order, so this (and
+   Creations/Similar patterns below) still land directly under it once all
+   four become direct flex children of .layout at mobile/tablet-only. */
+:global(.card-about-me) {
+  order: 1;
+}
+
+.card-creations, .card-similar-patterns {
+  order: 1;
+  font-family: "Lili Love", cursive;
+}
+
+.creations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* Wraps the progress bar + Abbreviations so they're pinned as one unit,
+   last inside .col-right (order: 2 — higher than the order: 1 group above
+   it, since plain DOM order alone would otherwise put a same-order sticky
+   item ahead of them by default). Sticks once scrolled to top: 1rem and
+   keeps following the page all the way through Instructions/Congrats in
+   .col-left, because .col-right itself (its sticky containing block) is
+   stretched to match .col-left's full height — see .layout above — not
+   just its own shorter content. Reset to a plain static flex item at
+   mobile/tablet-portrait below, since a single stacked column has no
+   side-by-side content for it to stay pinned alongside. */
+.col-right-sticky {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  /* Not var(--nav-height) — .nav is position: relative, not fixed, so it
+     scrolls away like everything else above this column. By the time this
+     column is actually stuck (scrolled far enough for its own top to reach
+     the viewport edge), the navbar is long gone; offsetting by its height
+     anyway left a permanent ~76px dead gap above Progress/Abbreviations
+     for the rest of the scroll — same mistake the mobile mini progress bar
+     had before it was fixed to top: 0 (see PatternProgressBar.astro). */
+  top: 1rem;
+}
+
+/* Desktop only — Progress is more useful seen before Abbreviations, but the
+   DOM order (Abbreviations markup precedes <PatternProgressBar/>, so its
+   drawer counterpart mounts in a sensible place) stays Abbreviations-first
+   otherwise; swapping this only at desktop leaves mobile/tablet-only's
+   existing order untouched, as requested. :global() — PatternProgressBar.astro
+   renders .card-progress from its own file. */
+@media (--desktop-up) {
+  .card-abbreviations {
+    order: 2;
+  }
+
+  :global(.card-progress) {
+    order: 1;
+  }
+}
+
+/* See creations/[slug].astro's identical rules for why these need
+   :global()/id-scoping — <LightboxChrome>/<LightboxStage> render shared
+   markup from child components. */
+:global(#lightbox.lb-overlay) {
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.lightbox-frame {
+  position: relative;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 calc(8px * var(--shadow-blur-scale, 1)) calc(30px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.5 * var(--shadow-alpha-scale)));
+}
+
+.lightbox-frame img {
+  display: block;
+  max-width: 80vw;
+  max-height: 85vh;
+  object-fit: contain;
+}
+
+/* Grid (not a flex/definition-list default) so every dt/dd pair lands in
+   the same two columns — the key column sizes to its widest entry
+   (max-content), so every explanation starts flush regardless of how long
+   "SLST:" is next to "MR:". */
+.abbr-table {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0.5rem;
+  margin: 0;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+}
+
+.abbr-key {
+  margin: 0;
+  color: var(--primary);
+  font-weight: bold;
+  text-align: right;
+}
+
+.abbr-meaning {
+  margin: 0;
+  color: var(--text);
+}
+
+.materials-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* Same card-in-card treatment as the creation detail page's .yarn-tile
+   (resting shadow in light mode, outline-only at rest in dark mode via
+   --inner-rest-shadow-scale) — and now the same swatch-box-plus-label
+   layout as .yarn-material-tile below, so every material tile (generic or
+   yarn) reads as one consistent tile format regardless of type. */
+.material-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+}
+
+/* Same 48px/10px-radius box as .yarn-swatch below, standing in for a color
+   swatch on non-yarn materials — keeps both tile types the same shape. */
+.material-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--accent);
+}
+
+/* --on-accent (not --primary) — same pastel-pink-background-plus-darker-
+   pink-icon pairing as .coming-soon/<mark>/the About page's yarn swatches,
+   so the icon actually contrasts against .material-icon-box's own --accent
+   background above. */
+.material-icon {
+  width: 24px;
+  height: 24px;
+  background-color: var(--on-accent);
+}
+
+.material-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.material-label {
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* Second line (e.g. a safety-eyes size) — pink like the rest of the site's
+   secondary/label text (.line-name, .type-chip-small, ...), not full --text
+   black, so it reads as a detail on the label above it rather than a
+   second equally-weighted line. */
+.material-sublabel {
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+/* Merged Materials grid — a yarn tile becomes an <a> when its `yarn` field
+   resolves to a real catalog link, same hover-enlarge convention as every
+   other clickable card on the site (e.g. the creation detail page's
+   .yarn-tile). */
+.yarn-material-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  text-decoration: none;
+  color: inherit;
+}
+
+a.yarn-material-tile {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+a.yarn-material-tile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+/* A real, single-hex swatch (optionally a real product photo) for a yarn
+   slot whose `yarn` field resolves to an actual credited yarn — unlike
+   .yarn-swatch-box below (the fallback for a slot with no specific yarn
+   credited), this never needs a light/dark pair (it's not read against
+   page-background text, just shown as its own tile), so a plain
+   background-color set inline per tile is enough. Same borderless
+   48px/10px-radius box as .material-icon-box (no border by default — see
+   .swatch-bordered below — so every tile kind in this card's grid actually
+   measures the same 48px rather than a border eating into this one's fill). */
+.used-yarn-swatch {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  /* Promotes this to its own compositing layer — without it, a photo that
+     finishes decoding asynchronously (as these small self-hosted webp
+     swatches do) can paint square for a single frame before the browser
+     re-applies this box's border-radius/overflow clip, showing as a brief
+     square "halo" past the rounded corners until the next repaint (e.g.
+     the hover below) forces it to catch up. */
+  transform: translateZ(0);
+}
+
+.used-yarn-swatch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Fallback yarn-ball glyph, shown until/unless a real product photo loads —
+   same treatment as the creation detail page's .swatch-icon. Nested under
+   .used-yarn-swatch (not just "img.used-yarn-swatch-icon" on its own) —
+   Astro stamps its data-astro-cid-* scoping attribute onto every compound
+   in a descendant selector, so ".used-yarn-swatch img" above actually
+   compiles to ".used-yarn-swatch[data-cid] img[data-cid]" (4 specificity
+   components) and a same-level "img[data-cid].used-yarn-swatch-icon" (3
+   components) still loses to it. Repeating the exact ".used-yarn-swatch"
+   ancestor here keeps this a strict superset of that selector, so it wins
+   regardless of how the scoping attributes land. */
+.used-yarn-swatch img.used-yarn-swatch-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  opacity: 0.55;
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+
+.used-yarn-swatch-icon-dark {
+  filter: brightness(0) invert(0.6);
+}
+
+/* A near-white swatch would otherwise vanish into the card's own background
+   — same fallback as the creation detail page's identical class, only added
+   here (not unconditionally on .used-yarn-swatch) since every other swatch
+   reads fine without one. */
+.swatch-bordered {
+  border: 1px solid var(--border-muted);
+}
+
+/* Sits beside .used-yarn-swatch inside a yarn tile — plain flex:1/
+   min-width:0, not display:flex, so .type-chip-small's float below
+   actually floats (a flex item ignores float entirely), same as the
+   creation detail page's .yarn-titles. */
+.used-yarn-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.used-yarn-titles .material-label {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.used-yarn-titles .material-sublabel {
+  display: block;
+  clear: right;
+}
+
+/* Optional yarn-type label (e.g. "Chenille") above the name — same pill as
+   the creation detail page's identical class. */
+.type-chip-small {
+  float: right;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.38rem 0.7rem 0.27rem;
+  border-radius: 999px;
+  margin: -0.3rem 0 0.3rem 0.5rem;
+}
+
+/* Static (non-input) swatch — a yarn slot with no specific yarn credited
+   (no `yarn` field), so there's no real photo/hex to show, only the yaml's
+   own suggested light/dark color pair. Same 48px/10px-radius box as
+   .yarn-swatch below, just a plain positioned span instead of a color
+   input, since this isn't directly editable. Theme-reactive via
+   --swatch-color-light/-dark (set inline per yarn, or by the materials
+   script for a visitor's color override) — same light/dark pair and the
+   same html[data-theme]/prefers-color-scheme switch as ColoredSegments.astro's
+   instruction-text spans, so this swatch always matches whatever color that
+   yarn shows in the pattern instructions. */
+.yarn-swatch-box {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--border-muted);
+  overflow: hidden;
+  background-color: var(--swatch-color-light);
+}
+
+:global(html[data-theme="dark"]) .yarn-swatch-box {
+  background-color: var(--swatch-color-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-theme])) .yarn-swatch-box {
+    background-color: var(--swatch-color-dark);
+  }
+}
+
+/* Clips at this wrapper level, not on .yarn-swatch itself — some browsers
+   render a native color input's internal swatch a hair larger than the
+   input's own box no matter what its own border-radius/overflow say, since
+   that swatch is part of the control's internal rendering rather than
+   normal boxed content. A plain wrapper span doesn't have that problem, so
+   it does the actual rounding+clipping and the input just fills it exactly. */
+.yarn-swatch-wrap {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--border-muted);
+  overflow: hidden;
+}
+
+/* A glyph laid directly over a swatch (the yarn icon on a static box, or
+   the color-picker icon on the dialog's editable one), pointer-events:none
+   so clicks on the editable version still reach the <input type="color">
+   underneath. Reduced opacity, same treatment as the creation detail page's
+   .swatch-icon fallback glyph, so it stays legible over whatever color the
+   swatch itself is currently showing without needing a solid backdrop
+   behind it.
+
+   Contrast (white vs. black) comes from --icon-bg-light/-dark, set by the
+   materials script below to whichever is legible against that swatch's own
+   light/dark color pair — same html[data-theme]/prefers-color-scheme
+   switch as .yarn-swatch-box's own background, so the icon's contrast
+   updates the instant a visitor toggles the site theme instead of only on
+   the next render. */
+.yarn-swatch-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  background-color: var(--icon-bg-light, white);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+:global(html[data-theme="dark"]) .yarn-swatch-icon {
+  background-color: var(--icon-bg-dark, white);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-theme])) .yarn-swatch-icon {
+    background-color: var(--icon-bg-dark, white);
+  }
+}
+
+/* Resets the native color input's own chrome (border/padding vary by
+   browser) down to a plain fill of .yarn-swatch-wrap above, which does the
+   actual rounding/clipping — same look as .yarn-swatch-box, so the
+   dialog's editable swatch still reads as the same kind of thing as every
+   other swatch on the page. Only used inside the edit dialog now — the
+   main tile's own swatch is static. */
+.yarn-swatch {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: var(--cursor-pointer);
+}
+
+.yarn-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.yarn-swatch::-webkit-color-swatch {
+  border: none;
+}
+
+.yarn-swatch::-moz-color-swatch {
+  border: none;
+}
+
+@media (--mobile) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .col-left,
+  .col-right {
+    display: contents;
+  }
+
+  .col-right-sticky {
+    position: static;
+    margin-top: 0;
+    /* Ahead of the pattern instructions themselves at this size — Progress
+       is more useful seen before diving into the rounds/rows below it than
+       after, and Abbreviations rides along with it as one unit. */
+    order: 5;
+  }
+
+  :global(.pattern-instructions) {
+    order: 6;
+  }
+
+  /* Right after Instructions, ahead of Pattern makes/See also — the
+     congratulations note belongs to the pattern itself, not to the "here's
+     what it's inspired" cards below it. Stacked (not the desktop/tablet
+     side-by-side photo+text row) since a 110px photo next to a full
+     paragraph doesn't fit a phone-width row. */
+  :global(.card-congrats) {
+    order: 7;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  /* Last on the page at this size — "what this pattern's been used to
+     make" (and, right after it, "you might also like") read better as
+     closing notes after the whole pattern (info, materials, progress,
+     instructions, congrats) than sandwiched between Info and Images the way
+     desktop's second column groups them. */
+  .card-creations, .card-similar-patterns {
+    order: 8;
+  }
+
+  :global(.congrats-socials) {
+    justify-content: center;
+  }
+
+  /* !important — ImagesCard.astro's own scoped rule already sets
+     grid-template-columns on this class, which out-specifies a plain
+     :global() selector (same reasoning as the .info-list override above). */
+  :global(.gallery) {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .materials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  :global(#lightbox.lb-overlay) {
+    padding: 0.5rem;
+  }
+
+  .lightbox-frame img {
+    max-width: 92vw;
+  }
+
+  :global(#lightbox .lb-nav) {
+    width: 32px;
+    height: 32px;
+  }
+
+  :global(#lightbox .lb-nav svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  :global(#lightbox .lb-prev) {
+    right: auto;
+    left: 0.5rem;
+    margin-right: 0;
+  }
+
+  :global(#lightbox .lb-next) {
+    left: auto;
+    right: 0.5rem;
+    margin-left: 0;
+  }
+
+  :global(#lightbox .lb-close) {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+  }
+
+  :global(#lightbox .lb-close svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* !important — InfoCard.astro's own scoped rule already sets font-size on
+     this class, and Astro's [data-astro-cid-*] attribute on that rule
+     out-specifies a plain :global() class selector regardless of source
+     order (same reasoning as CreationCard.astro's :global(.tile-carousel)
+     rules). */
+  :global(.info-list) {
+    font-size: 1.15rem !important;
+  }
+}
+
+@media (--tablet-only) {
+  .lightbox-frame img {
+    max-width: 68vw;
+  }
+}
+
+/* iPad tier — a 2-column grid instead of mobile's plain flex stack, purely
+   so Info and About Me can sit side by side as a pair (each left at its
+   default single-column span, so grid auto-placement fills them into the
+   same row — they're order 1 and 2, the two lowest values, so they're
+   always the first row placed). Every other card explicitly spans both
+   columns to stay full width, same as before. `order` still drives
+   placement here exactly like it did in the old flex-column layout — grid
+   auto-placement respects order-modified document order the same way
+   flexbox does. */
+@media (--tablet-only) {
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 1.5rem;
+    /* Without this, grid's default align-items: stretch forces Info and
+       About Me (the only pair sharing a row at this tier — everything else
+       spans both columns) to match whichever of them is taller. Every
+       full-width card is unaffected (nothing else shares its row to stretch
+       against), so this only changes Info/About Me: each now keeps its own
+       natural height instead of the shorter one padding out to match. */
+    align-items: start;
+  }
+
+  .col-left,
+  .col-right {
+    display: contents;
+  }
+
+  :global(.card-images),
+  :global(.card-description),
+  .card-materials,
+  :global(.pattern-instructions),
+  :global(.card-congrats),
+  .card-creations,
+  .card-similar-patterns,
+  .col-right-sticky {
+    grid-column: 1 / -1;
+  }
+
+  .col-right-sticky {
+    position: static;
+    margin-top: 0;
+    /* Ahead of the pattern instructions themselves at this size — Progress
+       is more useful seen before diving into the rounds/rows below it than
+       after, and Abbreviations rides along with it as one unit. */
+    order: 5;
+  }
+
+  :global(.pattern-instructions) {
+    order: 6;
+  }
+
+  /* Same order as Instructions, right after it — ties break by source
+     order, and this card's markup already follows Instructions, keeping it
+     at "the end of the pattern" rather than jumping to the very bottom the
+     way mobile's About-Me-replacement placement does. */
+  :global(.card-congrats) {
+    order: 6;
+  }
+
+  /* Last on the page at this size — "what this pattern's been used to
+     make" (and, right after it, "you might also like") read better as
+     closing notes after the whole pattern (info, materials, progress,
+     instructions) than sandwiched between Info and Images the way desktop's
+     second column groups them. */
+  .card-creations, .card-similar-patterns {
+    order: 7;
+  }
+
+  :global(.gallery) {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .creations-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Now full-width at this tier (col-right-sticky spans both columns above)
+     instead of squeezed into the old 300px sidebar — a single key/value
+     column reads sparse at that width, so a second max-content/1fr pair
+     doubles it up. Plain grid-auto-flow: row (the default) fills a row's 4
+     cells before moving to the next, so consecutive pairs (1&2, 3&4, ...)
+     sit side by side rather than splitting the list into a first-half/
+     second-half block — simpler than reflowing dt/dd into two independent
+     column-flow groups, which would break each key away from its value. */
+  .abbr-table {
+    grid-template-columns: max-content 1fr max-content 1fr;
+    column-gap: 1.5rem;
+  }
+}
+</style>

@@ -1,11 +1,27 @@
 /* Single source of truth for the site's breakpoints, imported into every
    stylesheet via postcss-custom-media (see postcss.config.mjs).
    Change the numbers here to move a breakpoint everywhere at once. */
-@custom-media --mobile (max-width: 650px);
-@custom-media --tablet-up (min-width: 651px);
-@custom-media --tablet-max (max-width: 1024px);
-@custom-media --tablet-only (min-width: 651px) and (max-width: 1024px);
-@custom-media --desktop-up (min-width: 1025px);
+@custom-media --mobile (max-width: 699px);
+@custom-media --tablet-up (min-width: 700px);
+@custom-media --tablet-max (max-width: 900px);
+@custom-media --tablet-only (min-width: 700px) and (max-width: 900px);
+@custom-media --desktop-up (min-width: 901px);
+
+/* A width-based split *within* --tablet-only, for the rare layout (currently
+   just gallery.astro's lightbox) where the tablet tier itself needs two
+   different treatments depending on how much room is actually available —
+   e.g. a flexible side-by-side row that only fits once the viewport is wide
+   enough, falling back to a stacked layout below that. 830px is that row
+   layout's own minimum footprint (two ~260px panes + gap + margins), not a
+   number tied to any device's screen size — with --tablet-only's own ceiling
+   now at 900px, there's only a narrow 830-900px window left where the row
+   layout actually fits. Deliberately NOT gated on `orientation` — an iPad in
+   Split View reports its physical orientation, not the (often much
+   narrower) width actually available to the page, so orientation cannot
+   stand in for "is there enough room." Width is the only thing that
+   actually determines whether content fits. */
+@custom-media --tablet-narrow (min-width: 700px) and (max-width: 829px);
+@custom-media --tablet-wide (min-width: 830px) and (max-width: 900px);
 
 /* Nav-specific, split into three independent thresholds rather than one
    combined tier — the wordmark alone frees up enough room to hold off
@@ -17,7 +33,7 @@
    1180, 925, and 750 (not round numbers) match real-device widths where
    the 6-item nav row starts crowding the expanded search box — see
    Navbar.astro. --nav-mobile is deliberately its own threshold rather than
-   reusing the site-wide --mobile (650px) below — this only ever gates
+   reusing the site-wide --mobile (699px) below — this only ever gates
    Navbar.astro's own hamburger-mode styles, so moving it doesn't affect
    every other page's card-stacking breakpoint. */
 @custom-media --nav-hide-wordmark (max-width: 1180px);

@@ -72,6 +72,21 @@ const faqSchema = {
                   ))}
                 </div>
               )}
+              {q.iconCredits && q.iconCredits.length > 0 && (
+                <div class="faq-icon-credits">
+                  {q.iconCredits.map((credit) => (
+                    <a class="faq-icon-credit" href={credit.link} target="_blank" rel="noopener noreferrer">
+                      <span class="faq-icon-credit-swatch">
+                        <span
+                          class="faq-icon-credit-icon mask-icon"
+                          style={`mask-image:url(${credit.icon}); -webkit-mask-image:url(${credit.icon});`}
+                        ></span>
+                      </span>
+                      <span class="faq-icon-credit-name">{credit.name}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </details>
           ))}
         </div>
@@ -427,10 +442,75 @@ const faqSchema = {
   white-space: nowrap;
 }
 
+.faq-icon-credits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* Same row-tile treatment as the about page's favorite-yarns tiles (icon
+   swatch on the left, name on the right, same hover lift) so icon credits
+   read as the same kind of "credit tile" wherever they show up. */
+.faq-icon-credit {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale)));
+  text-decoration: none;
+  color: inherit;
+  cursor: var(--cursor-pointer);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.faq-icon-credit:hover {
+  transform: scale(1.02);
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2);
+}
+
+.faq-icon-credit-swatch {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.faq-icon-credit-icon {
+  width: 24px;
+  height: 24px;
+  background-color: var(--on-accent);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.faq-icon-credit-name {
+  font-family: "Lili Love", cursive;
+  font-size: 1.05rem;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Rows of 2 on desktop/tablet; a single column on mobile since two cards
    side by side get too cramped to read at that width. */
 @media (--mobile) {
-  .faq-videos {
+  .faq-videos,
+  .faq-icon-credits {
     grid-template-columns: 1fr;
   }
 }

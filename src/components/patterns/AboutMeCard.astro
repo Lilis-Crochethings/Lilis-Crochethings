@@ -1,0 +1,118 @@
+---
+// Dedicated "About me" mini-card for the pattern detail page. Self-contained
+// (pulls its own social links rather than taking them as props) so its
+// blurb can be edited here without touching the page that renders it.
+import SmartLink from "../SmartLink.astro";
+import SocialBadge from "../SocialBadge.astro";
+import { socialIcons, followSocials, contactLinks } from "../../lib/socials";
+
+const ABOUT_TEXT = "Hi there, I'm Lili, the creator of this pattern. If you like my content, you can follow me on:";
+const HELP_TEXT = "Need help with this pattern? Feel free to reach out:";
+---
+
+<div class="card card-about-me">
+  <SmartLink class="about-me-header" href="/about">
+    <img class="about-me-pic" src="/images/Lilis-Crochethings-thumb.webp" alt="Lili" />
+    <h3>Lili</h3>
+  </SmartLink>
+  <p class="about-me-text">{ABOUT_TEXT}</p>
+  <div class="about-me-socials">
+    {followSocials.map((s) => (
+      <SmartLink class="about-me-social" href={s.href} aria-label={s.name} title={s.name}>
+        <SocialBadge icon={socialIcons[s.icon]} size={34} />
+      </SmartLink>
+    ))}
+  </div>
+  <p class="about-me-text about-me-help-text">{HELP_TEXT}</p>
+  <div class="about-me-socials">
+    {contactLinks.map((c) => (
+      <SmartLink class="about-me-social" href={c.href} aria-label={c.name} title={c.name}>
+        {/* Messenger's own glyph fills its square more than the other icons here, so it
+            reads oversized at the same 34px box as its neighbors — sized down to match. */}
+        <SocialBadge icon={socialIcons[c.icon]} size={c.icon === "messenger" ? 28 : 34} />
+      </SmartLink>
+    ))}
+  </div>
+</div>
+
+<style>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+/* Plain container, not itself a link (it holds several: the photo/name and
+   each social icon below) — per the site's card convention, only a card
+   that's wholly one clickable target gets the hover-enlarge treatment; this
+   one just keeps the shadow. */
+.card-about-me {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+  font-family: "Lili Love", cursive;
+}
+
+.about-me-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.about-me-pic {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+/* The photo is the hover target for this inline link (name stays plain,
+   underlining a handwriting-font heading reads poorly) — same modest
+   scale-up as the icon-only social badges below, just enough to register as
+   clickable without the full-card treatment this isn't. */
+.about-me-header:hover .about-me-pic {
+  transform: scale(1.05);
+}
+
+.about-me-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.about-me-text {
+  margin: 0;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.about-me-socials {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.about-me-social {
+  display: flex;
+  transition: transform 0.2s ease;
+}
+
+.about-me-social:hover {
+  transform: scale(1.1);
+}
+
+/* Same paragraph styling as .about-me-text above — kept as its own class
+   only so a top margin can separate it from the follow-icons row above it
+   without adding that gap to the (unrelated) intro paragraph too. */
+.about-me-help-text {
+  margin-top: 0.4rem;
+}
+</style>

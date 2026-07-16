@@ -1,6 +1,7 @@
 ---
 import TagChip from "./TagChip.astro";
 import DifficultyChip from "./DifficultyChip.astro";
+import NewBadge from "./NewBadge.astro";
 import TileCarousel from "../TileCarousel.astro";
 import { getCreationAlt, type TagCategory } from "../../lib/tags";
 
@@ -31,6 +32,7 @@ const creationAlt = getCreationAlt(creation.data.title, type, creation.data.subt
 >
   <div class="list-item" role="link" tabindex="0">
     <DifficultyChip difficulty={difficulty} hideOnMobile />
+    <NewBadge uploadDate={creation.data.uploadDate} hideOnMobile />
     <div class="thumb">
       <TileCarousel images={creation.data.images} alt={creationAlt} href={href} />
     </div>

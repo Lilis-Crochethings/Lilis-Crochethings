@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SmartLink from '../components/SmartLink.astro';
+import SocialBadge from '../components/SocialBadge.astro';
 import TagChip from '../components/creations/TagChip.astro';
 import CreationTile from '../components/creations/CreationTile.astro';
 import { parse } from 'yaml';
@@ -10,7 +11,7 @@ import { getEffectiveTags } from '../lib/tags';
 
 type LinkEntry = { name: string; href: string; icon: string };
 type SocialsConfig = {
-  icons: Record<string, { src: string; pad?: number; radius?: string }>;
+  icons: Record<string, { src: string; pad?: number; radius?: string; tinted?: boolean }>;
   socials: LinkEntry[];
   contacts: LinkEntry[];
 };
@@ -129,9 +130,7 @@ const favoriteYarns = aboutEntry.data.favoriteYarns.map((yarn) => {
           {socialLinks.map((s) => (
             <li>
               <SmartLink href={s.href}>
-                <span class="badge" style={`padding:${icons[s.icon].pad ?? 0}px`}>
-                  <img src={icons[s.icon].src} alt="" style={`border-radius:${icons[s.icon].radius ?? 0}`} />
-                </span>
+                <SocialBadge icon={icons[s.icon]} />
                 {s.name}
               </SmartLink>
             </li>
@@ -145,9 +144,7 @@ const favoriteYarns = aboutEntry.data.favoriteYarns.map((yarn) => {
           {contacts.map((c) => (
             <li>
               <SmartLink href={c.href}>
-                <span class="badge" style={`padding:${icons[c.icon].pad ?? 0}px`}>
-                  <img src={icons[c.icon].src} alt="" style={`border-radius:${icons[c.icon].radius ?? 0}`} />
-                </span>
+                <SocialBadge icon={icons[c.icon]} />
                 {c.name}
               </SmartLink>
             </li>
@@ -374,14 +371,18 @@ const favoriteYarns = aboutEntry.data.favoriteYarns.map((yarn) => {
   height: 64px;
   flex-shrink: 0;
   border-radius: 12px;
-  border: 1px solid var(--primary);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* --on-accent (not --primary) — same pastel-pink-background-plus-darker-
+   pink-icon pairing as .coming-soon/<mark> elsewhere, so the icon actually
+   contrasts against .yarn-swatch's own --accent background above instead
+   of relying on --primary's usual assumption of a plain surface behind it. */
 .yarn-icon-row {
-  background-color: var(--primary);
+  background-color: var(--on-accent);
 }
 
 .yarn-info-row {
@@ -437,21 +438,6 @@ const favoriteYarns = aboutEntry.data.favoriteYarns.map((yarn) => {
   text-decoration: underline;
 }
 
-.badge {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.badge img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
 
 /* Matches the creations pages' breakpoint: the 1fr + var(--sidebar-width)
    split holds all the way down to --mobile so the content column is the

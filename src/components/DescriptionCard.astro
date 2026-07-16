@@ -1,0 +1,44 @@
+---
+// Shared "Description" card for the creations and patterns detail pages.
+// Callers guard the {condition && <DescriptionCard .../>} check themselves
+// (matches the {hasPatternInstructions && <PatternInstructions .../>}
+// convention), since "no description" is a per-page data question, not this
+// component's concern.
+const { html } = Astro.props as { html: string };
+---
+
+<div class="card card-description">
+  <h2>Description</h2>
+  <p class="description-text" set:html={html} />
+</div>
+
+<style>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.description-text {
+  white-space: pre-line;
+  font-family: "Quicksand", sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0;
+}
+
+/* html is injected via set:html (raw string content), so any <a> inside
+   never gets Astro's scoped-style data attribute — a plain
+   ".description-text a" selector would silently fail to match it. */
+.description-text :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+</style>

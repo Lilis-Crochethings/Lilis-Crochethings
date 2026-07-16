@@ -1,0 +1,62 @@
+---
+// Shared "Images" card for the creations and patterns detail pages. The
+// .gallery-thumb class is kept as-is so each page's own lightbox <script>
+// (which just does document.querySelectorAll(".gallery-thumb")) keeps
+// working — Astro's scoped-CSS attribute never affects plain DOM class
+// queries, only which <style> rules match.
+const { images, alt } = Astro.props as { images: string[]; alt: string };
+---
+
+<div class="card card-images">
+  <h2>Images</h2>
+  <div class="gallery">
+    {images.map((image, i) => (
+      <img
+        src={image}
+        alt={images.length > 1 ? `${alt} — photo ${i + 1} of ${images.length}` : alt}
+        class="gallery-thumb"
+        loading={i === 0 ? "eager" : "lazy"}
+        decoding="async"
+      />
+    ))}
+  </div>
+</div>
+
+<style>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.gallery img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gallery-thumb {
+  cursor: var(--cursor-pointer);
+}
+
+/* Same scale-on-hover cue as GalleryImage.astro's own tiles, so a clickable
+   photo reads the same way everywhere on the site regardless of which page
+   it's on. */
+.gallery-thumb:hover {
+  transform: scale(1.04);
+}
+</style>

@@ -9,6 +9,8 @@ description: |-
   It is also super easy to make and there are actually multiple versions available for this pattern! Go check it out!
 searchTerms:
   - "Plushie"
+  - Chunky Goose
+  - Jumbo Goose
 date: 2024-09-28
 instagramLink: "https://www.instagram.com/p/DAlG6jZNahM/?img_index=1"
 facebookLink: "https://www.facebook.com/permalink.php?story_fbid=pfbid02LXkwLUvhLHdRJ8wvnZDow7EcFnUs63pPuwVmsPP3Y5YReuQimtrqKJBh9Numnsdal&id=61568543484297"
@@ -22,8 +24,8 @@ patterns:
   - creator: "Lili's Crochethings"
     creatorLink: "/about"
     items:
-      - name: "Original design (pattern coming soon)"
-        link: "/patterns"
+      - name: "Chunky Ducky"
+        link: "/patterns/chunky-ducky"
 type: crochet
 subtypes:
   - amigurumi

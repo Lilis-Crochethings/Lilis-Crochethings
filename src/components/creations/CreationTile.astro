@@ -7,6 +7,7 @@
 // narrower than the same 4 columns on the home page's full-width card. Any
 // grid that lays out multiple tiles only has to own its own column count.
 import DifficultyChip from "./DifficultyChip.astro";
+import NewBadge from "./NewBadge.astro";
 import TagChip from "./TagChip.astro";
 import { toThumb } from "../../lib/images";
 import { getCreationAlt, type TagCategory } from "../../lib/tags";
@@ -33,6 +34,7 @@ const Tag = href ? "a" : "div";
   <div class="thumb">
     <img src={toThumb(creation.data.images[0])} alt={getCreationAlt(creation.data.title, creation.data.type, creation.data.subtypes, typesTaxonomy)} loading="lazy" decoding="async" />
     <DifficultyChip difficulty={creation.data.difficulty} />
+    <NewBadge uploadDate={creation.data.uploadDate} />
   </div>
   <div class="body">
     <h3 class="title">{creation.data.title}</h3>

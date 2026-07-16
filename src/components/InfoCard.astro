@@ -1,0 +1,106 @@
+---
+// Shared "Info" card for the creations and patterns detail pages. Each page
+// still builds its own `items` list (date/hoursSpent/hookSize formatting
+// stays page-local since it already differs — patterns adds an "Updated"
+// line that creations doesn't have).
+import DifficultyChip from "./creations/DifficultyChip.astro";
+import TagChip from "./creations/TagChip.astro";
+import type { TagCategory } from "../lib/tags";
+
+type InfoItem = { icon: string; label: string; title?: string };
+
+const {
+  items,
+  typeChipIds = [],
+  effectiveTags = [],
+  typesTaxonomy,
+  taxonomy,
+  difficulty,
+} = Astro.props as {
+  items: InfoItem[];
+  typeChipIds?: string[];
+  effectiveTags?: string[];
+  typesTaxonomy: TagCategory[];
+  taxonomy: TagCategory[];
+  difficulty?: string;
+};
+---
+
+<div class="card card-info">
+  <DifficultyChip difficulty={difficulty} />
+  <h2>Info</h2>
+  <ul class="info-list">
+    {items.map((item) => (
+      <li title={item.title}>
+        <span class="icon mask-icon" style={`mask-image: url(${item.icon}); -webkit-mask-image: url(${item.icon});`}></span>
+        {item.label}
+      </li>
+    ))}
+  </ul>
+
+  {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
+    <div class="tags-row">
+      {typeChipIds.map((tag) => (
+        <TagChip id={tag} taxonomy={typesTaxonomy} />
+      ))}
+      {effectiveTags.map((tag) => (
+        <TagChip id={tag} taxonomy={taxonomy} />
+      ))}
+    </div>
+  )}
+</div>
+
+<style>
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin-bottom: 0.75rem;
+}
+
+/* position: relative — the global .difficulty-chip rule (see global.css)
+   positions itself absolute/top-right against this card. */
+.card-info {
+  position: relative;
+  font-family: "Lili Love", cursive;
+}
+
+.info-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 1rem;
+}
+
+.info-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.info-list .icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background-color: var(--primary);
+}
+
+.icon {
+  display: inline-block;
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 1rem;
+}
+</style>

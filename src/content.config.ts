@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { stripDescriptionLinks, descriptionToHtml } from "./lib/description";
+import { YARN_WEIGHTS } from "./lib/yarnWeight";
 
 // Creation/pattern descriptions can reference other pages inline using
 // markdown-style link syntax ([label](url)) — see lib/description.ts. Parsing
@@ -83,6 +84,34 @@ if (YARN_TYPE_IDS.length === 0) {
   throw new Error("src/content/yarn-types.yaml must define at least one yarn type");
 }
 const yarnTypeId = z.enum(YARN_TYPE_IDS as [string, ...string[]]);
+
+// Generic (non-yarn) tools a pattern's materials card can list — scissors,
+// a yarn needle, a measuring tape, ... — read the same way as colors/yarn
+// types above so a typo'd id is a build error rather than a silently-blank
+// tile.
+const materialsYamlPath = fileURLToPath(new URL("./content/materials.yaml", import.meta.url));
+const materialsYaml = parseYaml(readFileSync(materialsYamlPath, "utf-8")) as {
+  materials: { id: string }[];
+};
+const MATERIAL_IDS = materialsYaml.materials.map((material) => material.id);
+if (MATERIAL_IDS.length === 0) {
+  throw new Error("src/content/materials.yaml must define at least one material");
+}
+const materialId = z.enum(MATERIAL_IDS as [string, ...string[]]);
+
+// The stitch-abbreviation glossary (sc, mr, dc, ...) a pattern's own
+// `abbreviations` list references by id — read the same way as
+// materials/colors/tags above so a typo'd abbreviation is a build error
+// instead of a silently-dropped glossary entry.
+const abbreviationsYamlPath = fileURLToPath(new URL("./content/abbreviations.yaml", import.meta.url));
+const abbreviationsYaml = parseYaml(readFileSync(abbreviationsYamlPath, "utf-8")) as {
+  abbreviations: { id: string }[];
+};
+const ABBREVIATION_IDS = abbreviationsYaml.abbreviations.map((abbreviation) => abbreviation.id);
+if (ABBREVIATION_IDS.length === 0) {
+  throw new Error("src/content/abbreviations.yaml must define at least one abbreviation");
+}
+const abbreviationId = z.enum(ABBREVIATION_IDS as [string, ...string[]]);
 
 const general = defineCollection({
   loader: glob({ pattern: "general.md", base: "./src/content" }),
@@ -168,24 +197,317 @@ const privacy = defineCollection({
   }),
 });
 
-const patterns = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/patterns" }),
-  schema: z.object({
-    title: z.string(),
-    difficulty: z.enum(["easy", "medium", "hard"]),
-    image: z.string(),
-    description: richText.optional(),
-    yarn: z.string().optional(),
-    hookSize: z.string().optional(),
-    tags: z.array(tagId).optional(),
-  }),
-});
+// A hex string strict enough for a native <input type="color"> — that input
+// requires exactly "#rrggbb" (no shorthand, no named colors), and a
+// malformed value silently resets to black in most browsers instead of
+// erroring, so this is validated at build time rather than at first paint.
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "must be a 6-digit hex color like #a8c8e8");
 
+// A color that needs to read legibly against both the light and dark theme's
+// card surface — a single hex can't do that (a yarn pale enough to read on
+// the light surface usually disappears on the dark one, and vice versa), so
+// anywhere a color is used as *text* (not a swatch chip, which just shows
+// the yarn's real color regardless of theme) asks for both variants.
+const themedColor = z.object({ light: hexColor, dark: hexColor }).strict();
+
+// Matches an inline yarn reference inside free-flowing info text — `[body]`
+// (shows that yarn's own name) or `[color 1](body)` (shows custom text
+// instead). Must stay in sync with the identical regex in
+// resolveInfoText() (src/lib/patternInstructions.ts), which does the actual
+// rendering; this copy only exists to validate the referenced id at build
+// time, the same way tags/types/materials/abbreviations ids already are.
+const INFO_COLOR_REF_RE = /\[([^\]]*)\](?:\(([^)]+)\))?/g;
+
+function checkInfoColorRefs(
+  text: string | undefined,
+  yarnIds: Set<string>,
+  path: (string | number)[],
+  ctx: z.RefinementCtx,
+) {
+  if (!text) return;
+  for (const match of text.matchAll(INFO_COLOR_REF_RE)) {
+    const yarnId = match[2] ?? match[1];
+    if (!yarnIds.has(yarnId)) {
+      ctx.addIssue({
+        code: "custom",
+        path,
+        message: `"${yarnId}" is not a yarn id defined in materials.yarns`,
+      });
+    }
+  }
+}
+
+// A single suggested yarn slot in a pattern's materials card. `id` is not
+// shown anywhere itself — it's the stable key a visitor's saved color/name
+// override is stored under (see the materials card's client script). A
+// pattern's own instructions (see `pattern` below) reference this same
+// `color` pair via a YAML anchor, not this id — one color, shown both on
+// the swatch chip and (when referenced) in the instructions, so the two
+// can never drift apart the way a separate "real" swatch hex and a
+// separate "legible in instructions" color could.
+const yarnWeight = z.enum(YARN_WEIGHTS as [string, ...string[]]);
+
+// A single yarn actually used to make a pattern's own pictured sample —
+// either a reference into yarns.yaml's catalog (resolved the same way, and
+// by the same helper, as a creation's own `yarn` field — see resolveYarn()
+// in lib/yarn.ts) or a one-off inline yarn not worth cataloguing. Shared by
+// `creations.yarn` below and by a pattern yarn slot's own `yarn` field
+// (see `patternYarn` below) — moved up here so the latter can reference it.
 const inlineYarn = z.object({
   hex: z.string(),
   name: z.string(),
   type: z.string().optional(),
   description: z.string().optional(),
+});
+
+const patternYarn = z.object({
+  id: z.string(),
+  name: z.string(),
+  // Shown as this yarn's label in the Pattern Settings color-override card
+  // (e.g. "Color that is used for the body") — free text since it's meant
+  // to read as a short sentence, not a chip label.
+  info: z.string().optional(),
+  // What was actually used for the pictured sample — a "Line - Color"
+  // reference into yarns.yaml (resolved via resolveYarn()) or a one-off
+  // inline yarn. Optional: a slot can stay a plain suggested name/color
+  // with nothing more specific to link/credit.
+  yarn: z.union([z.string(), inlineYarn]).optional(),
+  // Light/dark pair so the swatch (and any instruction text referencing it)
+  // stays legible against both themes' card surface — required, since every
+  // yarn tile needs a swatch color regardless of whether any instruction
+  // ends up referencing it.
+  color: themedColor,
+  // Free text (like a creation's hookSize) rather than a strict number+unit
+  // pair — "1 skein", "50g", and "100m" are all real ways this gets written,
+  // and forcing one shape would just fight whichever a given yarn's own
+  // label uses.
+  amount: z.string().optional(),
+  weight: yarnWeight.optional(),
+  // The alpha-channel silhouette of this yarn's region on
+  // `materials.colorPreviewBase` (e.g. the body vs. the beak) — a visitor's
+  // color pick for this yarn (PatternSettingsCard.astro) is tinted onto the
+  // base photo through this mask, live, as the "Settings" card's preview.
+  // Only meaningful alongside colorPreviewBase; see the superRefine check
+  // below.
+  mask: z.string().optional(),
+});
+
+// A safety-eyes slot in a pattern's materials card — a size (e.g. "6mm")
+// and how many, shown as its own tile with the shared eye icon. A pattern
+// needing two different eye sizes (body + a smaller accent) lists two of
+// these.
+const patternSafetyEyes = z.object({
+  size: z.string(),
+  amount: z.number().optional(),
+});
+
+// A colored run of text within a single instruction line (e.g. "8 SC" in a
+// round that switches yarn mid-row). `color` is a light/dark pair, not a
+// yarn id — authors set it via a YAML anchor/alias pointing at the same
+// node as the yarn's own `color` (e.g. `color: &bodyText { light: "...",
+// dark: "..." }` on the yarn, `color: *bodyText` here), so a color can
+// never drift from the yarn it's meant to match (or from that yarn's own
+// swatch, which resolves the same pair) and a typo'd alias is already a
+// YAML parse error before this schema ever runs.
+const instructionSegment = z.object({
+  text: z.string(),
+  color: themedColor.optional(),
+}).strict();
+
+// A line's content is either a single plain string (the common case) or an
+// array of segments when the color changes mid-line — kept as a union
+// rather than always requiring segments so most authored lines can stay a
+// plain one-liner.
+const instructionLineContent = z.union([z.string(), z.array(instructionSegment).min(1)]);
+
+// Shared by both a plain line and a block (a line repeated `block` times) —
+// `.strict()` on all three instruction-entry shapes below is what lets the
+// z.union tell them apart: an object carrying an unrecognized extra key
+// (e.g. `block` on what's meant to be a plain line) fails that branch and
+// falls through to the next.
+const instructionLineFields = {
+  line: instructionLineContent,
+  // Falls back to the line's own instruction-entry-level color, and below
+  // that to the part's color, when a segment doesn't set its own — see
+  // buildRenderRows() in src/lib/patternInstructions.ts.
+  color: themedColor.optional(),
+  // The running stitch count shown at the end of the round/row.
+  total: z.number().optional(),
+  // An extra note attached to this specific line (e.g. "worked in front
+  // loops only"), distinct from a standalone info entry between lines.
+  info: z.string().optional(),
+  images: z.array(z.string()).optional(),
+};
+
+const instructionLineEntry = z.object(instructionLineFields).strict();
+
+// A block is `block` identical consecutive rounds/rows — e.g. `block: 5`
+// with `line: "36 SC"` means 5 rounds all worked as "36 SC". Rendered as a
+// single collapsible tile that still expands to reveal (and let a visitor
+// check off) each repeat individually.
+const instructionBlockEntry = z.object({
+  block: z.number().int().positive(),
+  ...instructionLineFields,
+}).strict();
+
+// A standalone note inserted between rounds/rows (e.g. "start stuffing the
+// body") — not counted toward round/row numbering and not checkable.
+const instructionInfoEntry = z.object({
+  info: z.string(),
+  images: z.array(z.string()).optional(),
+}).strict();
+
+// Order doesn't matter for correctness here (each branch's own `.strict()`
+// already rejects the others' distinguishing keys), but block is checked
+// first since it's the most specific shape.
+const instructionEntry = z.union([instructionBlockEntry, instructionLineEntry, instructionInfoEntry]);
+
+const patternPart = z.object({
+  part: z.string(),
+  // Omitted entirely when a part isn't worked in rounds/rows (e.g. an
+  // "Assembly" part) — its instructions are then just a general list, with
+  // no "Round N"/"Row N" label prefix.
+  "worked-in": z.enum(["rounds", "rows"]).optional(),
+  // Shown under the part's title, above its instructions — not itself part
+  // of the instructions.
+  info: z.string().optional(),
+  // Shown alongside that part-level info, same as this file's own images —
+  // for a part that's just a plain announcement/photo (e.g. a "Done!" part
+  // showing the finished piece) rather than round-by-round instructions.
+  images: z.array(z.string()).optional(),
+  // Default color for every line/segment in this part that doesn't set its
+  // own — see the segment/line color comments above.
+  color: themedColor.optional(),
+  // Optional: a part can be just the info/images above, with nothing to
+  // check off (see "Done!" in chunky-ducky.yaml).
+  instructions: z.array(instructionEntry).min(1).optional(),
+}).strict();
+
+// One entry in a pattern's optional `outro` (see below) — a paragraph of
+// custom "you're done!" text, or a row of finished-piece photos, shown in
+// the order given. `.strict()` on both branches is what lets the z.union
+// tell them apart (same technique as the instruction-entry shapes above).
+const outroEntry = z.union([
+  z.object({ text: z.string() }).strict(),
+  z.object({ images: z.array(z.string()).min(1) }).strict(),
+]);
+
+const patterns = defineCollection({
+  loader: glob({ pattern: "**/*.yaml", base: "./src/content/patterns" }),
+  schema: z.object({
+    title: z.string(),
+    // Same purpose as a creation's searchTerms (see the creations schema
+    // below): a pattern's own alternate name or a broader category word,
+    // shown under the title on the detail page and folded into search.
+    searchTerms: z.array(z.string()).optional(),
+    images: z.array(z.string()).min(1),
+    description: richText.optional(),
+    difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+    type: typeId,
+    subtypes: z.array(subtypeId).optional(),
+    colors: z.array(colorId).optional(),
+    tags: z.array(tagId).optional(),
+    // Published date and, separately, when the pattern text/photos were last
+    // revised — a pattern (unlike a one-off creation) can keep being edited
+    // after it first goes up, so the two dates can diverge.
+    date: z.date().optional(),
+    lastModified: z.date().optional(),
+    // When this pattern actually went live on the site — distinct from
+    // `date` (which can be backdated to whenever the piece itself was
+    // designed/finished) and `lastModified` (a content revision, not a
+    // publish event). Drives the homepage/list "New" badge (see
+    // lib/newBadge.ts): a pattern uploaded years ago but only just added to
+    // the site should still read as new to a visitor, which `date` alone
+    // can't express.
+    uploadDate: z.date().optional(),
+    hoursSpent: z.number().optional(),
+    hookSize: z.string().optional(),
+    materials: z.object({
+      items: z.array(materialId).optional(),
+      yarns: z.array(patternYarn).optional(),
+      safetyEyes: z.array(patternSafetyEyes).optional(),
+      // General hook sizes this pattern needs, shown as their own tile
+      // (like safety eyes) — separate from a yarn's own optional `hook`
+      // suggestion above, since a pattern often just needs one hook size
+      // stated once rather than repeated per yarn.
+      hooks: z.array(z.string()).optional(),
+      // A desaturated photo of the actual made piece, recolored live in the
+      // Settings card's preview as each masked yarn (see `patternYarn.mask`
+      // above) gets a color pick — optional, since most patterns don't have
+      // a base photo + region masks prepared for this.
+      colorPreviewBase: z.string().optional(),
+    }).optional(),
+    // Which glossary entries (from abbreviations.yaml) this pattern's
+    // instructions actually use — shown as a reference list on the detail
+    // page, in the order given here rather than the glossary's own order.
+    abbreviations: z.array(abbreviationId).optional(),
+    // The actual round-by-round/row-by-row instructions, split into named
+    // parts (Body, Head, ...) — see src/content/patterns/chunky-ducky.yaml
+    // for a fully worked example. Optional since most patterns currently
+    // only have metadata ("full written instructions coming soon").
+    pattern: z.array(patternPart).optional(),
+    // Optional custom "you're done!" content — shown inside CongratsCard.astro
+    // between its "Congratulations!" title and the card's own default
+    // text/socials, e.g. a pattern-specific tip or a finished-piece photo the
+    // generic blurb can't reference. Falls back to just the default text
+    // when omitted.
+    outro: z.array(outroEntry).optional(),
+  }).superRefine((data, ctx) => {
+    for (const subtype of data.subtypes ?? []) {
+      if (SUBTYPE_PARENT.get(subtype) !== data.type) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["subtypes"],
+          message: `Subtype "${subtype}" belongs to type "${SUBTYPE_PARENT.get(subtype)}", not "${data.type}"`,
+        });
+      }
+    }
+    const yarnIds = (data.materials?.yarns ?? []).map((yarn) => yarn.id);
+    const duplicateYarnIds = yarnIds.filter((id, i) => yarnIds.indexOf(id) !== i);
+    for (const id of new Set(duplicateYarnIds)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["materials", "yarns"],
+        message: `Yarn id "${id}" is used more than once — ids must be unique within a pattern.`,
+      });
+    }
+
+    // A yarn's mask is only meaningful layered onto colorPreviewBase — catch
+    // either half being set without the other rather than silently rendering
+    // no preview at all (a plain yarn.mask with no base image, or a base
+    // image nobody's mask ever references).
+    if (!data.materials?.colorPreviewBase) {
+      (data.materials?.yarns ?? []).forEach((yarn, i) => {
+        if (yarn.mask) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["materials", "yarns", i, "mask"],
+            message: `Yarn "${yarn.id}" sets a mask, but materials.colorPreviewBase is not set.`,
+          });
+        }
+      });
+    } else if (!(data.materials?.yarns ?? []).some((yarn) => yarn.mask)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["materials", "colorPreviewBase"],
+        message: `materials.colorPreviewBase is set, but no yarn defines a mask to recolor onto it.`,
+      });
+    }
+
+    // Info text can reference a yarn inline — `[body]` (shows that yarn's
+    // own name) or `[color 1](body)` (shows custom text instead) — see
+    // resolveInfoText() in src/lib/patternInstructions.ts, which this regex
+    // must stay in sync with. Checked here, the same way tags/types/
+    // materials/abbreviations ids are, so a typo'd yarn id is a build error
+    // instead of silently rendering as plain unstyled text.
+    const yarnIdSet = new Set(yarnIds);
+    (data.pattern ?? []).forEach((part, partIndex) => {
+      checkInfoColorRefs(part.info, yarnIdSet, ["pattern", partIndex, "info"], ctx);
+      (part.instructions ?? []).forEach((entry, entryIndex) => {
+        checkInfoColorRefs(entry.info, yarnIdSet, ["pattern", partIndex, "instructions", entryIndex, "info"], ctx);
+      });
+    });
+  }),
 });
 
 // Which brand icon to show next to a pattern link; falls back to a generic
@@ -229,6 +551,12 @@ const creations = defineCollection({
     colors: z.array(colorId).optional(),
     yarnTypes: z.array(yarnTypeId).optional(),
     date: z.date().optional(),
+    // When this creation actually went live on the site — distinct from
+    // `date` (which can be backdated to whenever the piece was actually
+    // made). Drives the homepage/list "New" badge (see lib/newBadge.ts): a
+    // creation finished long ago but only just posted here should still
+    // read as new to a visitor, which `date` alone can't express.
+    uploadDate: z.date().optional(),
     instagramLink: z.string().optional(),
     facebookLink: z.string().optional(),
     pinterestLink: z.string().optional(),
@@ -333,6 +661,31 @@ const yarns = defineCollection({
   }),
 });
 
+const materialNode = z.object({
+  id: z.string(),
+  label: z.string(),
+  icon: z.string(),
+});
+
+const materialsCollection = defineCollection({
+  loader: glob({ pattern: "materials.yaml", base: "./src/content" }),
+  schema: z.object({
+    materials: z.array(materialNode),
+  }),
+});
+
+const abbreviationNode = z.object({
+  id: z.string(),
+  label: z.string(),
+});
+
+const abbreviationsCollection = defineCollection({
+  loader: glob({ pattern: "abbreviations.yaml", base: "./src/content" }),
+  schema: z.object({
+    abbreviations: z.array(abbreviationNode),
+  }),
+});
+
 export const collections = {
   patterns,
   creations,
@@ -341,6 +694,8 @@ export const collections = {
   types,
   colors,
   yarnTypes: yarnTypesCollection,
+  materials: materialsCollection,
+  abbreviations: abbreviationsCollection,
   general,
   pages,
   about,

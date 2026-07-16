@@ -1,0 +1,1189 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PatternListItem from '../../components/patterns/PatternListItem.astro';
+import { getCollection } from "astro:content";
+import { getEffectiveTags } from "../../lib/tags";
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_DOT_COLORS } from "../../lib/difficulty";
+
+// Same tiebreak-by-title reasoning as creations/index.astro — keeps the
+// initial server-rendered order deterministic and matching the client-side
+// sort's own tiebreak (see the <script> below).
+const patterns = (await getCollection("patterns")).sort((a, b) => {
+  const dateDiff = (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0);
+  if (dateDiff !== 0) return dateDiff;
+  return a.data.title.localeCompare(b.data.title, undefined, { sensitivity: "base" });
+});
+
+const taxonomyEntry = (await getCollection("tags"))[0];
+const taxonomy = taxonomyEntry.data.tags;
+
+const typesEntry = (await getCollection("types"))[0];
+const typesTaxonomy = typesEntry.data.types;
+
+const pagesEntry = (await getCollection("pages"))[0];
+const pageMeta = pagesEntry.data.patterns;
+
+const patternsWithTags = patterns.map((pattern) => ({
+  pattern,
+  effectiveTags: getEffectiveTags(pattern.data.tags, taxonomy),
+}));
+---
+<BaseLayout
+  title={pageMeta.title}
+  description={pageMeta.description}
+>
+  <div class="layout">
+    <div class="content-header">
+      <h1>Patterns</h1>
+      <div class="content-controls">
+        <button id="filters-toggle" type="button" class="filters-btn" aria-expanded="false" aria-label="Filters">
+          <span class="icon icon-filters-alt mask-icon"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="list-meta">
+      <div class="active-filters" id="active-filters"></div>
+      <p class="results-count" id="results-count">Showing {patterns.length} of {patterns.length} patterns</p>
+    </div>
+
+    <div class="content">
+      <div class="list" id="list-view">
+        {patternsWithTags.map(({ pattern, effectiveTags }) => (
+          <PatternListItem pattern={pattern} effectiveTags={effectiveTags} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
+        ))}
+      </div>
+      <p id="no-results" class="search-empty" hidden>No patterns match the selected filters.</p>
+    </div>
+
+    <aside class="filters-panel" id="filters-panel">
+      <div class="filters-panel-inner">
+        <button type="button" class="close-filters" id="close-filters" aria-label="Close filters">✕</button>
+
+        <div class="sort-section">
+          <h2>Sort by</h2>
+          <h3 class="filter-subheading">Date</h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="date-desc" class="sort-radio" checked />
+              New → Old
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="date-asc" class="sort-radio" />
+              Old → New
+            </label>
+          </div>
+
+          <h3 class="filter-subheading">Name</h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="name-asc" class="sort-radio" />
+              A → Z
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="name-desc" class="sort-radio" />
+              Z → A
+            </label>
+          </div>
+
+          <h3 class="filter-subheading time-spent-heading">
+            <span>Time spent</span>
+            <span class="info-tooltip">
+              <button type="button" class="info-icon-btn" aria-describedby="time-spent-tooltip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="11" x2="12" y2="16" />
+                  <circle cx="12" cy="7.5" r="0.75" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
+              <span class="tooltip-text" id="time-spent-tooltip" role="tooltip">
+                Patterns with no recorded time are treated as 0h and always sort to the end of the list.
+              </span>
+            </span>
+          </h3>
+          <div class="sort-options">
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="time-asc" class="sort-radio" />
+              Least → Most
+            </label>
+            <label class="taxonomy-item">
+              <input type="radio" name="sort-order" value="time-desc" class="sort-radio" />
+              Most → Least
+            </label>
+          </div>
+        </div>
+
+        <div class="filters-section">
+          <div class="filters-heading-row">
+            <h2>Filters</h2>
+            <button type="button" id="reset-filters" class="reset-filters">Reset</button>
+          </div>
+
+          <h3 class="filter-subheading">Difficulty</h3>
+          <div class="difficulty-options">
+            {DIFFICULTY_LEVELS.map((level) => {
+              const label = DIFFICULTY_LABELS[level];
+              return (
+                <label class:list={["taxonomy-item", `difficulty-${level}`]}>
+                  <input type="checkbox" value={level} class="difficulty-filter" data-color={DIFFICULTY_DOT_COLORS[level]} data-label={label} />
+                  {label}
+                  <span class="filter-count"></span>
+                </label>
+              );
+            })}
+          </div>
+
+          <h3 class="filter-subheading">Type</h3>
+          <ul class="taxonomy">
+            {typesTaxonomy.map((type) => {
+              const hasChildren = !!type.children && type.children.length > 0;
+              return (
+                <li>
+                  <div class="taxonomy-row">
+                    <label class="taxonomy-item">
+                      <input type="checkbox" value={type.id} class="type-filter" data-icon={type.image} data-label={type.label} />
+                      {type.label}
+                      <span class="filter-count"></span>
+                    </label>
+                    {hasChildren && (
+                      <button type="button" class="category-toggle" aria-expanded="false" aria-label={`Show ${type.label} sub-types`}>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasChildren && (
+                    <ul class="taxonomy-children">
+                      {type.children!.map((child) => (
+                        <li>
+                          <label class="taxonomy-item">
+                            <input type="checkbox" value={child.id} class="type-filter" data-label={child.label} />
+                            {child.label}
+                            <span class="filter-count"></span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <h3 class="filter-subheading">Tags</h3>
+          <ul class="taxonomy">
+            {taxonomy.map((category) => {
+              const hasChildren = !!category.children && category.children.length > 0;
+              return (
+                <li>
+                  <div class="taxonomy-row">
+                    <label class="taxonomy-item">
+                      <input type="checkbox" value={category.id} class="tag-filter" data-icon={category.image} data-label={category.label} />
+                      {category.label}
+                      <span class="filter-count"></span>
+                    </label>
+                    {hasChildren && (
+                      <button type="button" class="category-toggle" aria-expanded="false" aria-label={`Show ${category.label} sub-categories`}>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  {hasChildren && (
+                    <ul class="taxonomy-children">
+                      {category.children!.map((child) => (
+                        <li>
+                          <label class="taxonomy-item">
+                            <input type="checkbox" value={child.id} class="tag-filter" data-label={child.label} />
+                            {child.label}
+                            <span class="filter-count"></span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+</BaseLayout>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.content-header h1 {
+  margin: 0;
+}
+
+.content-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filters-btn .icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-color: var(--primary);
+  transition: background-color 0.2s ease;
+}
+
+.filters-btn.active .icon {
+  background-color: var(--on-primary);
+}
+
+.icon-filters-alt {
+  mask-image: url(/images/icons/filters-alt.svg);
+  -webkit-mask-image: url(/images/icons/filters-alt.svg);
+}
+
+.filters-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  background: none;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.filters-btn.active {
+  background: var(--primary);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-width);
+  grid-template-rows: auto auto 1fr;
+  column-gap: 1.5rem;
+  row-gap: 1rem;
+  align-items: start;
+}
+
+.layout .content-header {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+.layout .list-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.layout .content {
+  grid-column: 1;
+  grid-row: 3;
+  min-height: 70vh;
+  /* See creations/index.astro's identical rule for why this is needed —
+     without it the 1fr track refuses to shrink below the widest pattern's
+     description width. */
+  min-width: 0;
+}
+
+.layout .filters-panel {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.list-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.results-count {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  color: var(--primary);
+  margin: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filters-panel {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+}
+
+.filters-panel-inner {
+  padding: 0 1.5rem 1.5rem;
+  scrollbar-color: var(--accent) var(--surface);
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar) {
+  width: 10px;
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar-track) {
+  background: var(--surface);
+}
+
+:global(.filters-panel-inner::-webkit-scrollbar-thumb) {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.filters-panel h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters-panel h2:not(:first-child) {
+  margin-top: 1.5rem;
+}
+
+.sort-section > h2 {
+  margin-top: 1.5rem;
+}
+
+.filters-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters-heading-row h2 {
+  margin: 0;
+}
+
+.filter-subheading {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  margin: 0 0 0.6rem;
+}
+
+.filter-subheading:not(:first-of-type) {
+  margin-top: 1.1rem;
+}
+
+.time-spent-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  cursor: var(--cursor-pointer);
+}
+
+.info-icon-btn svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
+  width: max-content;
+  max-width: 200px;
+  background: var(--tooltip-bg);
+  color: white;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.info-icon-btn:hover + .tooltip-text,
+.info-icon-btn:focus-visible + .tooltip-text {
+  opacity: 1;
+}
+
+.difficulty-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.difficulty-options .taxonomy-item {
+  background-color: transparent;
+  color: var(--text);
+}
+
+.taxonomy-item.difficulty-easy input::before {
+  background-color: var(--difficulty-easy-dot);
+}
+
+.taxonomy-item.difficulty-medium input::before {
+  background-color: var(--difficulty-medium-dot);
+}
+
+.taxonomy-item.difficulty-hard input::before {
+  background-color: var(--difficulty-hard-dot);
+}
+
+.difficulty-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+/* Deliberately not animated: applyFilters() below restores window.scrollY
+   to a single snapshot taken right before this row's height changes — same
+   reasoning as creations/index.astro's identical rule. */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.active-filters:empty {
+  display: none;
+}
+
+:global(.active-filter-chip) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  border-radius: 999px;
+}
+
+:global(.active-filter-icon) {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-color: var(--primary);
+  flex-shrink: 0;
+}
+
+:global(.active-filter-dot) {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--shadow-color), calc(0.2 * var(--shadow-alpha-scale)));
+  flex-shrink: 0;
+}
+
+:global(.active-filter-remove) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  cursor: var(--cursor-pointer);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+:global(.active-filter-remove svg) {
+  width: 100%;
+  height: 100%;
+}
+
+:global(.active-filter-remove:hover) {
+  opacity: 1;
+}
+
+.reset-filters {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.reset-filters:hover {
+  text-decoration: underline;
+}
+
+.close-filters {
+  display: none;
+  color: var(--primary);
+}
+
+.sort-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sort-options .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+.taxonomy, .taxonomy-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.taxonomy {
+  gap: 1.1rem;
+}
+
+.taxonomy-children {
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition: max-height 0.3s ease, opacity 0.2s ease, transform 0.25s ease, margin-top 0.3s ease;
+}
+
+.taxonomy-children.open {
+  max-height: 400px;
+  margin-top: 0.6rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.taxonomy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.taxonomy-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  cursor: var(--cursor-pointer);
+}
+
+/* Needed despite the browser's own default [hidden]{display:none} rule —
+   that rule and .taxonomy-item above are equal specificity, and this
+   stylesheet loads after the UA one, so .taxonomy-item's display:flex would
+   otherwise win the cascade tie and keep a "hidden" zero-count option
+   visible (see updateFilterCounts()'s setCount() in the script below). */
+.taxonomy-item[hidden] {
+  display: none;
+}
+
+.filter-count {
+  margin-left: -0.25rem;
+  font-size: 0.85em;
+  color: var(--primary);
+}
+
+.taxonomy-row .taxonomy-item {
+  font-size: 1.05rem;
+}
+
+.category-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--primary);
+  padding: 0.25rem;
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+
+.category-toggle .chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.category-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.taxonomy-item input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+
+.taxonomy-item input::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--primary);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.taxonomy-item input:checked::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+}
+
+@media (--mobile) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-btn {
+    display: inline-flex;
+    order: -1;
+  }
+
+  .filters-panel {
+    position: fixed;
+    inset: 0;
+    max-height: none;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .filters-panel.open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .filters-panel-inner {
+    position: relative;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .close-filters {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: none;
+    background: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: var(--cursor-pointer);
+  }
+}
+
+@media (--tablet-only) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-btn {
+    display: inline-flex;
+    order: -1;
+  }
+
+  .filters-panel {
+    position: fixed;
+    inset: 0;
+    max-height: none;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .filters-panel.open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .filters-panel-inner {
+    position: relative;
+    width: 100%;
+    height: 82vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  .sort-section, .filters-section {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .close-filters {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: none;
+    background: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: var(--cursor-pointer);
+  }
+}
+</style>
+
+<script>
+  const listView = document.getElementById('list-view');
+
+  const SORT_KEY = 'patterns-sort-order';
+  const FILTERS_KEY = 'patterns-filters';
+
+  const sortRadios = document.querySelectorAll<HTMLInputElement>('input[name="sort-order"]');
+  let sortMode = 'date-desc';
+
+  // Same tiebreak reasoning as creations/index.astro — see that file's
+  // identical comment.
+  function titleTiebreak(a: HTMLElement, b: HTMLElement): number {
+    return (a.dataset.title ?? '').localeCompare(b.dataset.title ?? '', undefined, { sensitivity: 'base' });
+  }
+
+  function sortContainer(container: HTMLElement | null) {
+    if (!container) return;
+    const [field, direction] = sortMode.split('-');
+    const key = field === 'time' ? 'hours' : field === 'name' ? 'title' : 'date';
+    const ascending = direction === 'asc';
+    const items = Array.from(container.querySelectorAll<HTMLElement>(':scope > .list-item-wrap'));
+    items.sort((a, b) => {
+      if (key === 'title') {
+        const titleA = a.dataset.title ?? '';
+        const titleB = b.dataset.title ?? '';
+        const result = titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
+        return ascending ? result : -result;
+      }
+      if (key === 'hours') {
+        const knownA = a.dataset.hours !== undefined;
+        const knownB = b.dataset.hours !== undefined;
+        if (!knownA && !knownB) return titleTiebreak(a, b);
+        if (!knownA) return 1;
+        if (!knownB) return -1;
+      }
+      const valueA = Number(a.dataset[key]);
+      const valueB = Number(b.dataset[key]);
+      if (valueA === valueB) return titleTiebreak(a, b);
+      return ascending ? valueA - valueB : valueB - valueA;
+    });
+    items.forEach((item) => container.appendChild(item));
+  }
+
+  sortRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      sortMode = radio.value;
+      sessionStorage.setItem(SORT_KEY, radio.value);
+      sortContainer(listView);
+    });
+  });
+
+  const savedSort = sessionStorage.getItem(SORT_KEY);
+  if (savedSort) {
+    const radioToSelect = Array.from(sortRadios).find((radio) => radio.value === savedSort);
+    if (radioToSelect) {
+      radioToSelect.checked = true;
+      sortMode = savedSort;
+      sortContainer(listView);
+    }
+  }
+
+  const DIFFICULTY_KEY = 'patterns-difficulty-filters';
+  const TYPE_KEY = 'patterns-type-filters';
+
+  const tagCheckboxes = document.querySelectorAll<HTMLInputElement>('.tag-filter');
+  const difficultyCheckboxes = document.querySelectorAll<HTMLInputElement>('.difficulty-filter');
+  const typeCheckboxes = document.querySelectorAll<HTMLInputElement>('.type-filter');
+  const filtersToggle = document.getElementById('filters-toggle');
+  const filtersPanel = document.getElementById('filters-panel');
+  const closeFilters = document.getElementById('close-filters');
+  const activeFiltersRow = document.getElementById('active-filters');
+  const noResults = document.getElementById('no-results');
+  const resultsCount = document.getElementById('results-count');
+
+  function saveFilters() {
+    const selected = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(FILTERS_KEY, JSON.stringify(selected));
+  }
+
+  function saveDifficultyFilters() {
+    const selected = Array.from(difficultyCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(DIFFICULTY_KEY, JSON.stringify(selected));
+  }
+
+  function saveTypeFilters() {
+    const selected = Array.from(typeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    sessionStorage.setItem(TYPE_KEY, JSON.stringify(selected));
+  }
+
+  function applyFilters() {
+    // See creations/index.astro's identical rule for why scrollY is
+    // snapshotted/restored around every mutation here.
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    const selectedTags = Array.from(tagCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    const selectedDifficulties = Array.from(difficultyCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    const selectedTypes = Array.from(typeCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+    filtersToggle?.classList.toggle('active', selectedTags.length > 0 || selectedDifficulties.length > 0 || selectedTypes.length > 0);
+    const items = listView ? Array.from(listView.querySelectorAll<HTMLElement>(':scope > .list-item-wrap')) : [];
+    let visibleCount = 0;
+    for (const item of items) {
+      const itemTags = (item.dataset.tags ?? '').split(' ').filter(Boolean);
+      const itemTypes = (item.dataset.type ?? '').split(' ').filter(Boolean);
+      const tagsMatch = selectedTags.length === 0 || selectedTags.some((tag) => itemTags.includes(tag));
+      const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(item.dataset.difficulty ?? '');
+      const typeMatch = selectedTypes.length === 0 || selectedTypes.some((type) => itemTypes.includes(type));
+      const visible = tagsMatch && difficultyMatch && typeMatch;
+      item.style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
+    }
+    if (noResults) noResults.hidden = visibleCount > 0;
+    if (resultsCount) resultsCount.textContent = `Showing ${visibleCount} of ${items.length} patterns`;
+    updateFilterCounts(items, selectedTags, selectedDifficulties, selectedTypes);
+    renderActiveFilters();
+
+    window.scrollTo(scrollX, scrollY);
+  }
+
+  // Same cross-section counting reasoning as creations/index.astro's
+  // identical function.
+  function updateFilterCounts(
+    items: HTMLElement[],
+    selectedTags: string[],
+    selectedDifficulties: string[],
+    selectedTypes: string[]
+  ) {
+    const itemData = items.map((item) => ({
+      tags: (item.dataset.tags ?? '').split(' ').filter(Boolean),
+      types: (item.dataset.type ?? '').split(' ').filter(Boolean),
+      difficulty: item.dataset.difficulty ?? '',
+    }));
+
+    // Hides an option outright once it can't possibly add anything to the
+    // current results (0 matches) — unless it's the one currently checked,
+    // since a checked-but-now-0 option still needs to stay reachable to
+    // uncheck (the active-filter chip's "x" also does this, but not
+    // everyone notices that row above the panel). setCount is the single
+    // place every section's count already flows through, so hooking
+    // visibility in here (rather than a separate pass) can't drift out of
+    // sync with the number it's based on.
+    function setCount(cb: HTMLInputElement, count: number) {
+      const label = cb.closest('label');
+      const countEl = label?.querySelector<HTMLElement>('.filter-count');
+      if (countEl) countEl.textContent = `(${count})`;
+      const hide = count === 0 && !cb.checked;
+      // A Tags/Type child option's own <li> (inside ul.taxonomy-children)
+      // wraps only its <label> — hiding that <li> itself (not just the
+      // label inside it) keeps its parent's flex `gap` from leaving a blank
+      // slot where a hidden child used to sit. Every other option (a flat
+      // Difficulty row, or a category's own parent row) has no such wrapper
+      // to worry about, so the label is enough — a parent specifically is
+      // deliberately left to updateCategoryListVisibility() below, which
+      // decides its *own* enclosing <li> (the one that also holds its
+      // children) separately.
+      if (cb.closest('ul.taxonomy-children')) {
+        const li = cb.closest('li');
+        if (li) li.hidden = hide;
+      } else if (label) {
+        label.hidden = hide;
+      }
+    }
+
+    difficultyCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        return d.difficulty === cb.value && tagsMatch && typeMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    typeCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const tagsMatch = selectedTags.length === 0 || selectedTags.some((t) => d.tags.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        return d.types.includes(cb.value) && tagsMatch && difficultyMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    tagCheckboxes.forEach((cb) => {
+      const count = itemData.filter((d) => {
+        const typeMatch = selectedTypes.length === 0 || selectedTypes.some((t) => d.types.includes(t));
+        const difficultyMatch = selectedDifficulties.length === 0 || selectedDifficulties.includes(d.difficulty);
+        return d.tags.includes(cb.value) && typeMatch && difficultyMatch;
+      }).length;
+      setCount(cb, count);
+    });
+
+    updateCategoryListVisibility();
+  }
+
+  // A category `<li>` (Type or Tags) hides only once both its own row *and*
+  // every one of its children are hidden — a parent whose own count is 0 but
+  // still has a live (nonzero or checked) child stays visible so that child
+  // stays reachable, even though the parent's own "(0)" would otherwise
+  // qualify it for hiding on its own.
+  function updateCategoryListVisibility() {
+    document.querySelectorAll<HTMLUListElement>('ul.taxonomy').forEach((list) => {
+      list.querySelectorAll<HTMLLIElement>(':scope > li').forEach((li) => {
+        const parentLabel = li.querySelector<HTMLLabelElement>(':scope > .taxonomy-row > .taxonomy-item');
+        const childItems = Array.from(li.querySelectorAll<HTMLLIElement>(':scope > ul.taxonomy-children > li'));
+        const parentHidden = parentLabel?.hidden ?? true;
+        const allChildrenHidden = childItems.length === 0 || childItems.every((child) => child.hidden);
+        li.hidden = parentHidden && allChildrenHidden;
+      });
+    });
+  }
+
+  function buildActiveFilterChip(cb: HTMLInputElement): HTMLElement {
+    const label = cb.dataset.label ?? cb.value;
+    const chip = document.createElement('span');
+    chip.className = 'active-filter-chip';
+
+    if (cb.dataset.color) {
+      const dot = document.createElement('span');
+      dot.className = 'active-filter-dot';
+      dot.style.backgroundColor = cb.dataset.color;
+      chip.appendChild(dot);
+    } else if (cb.dataset.icon) {
+      const icon = document.createElement('span');
+      icon.className = 'active-filter-icon mask-icon';
+      icon.style.maskImage = `url(${cb.dataset.icon})`;
+      icon.style.setProperty('-webkit-mask-image', `url(${cb.dataset.icon})`);
+      chip.appendChild(icon);
+    }
+
+    chip.append(label);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'active-filter-remove';
+    removeBtn.setAttribute('aria-label', `Remove ${label} filter`);
+    removeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    removeBtn.addEventListener('click', () => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    chip.appendChild(removeBtn);
+
+    return chip;
+  }
+
+  function renderActiveFilters() {
+    if (!activeFiltersRow) return;
+    activeFiltersRow.innerHTML = '';
+    const checked = [
+      ...Array.from(difficultyCheckboxes),
+      ...Array.from(typeCheckboxes),
+      ...Array.from(tagCheckboxes),
+    ].filter((cb) => cb.checked);
+    checked.forEach((cb) => activeFiltersRow.appendChild(buildActiveFilterChip(cb)));
+  }
+
+  function getParentCheckbox(cb: HTMLInputElement, filterClass: string) {
+    const parentLi = cb.closest('ul.taxonomy-children')?.parentElement;
+    return parentLi?.querySelector<HTMLInputElement>(`:scope > .taxonomy-row .${filterClass}`) ?? null;
+  }
+
+  function wireParentChildCheckboxes(checkboxes: NodeListOf<HTMLInputElement>, filterClass: string, onChange: () => void) {
+    checkboxes.forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const childList = cb.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+        childList?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((child) => {
+          child.checked = cb.checked;
+        });
+
+        const parentCheckbox = getParentCheckbox(cb, filterClass);
+        const siblings = parentCheckbox?.closest('li')?.querySelectorAll<HTMLInputElement>(`:scope > ul.taxonomy-children .${filterClass}`);
+        if (parentCheckbox && siblings) {
+          parentCheckbox.checked = Array.from(siblings).every((sibling) => sibling.checked);
+        }
+
+        onChange();
+      });
+    });
+  }
+
+  wireParentChildCheckboxes(tagCheckboxes, 'tag-filter', () => {
+    saveFilters();
+    applyFilters();
+  });
+
+  wireParentChildCheckboxes(typeCheckboxes, 'type-filter', () => {
+    saveTypeFilters();
+    applyFilters();
+  });
+
+  difficultyCheckboxes.forEach((cb) => {
+    cb.addEventListener('change', () => {
+      saveDifficultyFilters();
+      applyFilters();
+    });
+  });
+
+  document.getElementById('reset-filters')?.addEventListener('click', () => {
+    tagCheckboxes.forEach((cb) => { cb.checked = false; });
+    difficultyCheckboxes.forEach((cb) => { cb.checked = false; });
+    typeCheckboxes.forEach((cb) => { cb.checked = false; });
+    saveFilters();
+    saveDifficultyFilters();
+    saveTypeFilters();
+    applyFilters();
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+      if (!childList) return;
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      childList.classList.toggle('open', !expanded);
+    });
+  });
+
+  document.querySelectorAll<HTMLLabelElement>('.taxonomy-row > .taxonomy-item').forEach((label) => {
+    const toggle = label.parentElement?.querySelector<HTMLButtonElement>('.category-toggle');
+    if (!toggle) return;
+    const input = label.querySelector('input');
+    label.addEventListener('click', (e) => {
+      if (e.target === input) return;
+      e.preventDefault();
+      toggle.click();
+    });
+  });
+
+  const savedFilters = sessionStorage.getItem(FILTERS_KEY);
+  const savedDifficultyFilters = sessionStorage.getItem(DIFFICULTY_KEY);
+  const savedTypeFilters = sessionStorage.getItem(TYPE_KEY);
+
+  if (savedFilters) {
+    const selected: string[] = JSON.parse(savedFilters);
+    tagCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  if (savedDifficultyFilters) {
+    const selected: string[] = JSON.parse(savedDifficultyFilters);
+    difficultyCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  if (savedTypeFilters) {
+    const selected: string[] = JSON.parse(savedTypeFilters);
+    typeCheckboxes.forEach((cb) => {
+      cb.checked = selected.includes(cb.value);
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.category-toggle').forEach((toggle) => {
+    const childList = toggle.closest('li')?.querySelector<HTMLElement>(':scope > ul.taxonomy-children');
+    const hasCheckedChild = !!childList?.querySelector<HTMLInputElement>('input[type="checkbox"]:checked');
+    if (hasCheckedChild) {
+      toggle.setAttribute('aria-expanded', 'true');
+      childList?.classList.add('open');
+    }
+  });
+
+  applyFilters();
+
+  filtersToggle?.addEventListener('click', () => {
+    filtersPanel?.classList.add('open');
+    filtersToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('nav-open');
+  });
+
+  function closeFiltersPanel() {
+    filtersPanel?.classList.remove('open');
+    filtersToggle?.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('nav-open');
+  }
+
+  closeFilters?.addEventListener('click', closeFiltersPanel);
+
+  filtersPanel?.addEventListener('click', (e) => {
+    if (e.target === filtersPanel) closeFiltersPanel();
+  });
+</script>

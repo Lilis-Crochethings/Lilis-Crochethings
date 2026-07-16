@@ -1,0 +1,57 @@
+---
+import TileCarousel from "../TileCarousel.astro";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
+
+const { pattern, typesTaxonomy } = Astro.props as {
+  pattern: any;
+  typesTaxonomy: TagCategory[];
+};
+---
+
+<TileCarousel
+  images={pattern.data.images}
+  alt={getCreationAlt(pattern.data.title, pattern.data.type, pattern.data.subtypes, typesTaxonomy)}
+  href={`/patterns/${pattern.id}`}
+/>
+
+<style>
+/* Same :global()/!important reasoning as CreationCard.astro's identical
+   block — <TileCarousel> renders the shared .tile-carousel/.tc-* markup
+   from a child component, so Astro scoped styles can't reach it without
+   :global(), and its own [data-astro-cid-*] specificity has to be beaten
+   explicitly. This component is only ever used inside patterns/[slug].astro's
+   .card-similar-patterns. */
+:global(.tile-carousel) {
+  aspect-ratio: 1 / 1 !important;
+  border: 1px solid var(--border-muted) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 12px rgba(var(--inner-shadow-color), calc(0.08 * var(--inner-rest-shadow-scale))) !important;
+  overflow: hidden !important;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+:global(.tile-carousel:hover) {
+  box-shadow: 0 calc(16px * var(--inner-hover-blur-scale, 1)) calc(32px * var(--inner-hover-blur-scale, 1)) rgba(var(--inner-shadow-color), 0.2) !important;
+  transform: scale(1.04) !important;
+}
+
+:global(.tc-prev) {
+  transform: translateX(-14px) !important;
+}
+
+:global(.tc-next) {
+  transform: translateX(14px) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.tile-carousel:hover .tc-prev),
+  :global(.tile-carousel:hover .tc-next) {
+    transform: translateX(0) !important;
+  }
+}
+
+:global(.tc-prev:focus-visible),
+:global(.tc-next:focus-visible) {
+  transform: translateX(0) !important;
+}
+</style>

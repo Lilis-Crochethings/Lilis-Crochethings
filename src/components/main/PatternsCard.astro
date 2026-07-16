@@ -1,17 +1,24 @@
 ---
-// src/components/cards/PatternsCard.astro
-import { toThumb } from "../../lib/images";
-const { patterns } = Astro.props;
+// src/components/main/PatternsCard.astro
+import PatternTile from "../patterns/PatternTile.astro";
+import type { TagCategory } from "../../lib/tags";
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  items: { pattern: CollectionEntry<"patterns">; effectiveTags: string[] }[];
+  taxonomy: TagCategory[];
+  typesTaxonomy: TagCategory[];
+}
+
+const { items, taxonomy, typesTaxonomy } = Astro.props;
 ---
 
 <a class="home-card" href="/patterns">
-  <h2>Patterns <span class="coming-soon">Coming soon</span></h2>
+  <h2>Patterns</h2>
 
   <div class="grid">
-    {patterns.map((p: any) => (
-      <div class="imgWrap">
-        <img src={toThumb(p.image)} alt={p.title} loading="lazy" decoding="async" />
-      </div>
+    {items.map(({ pattern, effectiveTags }) => (
+      <PatternTile pattern={pattern} effectiveTags={effectiveTags} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
     ))}
   </div>
 </a>
@@ -19,18 +26,19 @@ const { patterns } = Astro.props;
 <style>
 @import "../../styles/breakpoints.css";
 
+h2 {
+  margin: 0 0 1rem;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
 }
 
-.imgWrap img {
-  width: 100%;
-  max-width: 150px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 10px;
+@media (--tablet-up) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
-
 </style>

@@ -701,6 +701,15 @@ const creationsWithTags = creations.map((creation) => ({
   cursor: var(--cursor-pointer);
 }
 
+/* Needed despite the browser's own default [hidden]{display:none} rule —
+   that rule and .taxonomy-item above are equal specificity, and this
+   stylesheet loads after the UA one, so .taxonomy-item's display:flex would
+   otherwise win the cascade tie and keep a "hidden" zero-count option
+   visible (see updateFilterCounts()'s setCount() in the script below). */
+.taxonomy-item[hidden] {
+  display: none;
+}
+
 .filter-count {
   margin-left: -0.25rem;
   font-size: 0.85em;
@@ -821,7 +830,7 @@ const creationsWithTags = creations.map((creation) => ({
 
 /* iPad held upright: enough width for a wide filters sheet, but still not
    enough to keep the filters sidebar docked on the right. */
-@media (--tablet-only) and (orientation: portrait) {
+@media (--tablet-only) {
   .layout {
     grid-template-columns: 1fr;
   }
@@ -1067,9 +1076,34 @@ const creationsWithTags = creations.map((creation) => ({
       difficulty: item.dataset.difficulty ?? '',
     }));
 
+    // Hides an option outright once it can't possibly add anything to the
+    // current results (0 matches) — unless it's the one currently checked,
+    // since a checked-but-now-0 option still needs to stay reachable to
+    // uncheck (the active-filter chip's "x" also does this, but not
+    // everyone notices that row above the panel). setCount is the single
+    // place every section's count already flows through, so hooking
+    // visibility in here (rather than a separate pass) can't drift out of
+    // sync with the number it's based on.
     function setCount(cb: HTMLInputElement, count: number) {
-      const countEl = cb.closest('label')?.querySelector<HTMLElement>('.filter-count');
+      const label = cb.closest('label');
+      const countEl = label?.querySelector<HTMLElement>('.filter-count');
       if (countEl) countEl.textContent = `(${count})`;
+      const hide = count === 0 && !cb.checked;
+      // A Tags/Type child option's own <li> (inside ul.taxonomy-children)
+      // wraps only its <label> — hiding that <li> itself (not just the
+      // label inside it) keeps its parent's flex `gap` from leaving a blank
+      // slot where a hidden child used to sit. Every other option (a flat
+      // Difficulty/Color/Yarn type row, or a category's own parent row) has
+      // no such wrapper to worry about, so the label is enough — a parent
+      // specifically is deliberately left to updateCategoryListVisibility()
+      // below, which decides its *own* enclosing <li> (the one that also
+      // holds its children) separately.
+      if (cb.closest('ul.taxonomy-children')) {
+        const li = cb.closest('li');
+        if (li) li.hidden = hide;
+      } else if (label) {
+        label.hidden = hide;
+      }
     }
 
     difficultyCheckboxes.forEach((cb) => {
@@ -1125,6 +1159,25 @@ const creationsWithTags = creations.map((creation) => ({
         return d.tags.includes(cb.value) && typeMatch && difficultyMatch && colorMatch && yarnTypeMatch;
       }).length;
       setCount(cb, count);
+    });
+
+    updateCategoryListVisibility();
+  }
+
+  // A category `<li>` (Type or Tags) hides only once both its own row *and*
+  // every one of its children are hidden — a parent whose own count is 0 but
+  // still has a live (nonzero or checked) child stays visible so that child
+  // stays reachable, even though the parent's own "(0)" would otherwise
+  // qualify it for hiding on its own.
+  function updateCategoryListVisibility() {
+    document.querySelectorAll<HTMLUListElement>('ul.taxonomy').forEach((list) => {
+      list.querySelectorAll<HTMLLIElement>(':scope > li').forEach((li) => {
+        const parentLabel = li.querySelector<HTMLLabelElement>(':scope > .taxonomy-row > .taxonomy-item');
+        const childItems = Array.from(li.querySelectorAll<HTMLLIElement>(':scope > ul.taxonomy-children > li'));
+        const parentHidden = parentLabel?.hidden ?? true;
+        const allChildrenHidden = childItems.length === 0 || childItems.every((child) => child.hidden);
+        li.hidden = parentHidden && allChildrenHidden;
+      });
     });
   }
 

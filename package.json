@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "images:convert": "node scripts/convert-images.mjs",
-    "images:thumbnails": "node scripts/generate-thumbnails.mjs"
+    "images:thumbnails": "node scripts/generate-thumbnails.mjs",
+    "yarns:localize-images": "node scripts/localize-yarn-images.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

@@ -15,15 +15,19 @@ export const GET: APIRoute = async () => {
   const taxonomy = taxonomyEntry[0].data.tags;
   const typesTaxonomy = typesEntry[0].data.types;
 
-  const patternDocs: SearchDoc[] = patterns.map((pattern) => ({
-    type: "pattern",
-    href: `/patterns/${pattern.id}`,
-    title: pattern.data.title,
-    description: pattern.data.description?.text,
-    tags: (pattern.data.tags ?? []).map((id) => getTagChipData(id, taxonomy)),
-    image: pattern.data.image,
-    difficulty: pattern.data.difficulty,
-  }));
+  const patternDocs: SearchDoc[] = patterns.map((pattern) => {
+    const typeChips = [pattern.data.type, ...(pattern.data.subtypes ?? [])].map((id) => getTagChipData(id, typesTaxonomy));
+    return {
+      type: "pattern",
+      href: `/patterns/${pattern.id}`,
+      title: pattern.data.title,
+      description: pattern.data.description?.text,
+      tags: [...typeChips, ...(pattern.data.tags ?? []).map((id) => getTagChipData(id, taxonomy))],
+      searchTerms: pattern.data.searchTerms,
+      image: pattern.data.images[0],
+      difficulty: pattern.data.difficulty,
+    };
+  });
 
   const creationDocs: SearchDoc[] = creations.map((creation) => {
     const patternGroups = creation.data.patterns ?? [];

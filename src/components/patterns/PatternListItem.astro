@@ -1,0 +1,114 @@
+---
+import TagChip from "../creations/TagChip.astro";
+import DifficultyChip from "../creations/DifficultyChip.astro";
+import NewBadge from "../creations/NewBadge.astro";
+import TileCarousel from "../TileCarousel.astro";
+import { getCreationAlt, type TagCategory } from "../../lib/tags";
+
+const { pattern, effectiveTags = [], taxonomy, typesTaxonomy } = Astro.props as {
+  pattern: any;
+  effectiveTags?: string[];
+  taxonomy: TagCategory[];
+  typesTaxonomy: TagCategory[];
+};
+
+const difficulty: string | undefined = pattern.data.difficulty;
+const type: string = pattern.data.type;
+const typeChipIds = [type, ...(pattern.data.subtypes ?? [])];
+const href = `/patterns/${pattern.id}`;
+const patternAlt = getCreationAlt(pattern.data.title, type, pattern.data.subtypes, typesTaxonomy);
+---
+
+<div
+  class="list-item-wrap"
+  data-date={pattern.data.date?.getTime() ?? 0}
+  data-hours={pattern.data.hoursSpent}
+  data-title={pattern.data.title}
+  data-tags={effectiveTags.join(" ")}
+  data-difficulty={difficulty}
+  data-type={typeChipIds.join(" ")}
+>
+  <div class="list-item" role="link" tabindex="0">
+    <DifficultyChip difficulty={difficulty} hideOnMobile />
+    <NewBadge uploadDate={pattern.data.uploadDate} hideOnMobile />
+    <div class="thumb">
+      <TileCarousel images={pattern.data.images} alt={patternAlt} href={href} />
+    </div>
+    <div class="body">
+      <h2 class="title">{pattern.data.title}</h2>
+      {pattern.data.description?.text && <p class="preview">{pattern.data.description.text}</p>}
+      {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
+        <div class="tags">
+          {typeChipIds.map((id) => (
+            <TagChip id={id} taxonomy={typesTaxonomy} />
+          ))}
+          {effectiveTags.map((id) => (
+            <TagChip id={id} taxonomy={taxonomy} />
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
+<style>
+.thumb {
+  position: relative;
+}
+
+/* Same :global()/!important reasoning as CreationListItem.astro's identical
+   block — <TileCarousel> renders shared markup from a child component, so
+   Astro's scoped styles can't reach it without :global(), and its own
+   [data-astro-cid-*] specificity has to be beaten explicitly. */
+:global(.thumb .tile-carousel) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:global(.thumb .tc-nav) {
+  width: 26px !important;
+  height: 26px !important;
+  transform: scale(0.7) !important;
+}
+
+:global(.thumb .tc-nav svg) {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.thumb .tile-carousel:hover .tc-nav) {
+    transform: scale(1) !important;
+  }
+}
+
+:global(.thumb .tc-nav:focus-visible) {
+  transform: scale(1) !important;
+}
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>(".list-item-wrap").forEach((root) => {
+    const listItem = root.querySelector<HTMLElement>(".list-item");
+    const tcLink = root.querySelector<HTMLAnchorElement>(".tc-link");
+    if (!listItem || !tcLink) return;
+
+    // .list-item can't be a real <a> — <TileCarousel> already renders one
+    // around the image, and nav buttons (real <button>s) can't nest inside
+    // an anchor. Clicks/keyboard activation on the row's other content
+    // (title, description, tags, chip) forward to that inner link; clicks
+    // inside the carousel itself are already handled by its own <a> and nav
+    // buttons.
+    listItem.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".tile-carousel")) return;
+      tcLink.click();
+    });
+
+    listItem.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if ((e.target as HTMLElement).closest(".tile-carousel")) return;
+      e.preventDefault();
+      tcLink.click();
+    });
+  });
+</script>

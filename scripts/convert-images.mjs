@@ -2,8 +2,10 @@
 // Converts images dropped in images-to-convert/ to .webp and writes them
 // into the matching subfolder under public/images/, preserving the
 // relative path (images-to-convert/creations/x.jpg -> public/images/creations/x.webp).
+// Pass a single file path (anywhere under images-to-convert/) as an extra
+// argument to convert just that one file instead of walking the whole tree.
 import { readdir, mkdir, stat, copyFile } from "node:fs/promises";
-import { join, relative, dirname, extname, basename } from "node:path";
+import { join, relative, resolve, dirname, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
@@ -15,7 +17,9 @@ const CONVERTIBLE_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff
 const WEBP_QUALITY = 82;
 const MAX_DIMENSION = 1600;
 
-const force = process.argv.includes("--force");
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const singleFileArg = args.find((arg) => !arg.startsWith("--"));
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -43,7 +47,20 @@ async function needsConversion(srcPath, destPath) {
 }
 
 async function main() {
-  const files = await walk(srcDir).catch(() => []);
+  let files;
+  if (singleFileArg) {
+    const singleFilePath = resolve(process.cwd(), singleFileArg);
+    const relToSrc = relative(srcDir, singleFilePath);
+    if (relToSrc.startsWith("..")) {
+      console.error(`${singleFileArg} is not inside ${relative(rootDir, srcDir)}/ — pass a path within that folder.`);
+      process.exitCode = 1;
+      return;
+    }
+    files = [singleFilePath];
+  } else {
+    files = await walk(srcDir).catch(() => []);
+  }
+
   if (files.length === 0) {
     console.log(`No images found in ${relative(rootDir, srcDir)}/`);
     return;

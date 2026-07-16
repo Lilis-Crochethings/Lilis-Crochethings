@@ -60,15 +60,21 @@ This converts each file to `.webp` (quality 82, capped at 1600px, auto-rotated u
 node scripts/convert-images.mjs --force
 ```
 
+To convert just one file instead of the whole folder, pass its path (anywhere under `images-to-convert/`):
+
+```sh
+node scripts/convert-images.mjs images-to-convert/patterns/mallard-duck/beak-full.jpg
+```
+
 ### Generating thumbnails
 
-Creation cover images also need a small thumbnail variant (for grid/list tiles and the homepage marquee) so the full-size 1600px image isn't served at a 140–400px display size. Run this after converting new creation images:
+Creation and pattern cover images also need a small thumbnail variant (for grid/list tiles and the homepage marquee) so the full-size 1600px image isn't served at a 140–400px display size. Run this after converting new creation/pattern images:
 
 ```sh
 npm run images:thumbnails
 ```
 
-This reads every `.webp` in `public/images/creations/` and writes a ≤450px, quality-78 copy to `public/images/creations/thumbs/`. Also safe to rerun; use `--force` to regenerate everything:
+This reads every `.webp` under `public/images/creations/` and `public/images/patterns/` and writes a ≤450px, quality-78 copy alongside it in a `thumbs/` subfolder. A pattern's `color-preview/` folder (its recolor-preview base photo and region masks — see `materials.colorPreviewBase`/`materials.yarns[].mask` in `content.config.ts`) is skipped entirely: those are only ever drawn into a `<canvas>` at full resolution, so they don't need a thumbnail and none is generated. Also safe to rerun; use `--force` to regenerate everything:
 
 ```sh
 node scripts/generate-thumbnails.mjs --force

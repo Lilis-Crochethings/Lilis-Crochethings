@@ -1,0 +1,352 @@
+---
+// Progress card for the pattern instructions checklist — sits above
+// Abbreviations inside .col-right-sticky (patterns/[slug].astro), which is
+// what actually makes the pair stick together while scrolling through the
+// instructions. Starts hidden; PatternInstructions.astro's script unhides
+// it, drives the fill width/percentage label by id, and wires up the reset
+// button — all the interactive state already lives in that script's
+// closure, so this component stays markup-only rather than duplicating it.
+//
+// .col-right-sticky stops being sticky at mobile/tablet (it's a plain
+// stacked block there, moved above the instructions — see
+// patterns/[slug].astro), so #pattern-progress-mini below stands in for it
+// once this card scrolls out of view at those sizes: a slim fixed strip
+// under the navbar mirroring the same fill/percentage, shown/hidden by the
+// same script's scroll listener. #pattern-abbr-drawer
+// (PatternAbbreviationsDrawer.astro) is that script's other stand-in,
+// watching the exact same trigger.
+---
+
+<div class="card card-progress" id="pattern-progress-card" hidden>
+  <div class="progress-header-row">
+    <h2>Progress</h2>
+    <button type="button" class="reset-progress" id="pattern-progress-reset" title="Uncheck every round/row for this pattern">Reset</button>
+  </div>
+  <div class="pattern-progress-track">
+    <div class="pattern-progress-fill" id="pattern-progress-fill"></div>
+  </div>
+  <div class="progress-footer-row">
+    <label class="keep-awake-toggle">
+      <input type="checkbox" class="keep-awake-input" />
+      <span class="keep-awake-switch" aria-hidden="true"></span>
+      <span class="keep-awake-label">Keep screen on</span>
+    </label>
+    <p class="pattern-progress-label" id="pattern-progress-label">0%</p>
+  </div>
+</div>
+
+<div class="progress-mini" id="pattern-progress-mini">
+  <div class="progress-mini-inner">
+    <label class="keep-awake-toggle keep-awake-toggle-mini" title="Keep screen on while following this pattern">
+      <input type="checkbox" class="keep-awake-input" />
+      <span class="keep-awake-switch" aria-hidden="true"></span>
+      <span class="keep-awake-label keep-awake-label-hidden">Keep screen on</span>
+    </label>
+    <div class="pattern-progress-track">
+      <div class="pattern-progress-fill" id="pattern-progress-mini-fill"></div>
+    </div>
+    <span class="progress-mini-label" id="pattern-progress-mini-label">0%</span>
+  </div>
+</div>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.card-progress {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+.progress-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.progress-header-row h2 {
+  margin: 0;
+}
+
+.reset-progress {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.reset-progress:hover {
+  text-decoration: underline;
+}
+
+.progress-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+/* A real switch (track + sliding thumb), not an icon button — the native
+   checkbox drives it for free keyboard/focus/state support, visually
+   hidden (not display:none, which would drop it from the tab order) behind
+   the styled track/thumb pseudo-elements. */
+.keep-awake-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: var(--cursor-pointer);
+}
+
+.keep-awake-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.keep-awake-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border-muted);
+  transition: background-color 0.2s ease;
+}
+
+.keep-awake-switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(var(--shadow-color), 0.4);
+  transition: transform 0.2s ease;
+}
+
+.keep-awake-input:checked + .keep-awake-switch {
+  background: var(--primary);
+}
+
+.keep-awake-input:checked + .keep-awake-switch::before {
+  transform: translateX(18px);
+}
+
+.keep-awake-input:focus-visible + .keep-awake-switch {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.keep-awake-label {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: var(--text);
+}
+
+/* Mini bar: no room for the full "Keep screen on" text next to the track
+   and percentage — the switch alone (scaled down) is still fully
+   accessible via this same visually-hidden label plus the toggle's own
+   title tooltip. */
+.keep-awake-toggle-mini .keep-awake-switch {
+  width: 32px;
+  height: 18px;
+}
+
+.keep-awake-toggle-mini .keep-awake-switch::before {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+.keep-awake-toggle-mini .keep-awake-input:checked + .keep-awake-switch::before {
+  transform: translateX(14px);
+}
+
+.keep-awake-label-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.pattern-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border-muted);
+}
+
+.pattern-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+/* margin-left: auto (not the row's old justify-content: space-between)
+   keeps this pinned to the right even when the keep-awake toggle next to
+   it is removed outright on browsers without the Wake Lock API — with
+   only one flex child left, space-between collapsed it to the start of
+   the row instead. */
+.pattern-progress-label {
+  margin: 0 0 0 auto;
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--primary);
+  text-align: right;
+}
+
+/* Never rendered at all outside mobile/tablet (see the breakpoint block
+   below) — desktop's .col-right-sticky stays sticky and visible on its own,
+   so this stand-in never has anything to stand in for there. Sits just
+   under the fixed navbar (z-index below its 20), slides down/up via the
+   .visible class PatternInstructions.astro's script toggles from a
+   scroll-position check against #pattern-progress-card. */
+/* top: 0, not var(--nav-height) — the real navbar isn't fixed (it scrolls
+   away normally), so by the time this bar is relevant (already scrolled
+   well past it) there's nothing left at the actual top of the screen for
+   it to sit below. Sticking to 0 also makes translateY(-100%) below
+   actually hide it off-screen entirely — offset by --nav-height, the
+   element's own height only ever brought its bottom edge back down to that
+   same --nav-height line, never past y:0, so it stayed partially visible
+   inside the viewport at every scroll position instead of sliding away. */
+.progress-mini {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  background: var(--surface);
+  border-bottom: 1px solid var(--card-border);
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 0.6rem 1.25rem;
+  transform: translateY(-100%);
+  transition: transform 0.25s ease;
+}
+
+.progress-mini.visible {
+  transform: translateY(0);
+}
+
+.progress-mini-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-mini .pattern-progress-track {
+  flex: 1;
+}
+
+.progress-mini-label {
+  flex-shrink: 0;
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.8rem;
+  color: var(--primary);
+}
+
+@media (--tablet-max) {
+  .progress-mini {
+    display: block;
+  }
+}
+</style>
+
+<script>
+  // Keeps the screen from dimming/locking while a visitor is actively
+  // following the pattern — the full card's toggle and the mobile/tablet
+  // mini bar's compact one drive (and reflect) the same shared state.
+  //
+  // The Wake Lock API auto-releases the lock the instant this tab is
+  // hidden (switching tabs/apps) — it does NOT mean the visitor turned the
+  // feature off, so the preference itself only changes on an explicit
+  // toggle. A visibilitychange listener silently re-acquires the lock once
+  // this tab is visible again, so nobody has to re-flip the switch just
+  // from switching away and back. The preference also persists in
+  // localStorage and is re-applied on page load — the one thing that's NOT
+  // recoverable this way is a full page reload/reopened browser, since a
+  // wake lock is a live, per-document browser handle that can't survive
+  // navigation itself; no placement or code here changes that, it's a
+  // platform limit.
+  const STORAGE_KEY = "pattern-keep-awake";
+  const switches = Array.from(document.querySelectorAll<HTMLInputElement>(".keep-awake-input"));
+
+  if (switches.length > 0 && "wakeLock" in navigator) {
+    let sentinel: WakeLockSentinel | null = null;
+    let enabled = localStorage.getItem(STORAGE_KEY) === "true";
+
+    function setChecked(checked: boolean) {
+      switches.forEach((input) => {
+        input.checked = checked;
+      });
+    }
+
+    async function acquire() {
+      try {
+        sentinel = await navigator.wakeLock.request("screen");
+        sentinel.addEventListener("release", () => {
+          sentinel = null;
+        });
+      } catch {
+        // Denied or not currently possible (e.g. tab not visible yet) —
+        // `enabled` stays true, so the visibilitychange listener below
+        // retries once the tab is actually visible instead of giving up.
+      }
+    }
+
+    function release() {
+      sentinel?.release();
+      sentinel = null;
+    }
+
+    setChecked(enabled);
+    if (enabled) acquire();
+
+    switches.forEach((input) => {
+      input.addEventListener("change", () => {
+        enabled = input.checked;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        setChecked(enabled);
+        if (enabled) {
+          acquire();
+        } else {
+          release();
+        }
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && enabled && !sentinel) {
+        acquire();
+      }
+    });
+  } else {
+    // Unsupported browser — remove the whole switch (not just the input)
+    // rather than leave a dead control with no effect behind it.
+    document.querySelectorAll(".keep-awake-toggle").forEach((el) => el.remove());
+  }
+</script>

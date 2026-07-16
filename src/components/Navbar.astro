@@ -4,8 +4,8 @@ import { getCollection } from "astro:content";
 const general = (await getCollection("general"))[0];
 
 const navItems = [
-  { href: "/creations", label: "Creations" },
   { href: "/patterns", label: "Patterns" },
+  { href: "/creations", label: "Creations" },
   { href: "/gallery", label: "Gallery" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
@@ -383,21 +383,27 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.6rem;
     text-decoration: none;
     color: var(--primary);
     font-family: "Lili Love", cursive;
     font-weight: bold;
   }
 
+  /* Bigger than the collapsed top bar's own icon (38px) — this only ever
+     renders inside the full-screen mobile menu (.nav-links-brand is
+     display:none everywhere else), which has plenty of room to spare, and
+     is the one place on mobile where the logo and wordmark appear together
+     at all (the top bar drops the wordmark entirely below --nav-hide-
+     wordmark, well before --nav-mobile even kicks in). */
   .nav-links-logo img {
-    width: 56px;
-    height: 56px;
+    width: 76px;
+    height: 76px;
   }
 
   .nav-links-logo p {
     margin: 0;
-    font-size: 1.3rem;
+    font-size: 1.7rem;
   }
 
   .nav-links a {

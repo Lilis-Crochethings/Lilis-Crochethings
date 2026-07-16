@@ -1,0 +1,19 @@
+materials:
+  - id: scissors
+    label: Scissors
+    icon: /images/icons/scissors.svg
+  - id: needle
+    label: Yarn needle
+    icon: /images/icons/needle.svg
+  - id: tape-measure
+    label: Measuring tape
+    icon: /images/icons/tape-measure.svg
+  - id: eye
+    label: Safety eyes
+    icon: /images/icons/eye.svg
+  - id: stuffing
+    label: Polyester filling
+    icon: /images/icons/stuffing.svg
+  - id: stitch-marker
+    label: Stitch markers
+    icon: /images/icons/stitch-marker.svg

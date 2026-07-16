@@ -1,0 +1,192 @@
+title: "Mallard Duck"
+images:
+  - /images/patterns/mallard-duck/free-pattern-banner.webp
+  - /images/creations/Mallard-Duck-1.webp
+  - /images/creations/Mallard-Duck-2.webp
+  - /images/creations/Ducks-1.webp
+  - /images/creations/Ducks-2.webp
+
+description: |-
+  Meet the Chunky Mallard Duck—a charming twist on the original Chunky Ducky! With its recognizable green head, brown chest, and soft gray body, this little duck brings the beauty of a real mallard to a cute, chunky amigurumi.
+
+  Using super bulky yarn and a 4 mm crochet hook, this beginner-friendly pattern works up in an hour, making it a fun and satisfying project for crocheters of all skill levels. It's perfect as a gift, a desk companion, or as part of your growing flock of chunky birds.
+
+  Love the shape but prefer something a little simpler? Be sure to check out the original [Chunky Ducky](/patterns/chunky-ducky) pattern, which can be made in endless color combinations—including a cute little goose!
+
+date: 2026-07-16
+uploadDate: 2026-07-16
+#lastModified: 2026-07-16
+hoursSpent: 1
+hookSize: 4mm
+type: crochet
+subtypes:
+  - amigurumi
+tags:
+  - duck
+
+searchTerms:
+  - Plushie
+  - Chunky Ducky
+  - Jumbo Ducky
+  
+materials:
+  items:
+    - scissors
+    - needle
+    - stitch-marker
+    - stuffing
+  safetyEyes:
+    - size: 6mm
+      amount: 2
+  hooks:
+    - 4mm
+  colorPreviewBase: /images/patterns/mallard-duck/color-preview/base.webp
+  yarns:
+    - id: body
+      name: "chocolate"
+      color: &bodyText # Anchored so pattern instructions below can reference this exact pair via *bodyText — shown on the materials swatch too, so it's the one color that has to stay legible against both themes
+        light: "#a06740"
+        dark: "#c39374"
+      amount: 20g # If there is no amount present, just fall back to display the color only
+      weight: super-bulky
+      yarn: "Honey Bunny - Chocolate"
+      info: Color that is used for the body
+      mask: /images/patterns/mallard-duck/color-preview/body-mask.webp
+
+    - id: neck
+      name: white
+      color: &neckText
+        light: "#2b2b2b"
+        dark: "#f2e7ea"
+      weight: super-bulky
+      amount: 1g
+      yarn: "Honey Bunny - White"
+      info: Color that is used for the neck
+      mask: /images/patterns/mallard-duck/color-preview/neck-mask.webp
+
+    - id: head
+      name: green
+      color: &headText
+        light: "#207d44"
+        dark: "#60b77b"
+      weight: super-bulky
+      amount: 4g
+      yarn: "Dolce - Petrol Green"
+      info: Color that is used for the head
+      mask: /images/patterns/mallard-duck/color-preview/head-mask.webp
+
+    - id: beak
+      name: "curry"
+      color: &beakText
+        light: "#87702e"
+        dark: "#f9d967"
+      weight: super-bulky
+      amount: Scraps
+      yarn: "Baby Snuggle Solid - Curry"
+      info: Color that is used for the beak
+      mask: /images/patterns/mallard-duck/color-preview/beak-mask.webp
+      
+
+
+abbreviations: [mr, sc, inc, dec, slst, ch, hdc, flo, blo, tw, '()', '[]']
+
+pattern:
+  - part: Body
+    worked-in: rounds
+    info: The entire project is made with a 4mm hook. The body is worked in rounds in the color [body].
+    color: *bodyText # Color can be defined on entire part, then all lines (row/round) are in this color
+    instructions: # Will automatically be shown as Round 1, 2, 3... (Count only lines! info, warnings and images are not counted)
+      - line: MR with 8 SC
+        total: 8
+      - line: 8 INC
+        total: 16
+      - line: (1 SC, 1 INC) x8
+        #color: *beakText # Deeper defined colors overwrite the color defined at the top
+        total: 24
+      - line: (3 SC, 1 INC) x6
+        total: 30
+      - line: (4 SC, 1 INC) x6
+        total: 36
+      - line: "FLO: [1 SLST, 2 CH, 2 HDC], ALL: 10 SC, FLO: [2 HDC, 2 CH, 1 SLST], ALL: 24 SC"
+        total: 36
+        info: The wings are worked in the front loops only, the rest is through both loops. # Can be when a certain instruction line needs some extra information (info icon)
+        images: # Can be multiple -> inserted as part of this instruction line
+          - /images/patterns/mallard-duck/body-round-6.webp
+      - line: "BLO: 1 SC, ALL: 10 SC, BLO: 1 SC, ALL: 24 SC"
+        info: Work in the back loops when passing the wings
+      - block: 4 # A block is a single line repeated x times
+        line: 36 SC
+        total: 36
+      - line: (4 SC, 1 DEC) x6
+        total: 30
+      - line: (3 SC, 1 DEC) x6
+        total: 24
+      - line: (1 SC, 1 DEC) x8
+        total: 16
+      - info: Start stuffing the body # When a general instruction is inserted in between the rounds/rows of the instructions
+        images: # inserted as part of this instruction line
+          - /images/patterns/mallard-duck/stuff-body.webp
+      - line: 8 DEC
+        total: 8
+      - info: Close off the hole and weave in the ends
+        images: # inserted as part of this instruction line
+          - /images/patterns/mallard-duck/body-full.webp
+
+
+
+  - part: Head
+    worked-in: rounds
+    info: The head is also worked in rounds in [head].
+    color: *headText
+    instructions:
+      - line: MR with 8 SC
+        total: 8
+      - line: 8 INC
+        total: 8
+      - block: 3 # A block is a single line repeated x times
+        line: 16 SC
+        total: 16
+
+  - part: Beak
+    worked-in: rows
+    info: Now we'll start with the beak in [beak]. It takes up 4 stitches of space between rounds 4 and 5 of the head. # General info at the top of the card
+    color: *beakText
+    instructions:  # Will automatically be shown as Row 1, 2, 3...
+      - info: Turn the head so the magic ring is at the top. Insert the hook horizontally between round 4 and 5. Pick up the yarn and pull through. Then chain 1 to attach it to the head.
+        images: # Images part of the extra info box
+          - /images/patterns/mallard-duck/beak-insert-yarn.webp
+          - /images/patterns/mallard-duck/beak-chain-1.webp
+      - line: 2 SC, 1 SLST, TW
+        # total: 4
+        images: # Images part of the extra info box
+          - /images/patterns/mallard-duck/beak-insert-2.webp
+      - line: Skip 1 stitch, 2 SC, 1 SLST
+        info: The last slipstitch goes into the first chain we made
+        # total: 3
+        images:
+          - /images/patterns/mallard-duck/beak-row-2.webp
+      - info: Weave in the ends of the beak and insert the safety eyes between round 4 and 5, one stitch away from the beak.
+        images:
+          - /images/patterns/mallard-duck/beak-full.webp
+          - /images/patterns/mallard-duck/safety-eyes.webp
+
+  - part: Head (continued)
+    color: *neckText
+    worked-in: rounds
+    info: We'll now continue on the last round of the head, so we switch back to our [neck] yarn.
+    instructions:
+      - line: 8 DEC
+        total: 8
+      - info: Stuff the head. Finish off and leave a tail for sewing
+
+  - part: Assembly
+    # Can also be that it is not worked in rounds or rows, then don't insert round/row x: in front. Then it's just general lines of instructions
+    instructions:
+      - info: Sew the head onto the body between rounds 2 and 5.
+        images:
+          - /images/patterns/mallard-duck/body-pins.webp
+
+outro:
+  - text: You've brought your very own Chunky Mallard Duck to life! I hope you enjoyed making this little woodland friend and that it was just as much fun to crochet as it is to display. Whether it's joining a growing flock of chunky birds or standing proudly on its own, I hope it brings a smile to your face.
+  - images:
+    - /images/creations/Mallard-Duck-2.webp

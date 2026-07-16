@@ -26,7 +26,7 @@ Content lives in `src/content/` and is defined/typed in `src/content.config.ts` 
 
 - **`general`** — a singleton doc (`src/content/general.md`) with site-wide metadata (currently just `name`). Read by `Navbar.astro` for the logo/site name.
 - **`creations`** — one Markdown file per finished project (`src/content/creations/*.md`), schema: `title`, `image`, `description`, `date?`. Listed at `/creations` and rendered individually at `/creations/[slug]` via `getStaticPaths`.
-- **`patterns`** — schema exists (`title`, `difficulty`, `image`, `yarn?`, `hookSize?`, `tags?`) but `src/content/patterns/` has no content files yet, and `src/pages/patterns.astro` is still a static placeholder — it does not query the collection yet.
+- **`patterns`** — one YAML file per pattern (`src/content/patterns/*.yaml`), schema: `title`, `images` (min 1), `type`, `subtypes?`, `colors?`, `tags?`, `searchTerms?`, `description?`, `difficulty?`, `date?`, `lastModified?`, `hoursSpent?`, `materials?`, `abbreviations?`, `pattern?` (round-by-round instructions). Listed at `/patterns` (mirrors `/creations`'s list/filter/sort UI, minus the yarn-type filter) and rendered individually at `/patterns/[slug]`, which also shows a materials card, round-by-round instructions (when `pattern` is set), and a "Creations" card listing every creation whose credited pattern links back to this page.
 
 ### Pages and layout
 
@@ -35,7 +35,7 @@ Routing is file-based under `src/pages/`. Every page wraps its content in `src/l
 ### Components
 
 - `src/components/main/` — home page cards (`AboutCard`, `CreationsCard`, `PatternsCard`) that link out to `/about`, `/creations`, `/patterns`.
-- `src/components/creations/CreationCard.astro` — a detail-card component whose props (`difficulty`, `creation.slug`) match the *patterns* schema rather than the current *creations* schema, and it isn't referenced from any page yet. Reconcile this against whichever collection it's meant for before using it.
+- `src/components/creations/CreationCard.astro` — a tile (image carousel + link) for a single creation, used by both the creations detail page's "See also" card and the pattern detail page's "Creations" card.
 - `Navbar.astro` includes its own mobile hamburger toggle script and scoped styles.
 
 ### Styling

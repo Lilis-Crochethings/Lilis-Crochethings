@@ -226,9 +226,21 @@ body {
   min-height: 100vh;
 }
 
+/* overflow-x: clip (not hidden) — hidden on html/body is a well-known trap
+   for position: sticky descendants (the pattern detail page's sticky
+   Progress/Abbreviations sidebar, e.g.): it forces html/body into being a
+   scroll container of their own, so sticky elements end up measuring
+   against that instead of the real viewport and stop sticking at
+   --tablet-max widths (900px and below).
+   clip achieves the same "no horizontal scrollbar" containment without
+   creating that scroll container. overflow-y is set explicitly rather than
+   left to default, since the CSS Overflow spec computes a lone
+   non-"visible" overflow-x to force the other axis away from "visible" too
+   otherwise. */
 @media (--tablet-max) {
   html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: visible;
     max-width: 100vw;
   }
 }
@@ -469,6 +481,18 @@ mark {
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
+  /* On the list-item layout (CreationListItem/PatternListItem), this chip
+     is a sibling positioned before .thumb, not nested inside it — .thumb
+     itself is also position:relative with no z-index of its own, so with
+     both at the same (z-index:auto) stack level, plain DOM order decides
+     paint order and .thumb (later in the markup) would otherwise win,
+     burying whichever badge's corner happens to land over the thumbnail.
+     The right corner rarely overlaps the (left-aligned) thumb in that
+     layout, so this one got lucky — .new-badge's left corner does overlap
+     it, which is what actually surfaced the bug. A positive z-index here
+     isn't just belt-and-suspenders: it's what keeps this chip safe from the
+     same fate if the list-item layout ever changes. */
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   border: none;
@@ -499,6 +523,59 @@ mark {
    so it rides that same container query rather than the viewport. */
 @container (max-width: 500px) {
   .difficulty-chip.hide-on-mobile {
+    display: none;
+  }
+}
+
+/* Same shape/positioning as .difficulty-chip above, mirrored to the left
+   corner (see NewBadge.astro) — solid --primary/--on-primary rather than a
+   per-level pastel, since there's only ever one state to show. */
+.new-badge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  /* See .difficulty-chip's identical rule above for why this needs a real
+     z-index — this is the badge whose corner actually collides with
+     .thumb on the list-item layout, so it's not optional here the way it
+     is (for now) on the right-corner difficulty chip. */
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-family: "Quicksand", sans-serif;
+  font-weight: bold;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  animation: new-badge-pulse 1.8s ease-in-out infinite;
+}
+
+/* Scale, not opacity — an opacity pulse would fade the badge toward the
+   thumbnail behind it rather than reading as "alive," since it already
+   sits on top of a busy photo rather than a flat background. Kept subtle
+   (1 -> 1.08) so it draws the eye without looking like an alert/error
+   state. */
+@keyframes new-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-badge {
+    animation: none;
+  }
+}
+
+/* Same reasoning as .difficulty-chip.hide-on-mobile above. */
+@container (max-width: 500px) {
+  .new-badge.hide-on-mobile {
     display: none;
   }
 }
@@ -573,6 +650,69 @@ mark {
   font-size: 0.95rem;
   color: var(--text);
   padding: 0.5rem 0.25rem;
+}
+
+/* 100%-progress confetti celebration (PatternInstructions.astro's
+   triggerConfetti()) — built via document.createElement at runtime, same as
+   the search dropdown above, so this has to live here rather than in that
+   component's own scoped <style>: Astro stamps a data-astro-cid-* attribute
+   onto every element a component's template renders and scopes that
+   component's CSS to match only that attribute, but an element created by
+   client-side JS after the fact never gets it, so a scoped rule would
+   silently never match it at all. */
+/* Exactly overlays the card (not extended past its edges, unlike a
+   top-down effect would need) — every piece starts pinned to this box's
+   own center and radiates outward from there, so the box itself only needs
+   to match the card; overflow: visible is what lets pieces travel past its
+   edges once they're in motion. */
+.confetti-burst {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 18px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-burst-piece var(--fall-duration, 0.7s) ease-out var(--fall-delay, 0s) forwards;
+}
+
+.confetti-c1 { background: var(--confetti-color-1); }
+.confetti-c2 { background: var(--confetti-color-2); }
+.confetti-c3 { background: var(--confetti-color-3); }
+.confetti-c4 { background: var(--confetti-color-4); }
+.confetti-c5 { background: var(--confetti-color-5); }
+
+/* Every piece starts centered on the card (the base translate(-50%, -50%)
+   cancels out its own width/height so it's truly centered on that point,
+   not just its top-left corner) and travels outward to --end-x/--end-y —
+   a random angle/radius picked per piece in triggerConfetti(), so the
+   burst reads as a circle scattering outward rather than a single
+   direction. ease-out on the animation itself (see .confetti-piece above)
+   gives the burst its "fast out, coasting to a stop" feel instead of the
+   accelerating fall a linear/ease-in timing would read as. */
+@keyframes confetti-burst-piece {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--end-x, 0px)), calc(-50% + var(--end-y, 0px))) rotate(var(--rotate-end, 360deg));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-burst {
+    display: none;
+  }
 }
 
 /* Home page's four top-level cards (About/Patterns/Gallery/Creations) —

@@ -1,0 +1,234 @@
+---
+// Mobile/tablet-only stand-in for the Abbreviations card, which sits
+// side-by-side with the instructions on desktop but can't there — it's
+// stacked above them instead (patterns/[slug].astro), out of view once a
+// visitor has scrolled down into the pattern itself. This is a fixed nub
+// on the right edge that stays reachable throughout, mirroring
+// PatternProgressBar's own mini bar: hidden until the on-page Abbreviations
+// card is about halfway scrolled past, then peeking as a tab a visitor can
+// tap open. PatternInstructions.astro's script drives the show/hide state
+// and the open/close slide animation (see #pattern-abbr-flap there) — this
+// component stays markup-only.
+//
+// The nub opens a native <dialog>, same modal pattern as the materials
+// card's yarn-edit-dialog ([slug].astro) — showModal() gets a real
+// backdrop, an automatic focus trap, Escape-to-close, and returning focus
+// to the nub on close for free, rather than reimplementing all of that by
+// hand. Styled here as a full-height edge panel instead of a centered box,
+// with its own slide-in/out (the script animates the transform itself,
+// since a native dialog's open/close is otherwise an instant, unanimated
+// display swap).
+const { abbreviations } = Astro.props as { abbreviations: { id: string; label: string }[] };
+
+// Same reasoning as [slug].astro's own capitalize() — glossary entries are
+// written lowercase in the yaml (natural to type), capitalized at render
+// time instead of duplicating each label in two cases in the source data.
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+---
+
+{abbreviations.length > 0 && (
+  <>
+    <button
+      type="button"
+      class="abbr-flap"
+      id="pattern-abbr-flap"
+      aria-haspopup="dialog"
+      aria-controls="pattern-abbr-dialog"
+      aria-expanded="false"
+      title="Abbreviations"
+    >
+      Ab
+    </button>
+
+    <dialog class="abbr-dialog" id="pattern-abbr-dialog" aria-labelledby="pattern-abbr-dialog-title">
+      {/* Poking out at the dialog's own left edge — a plain fixed element
+         couldn't render above ::backdrop (browsers always paint top-layer
+         content, backdrop included, over ordinary page content regardless
+         of z-index), but a dialog descendant naturally shares its top-layer
+         stacking, so this is the only way to keep a "nub" visible once the
+         drawer's open. Decorative only (the real close controls are the X
+         button, backdrop click, and Escape below) — aria-hidden so it isn't
+         announced as a second, non-functional control. */}
+      <span class="abbr-dialog-tab" aria-hidden="true">Ab</span>
+      <div class="abbr-dialog-content">
+        <button type="button" class="abbr-close" id="pattern-abbr-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <h2 id="pattern-abbr-dialog-title">Abbreviations</h2>
+        <dl class="abbr-table">
+          {abbreviations.map((abbr) => (
+            <>
+              <dt class="abbr-key">{abbr.id.toUpperCase()}:</dt>
+              <dd class="abbr-meaning">{capitalize(abbr.label)}</dd>
+            </>
+          ))}
+        </dl>
+      </div>
+    </dialog>
+  </>
+)}
+
+<style>
+@import "../../styles/breakpoints.css";
+
+/* Hidden outside mobile/tablet — desktop's .col-right-sticky already keeps
+   the real Abbreviations card in view on its own, so this tab never has
+   anything to stand in for there. Slides fully off/on its own right edge —
+   hidden = pushed a full width past the edge, .visible = flush against it. */
+.abbr-flap {
+  display: none;
+  position: fixed;
+  /* Near the top of the screen (just under the fixed navbar), not
+     vertically centered — reachable without scrolling down first. */
+  top: calc(var(--nav-height, 64px) + 1.5rem);
+  right: 0;
+  z-index: 15;
+  width: 44px;
+  padding: 0.8rem 0;
+  border: none;
+  border-radius: 10px 0 0 10px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Lili Love", cursive;
+  font-size: 1.15rem;
+  line-height: 1;
+  box-shadow: -4px 0 12px rgba(var(--shadow-color), calc(0.15 * var(--shadow-alpha-scale)));
+  cursor: var(--cursor-pointer);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+
+.abbr-flap.visible {
+  transform: translateX(0);
+}
+
+@media (--tablet-max) {
+  .abbr-flap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* A real full-height drawer — anchored to the right edge instead of the
+   browser's default centered box, overriding <dialog>'s own UA sizing/
+   centering (margin/max-width/max-height) to do it. border-left (not a
+   plain border-muted like other cards) picks up the same primary color as
+   the flap, so the two read as one continuous piece once the drawer opens
+   over it.
+
+   overflow: visible (not the UA default auto) — .abbr-dialog-tab needs to
+   poke out past this box's own left edge without being clipped; the actual
+   scrolling for a long abbreviations list happens on .abbr-dialog-content
+   below instead.
+
+   transform/transition here are the resting (closed) state; the script
+   animates between this and translateX(0) on open/close rather than
+   relying on the dialog's own instant, unanimated open/close, and
+   overrides this inline while doing so. */
+.abbr-dialog {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  box-sizing: border-box;
+  width: min(320px, 85vw);
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: none;
+  border-left: 4px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -6px 0 24px rgba(var(--shadow-color), calc(0.25 * var(--shadow-alpha-scale)));
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.abbr-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.abbr-dialog-tab {
+  position: absolute;
+  /* Matches .abbr-flap's closed-state position so the tab doesn't jump when
+     the drawer opens over it. */
+  top: calc(var(--nav-height, 64px) + 1.5rem);
+  left: 0;
+  transform: translateX(-100%);
+  width: 44px;
+  padding: 0.8rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Lili Love", cursive;
+  font-size: 1.15rem;
+  line-height: 1;
+  border-radius: 10px 0 0 10px;
+  box-shadow: -4px 0 12px rgba(var(--shadow-color), calc(0.15 * var(--shadow-alpha-scale)));
+}
+
+.abbr-dialog-content {
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.abbr-dialog-content h2 {
+  margin: 0 0 1rem;
+  padding-right: 2rem;
+}
+
+.abbr-close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--primary);
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.abbr-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Same grid-of-pairs layout as the desktop card's own .abbr-table
+   (patterns/[slug].astro) — duplicated rather than shared since these two
+   never render into the same DOM subtree at once. */
+.abbr-table {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0.5rem;
+  margin: 0;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+}
+
+.abbr-key {
+  margin: 0;
+  color: var(--primary);
+  font-weight: bold;
+  text-align: right;
+}
+
+.abbr-meaning {
+  margin: 0;
+  color: var(--text);
+}
+</style>

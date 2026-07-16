@@ -1,0 +1,44 @@
+---
+// Renders one icon from socials.yaml's `icons` map — either a tinted SVG
+// (mask-icon + var(--primary), so it stays in sync with theme changes
+// instead of being frozen at a baked-in color) or a plain raster icon (the
+// site logo, email envelope, ...) that already carries its own real color.
+// Used by about.astro's Socials/Contact lists and the pattern detail page's
+// About Me card, which otherwise duplicated this exact same branching.
+const { icon, size = 26 } = Astro.props as {
+  icon: { src: string; pad?: number; radius?: string; tinted?: boolean };
+  size?: number;
+};
+---
+
+<span class="social-badge" style={`--badge-size:${size}px; padding:${icon.pad ?? 0}px`}>
+  {icon.tinted ? (
+    <span class="social-badge-icon mask-icon" style={`mask-image:url(${icon.src}); -webkit-mask-image:url(${icon.src});`}></span>
+  ) : (
+    <img src={icon.src} alt="" style={`border-radius:${icon.radius ?? 0}`} />
+  )}
+</span>
+
+<style>
+.social-badge {
+  width: var(--badge-size, 26px);
+  height: var(--badge-size, 26px);
+  min-width: var(--badge-size, 26px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.social-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.social-badge-icon.mask-icon {
+  width: 100%;
+  height: 100%;
+  background-color: var(--primary);
+}
+</style>

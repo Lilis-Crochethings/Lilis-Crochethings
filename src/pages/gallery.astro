@@ -5,6 +5,7 @@ import LightboxChrome from '../components/LightboxChrome.astro';
 import LightboxStage from '../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
 import { getEffectiveTags, getTagChipData, getCreationAlt } from "../lib/tags";
+import { formatHours } from "../lib/time";
 
 const creations = (await getCollection("creations")).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
@@ -35,7 +36,7 @@ const items = creations.flatMap((creation) => {
     href: `/creations/${creation.id}`,
     difficulty: creation.data.difficulty ?? null,
     dateLabel: creation.data.date ? creation.data.date.toLocaleDateString() : null,
-    hoursSpent: creation.data.hoursSpent ?? null,
+    hoursLabel: creation.data.hoursSpent ? formatHours(creation.data.hoursSpent) : null,
     hookSize: creation.data.hookSize ?? null,
     description: creation.data.description.text,
     tagChips,
@@ -117,7 +118,7 @@ h1 {
   }
 }
 
-@media (--tablet-only) and (orientation: portrait) {
+@media (--tablet-narrow) {
   .grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -315,14 +316,18 @@ h1 {
   background: var(--primary);
 }
 
-/* Shared "stacked" layout: mobile and iPad portrait put the image on top
-   and the card at the bottom, edge-to-edge with the overlay's own padding —
-   the image area grows to fill the leftover vertical space and centers the
-   (fixed-aspect-ratio) image within it, so the card always rests flush with
-   the bottom margin instead of floating wherever the content happens to
-   end. iPad landscape is handled separately below — it reuses the desktop
-   row layout instead of this stacked one. */
-@media (--mobile), (--tablet-only) and (orientation: portrait) {
+/* Shared "stacked" layout: mobile and narrow tablet widths put the image on
+   top and the card at the bottom, edge-to-edge with the overlay's own
+   padding — the image area grows to fill the leftover vertical space and
+   centers the (fixed-aspect-ratio) image within it, so the card always
+   rests flush with the bottom margin instead of floating wherever the
+   content happens to end. Wide tablet widths are handled separately below —
+   they reuse the desktop row layout instead of this stacked one. Gated on
+   --tablet-narrow (a width threshold), not device orientation — an iPad in
+   Split View can report "landscape" while the actual width available to the
+   page is much narrower than a full-screen landscape iPad, which orientation
+   alone can't detect. */
+@media (--mobile), (--tablet-narrow) {
   :global(#gallery-modal.lb-overlay) {
     align-items: stretch;
   }
@@ -352,11 +357,11 @@ h1 {
   }
 }
 
-/* iPad portrait: a bigger constrained image than mobile, with flanking nav
-   buttons (like desktop) rather than mobile's overlaid-on-image buttons,
-   generous side margin, and a card that spans the full available width
-   (inset only by the overlay's own margin) with just the essentials. */
-@media (--tablet-only) and (orientation: portrait) {
+/* Narrow tablet widths: a bigger constrained image than mobile, with
+   flanking nav buttons (like desktop) rather than mobile's overlaid-on-image
+   buttons, generous side margin, and a card that spans the full available
+   width (inset only by the overlay's own margin) with just the essentials. */
+@media (--tablet-narrow) {
   :global(#gallery-modal.lb-overlay) {
     padding: 3rem clamp(3rem, 8vw, 6rem);
   }
@@ -489,7 +494,7 @@ h1 {
     href: string;
     difficulty: string | null;
     dateLabel: string | null;
-    hoursSpent: number | null;
+    hoursLabel: string | null;
     hookSize: string | null;
     description: string;
     tagChips: TagChipData[];
@@ -516,8 +521,8 @@ h1 {
     (infoDate.closest("li") as HTMLElement).hidden = !item.dateLabel;
     infoDate.textContent = item.dateLabel ?? "";
 
-    (infoHours.closest("li") as HTMLElement).hidden = !item.hoursSpent;
-    infoHours.textContent = item.hoursSpent ? `${item.hoursSpent}h` : "";
+    (infoHours.closest("li") as HTMLElement).hidden = !item.hoursLabel;
+    infoHours.textContent = item.hoursLabel ?? "";
 
     (infoHook.closest("li") as HTMLElement).hidden = !item.hookSize;
     infoHook.textContent = item.hookSize ?? "";

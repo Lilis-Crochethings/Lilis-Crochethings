@@ -23,12 +23,15 @@ socials:
   - name: Instagram
     href: https://www.instagram.com/lilis_crochethings/
     icon: instagram
+    handle: "@lilis_crochethings"
   - name: Pinterest
     href: https://www.pinterest.com/liliscrochethings/_created/
     icon: pinterest
+    handle: "@liliscrochethings"
   - name: Facebook
     href: https://www.facebook.com/people/Lilis-Crochethings/61568543484297
     icon: facebook
+    handle: "Lili's Crochethings"
 
 contacts:
   - name: Contact form

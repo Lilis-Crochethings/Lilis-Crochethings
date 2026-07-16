@@ -95,4 +95,13 @@
      meant for in-flow content like <mark>, not a standalone badge). */
   --coming-soon-bg: #F0C7D7;
   --coming-soon-text: #7a4459;
+
+  /* Confetti burst pieces (100%-progress celebration on the pattern detail
+     page) — fixed in both themes, same reasoning as the difficulty badges:
+     small, isolated decoration rather than a themed surface. */
+  --confetti-color-1: #9d486a;
+  --confetti-color-2: #e0a3bb;
+  --confetti-color-3: #F0C7D7;
+  --confetti-color-4: #8dc399;
+  --confetti-color-5: #f3c368;
 }

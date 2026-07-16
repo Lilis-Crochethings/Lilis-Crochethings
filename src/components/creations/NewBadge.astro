@@ -1,0 +1,14 @@
+---
+// Mirrors DifficultyChip.astro's own top-corner overlay (right side) —
+// this one sits at the opposite (left) corner instead, so the two never
+// collide when both are shown on the same thumb/row. Shared by both
+// creations and patterns (PatternTile/PatternListItem import it from here),
+// same as DifficultyChip already is.
+import { isRecentlyUploaded } from "../../lib/newBadge";
+
+const { uploadDate, hideOnMobile = false } = Astro.props as { uploadDate?: Date; hideOnMobile?: boolean };
+---
+
+{isRecentlyUploaded(uploadDate) && (
+  <span class:list={["new-badge", { "hide-on-mobile": hideOnMobile }]}>New</span>
+)}

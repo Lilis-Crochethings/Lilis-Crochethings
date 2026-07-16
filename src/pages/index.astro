@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutCard from '../components/main/AboutCard.astro';
+import PatternsCard from '../components/main/PatternsCard.astro';
 import CreationsCard from '../components/main/CreationsCard.astro';
 import GalleryCard from '../components/main/GalleryCard.astro';
 import { getCollection } from 'astro:content';
@@ -22,6 +23,18 @@ const typesTaxonomy = typesEntry.data.types;
 const creationPreviews = allCreations.slice(0, 4).map((creation) => ({
   creation,
   effectiveTags: getEffectiveTags(creation.data.tags, taxonomy),
+}));
+
+// Same date-desc-then-title tiebreak as patterns/index.astro's own sort, and
+// the same 4-item preview cap as creationPreviews above.
+const allPatterns = (await getCollection('patterns')).sort((a, b) => {
+  const dateDiff = (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0);
+  if (dateDiff !== 0) return dateDiff;
+  return a.data.title.localeCompare(b.data.title, undefined, { sensitivity: 'base' });
+});
+const patternPreviews = allPatterns.slice(0, 4).map((pattern) => ({
+  pattern,
+  effectiveTags: getEffectiveTags(pattern.data.tags, taxonomy),
 }));
 
 // Capped at 2 images per creation for the marquee — showing every image of
@@ -75,6 +88,8 @@ const websiteSchema = {
   bio={summaryBio}
   image="/images/Lilis-Crochethings-thumb.webp"
 />
+
+<PatternsCard items={patternPreviews} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
 
 <CreationsCard items={creationPreviews} taxonomy={taxonomy} typesTaxonomy={typesTaxonomy} />
 

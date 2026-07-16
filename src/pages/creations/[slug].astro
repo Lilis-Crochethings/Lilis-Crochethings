@@ -1,34 +1,21 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CreationCard from '../../components/creations/CreationCard.astro';
-import TagChip from '../../components/creations/TagChip.astro';
 import DifficultyChip from '../../components/creations/DifficultyChip.astro';
 import SmartLink from '../../components/SmartLink.astro';
+import ImagesCard from '../../components/ImagesCard.astro';
+import DescriptionCard from '../../components/DescriptionCard.astro';
+import InfoCard from '../../components/InfoCard.astro';
 import LightboxChrome from '../../components/LightboxChrome.astro';
 import LightboxStage from '../../components/LightboxStage.astro';
 import { getCollection } from "astro:content";
 import { resolveYarn } from "../../lib/yarn";
 import { getEffectiveTags, getCreationAlt, getTagLabel } from "../../lib/tags";
+import { formatHours } from "../../lib/time";
+import { seededShuffle } from "../../lib/seededShuffle";
 
 export async function getStaticPaths() {
   const SIMILAR_LIMIT = 4;
-
-  function seededShuffle<T>(items: T[], seed: string): T[] {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-    const rand = () => {
-      h = Math.imul(h ^ (h >>> 15), h | 1);
-      h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
-      return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
-    };
-
-    const shuffled = [...items];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
 
   const creations = await getCollection("creations");
   const yarnsEntry = (await getCollection("yarns"))[0];
@@ -116,6 +103,11 @@ const PLATFORM_ICONS: Record<string, string> = {
   pinterest: "/images/socials/pinterest.webp",
   facebook: "/images/socials/facebook.webp",
   website: "/images/socials/website.svg",
+  // NOTE: tiktok.svg was overwritten with a flat single-color version (see
+  // conversation) — this now renders solid black via the plain-<img> branch
+  // below instead of TikTok's real multi-color mark, unlike every other
+  // entry here. Needs either the original multi-color file restored, or
+  // adding "tiktok" to MASK_TINTED_PLATFORMS to render it tinted on purpose.
   tiktok: "/images/socials/tiktok.svg",
   pattern: "/images/icons/pattern.svg"
 };
@@ -150,6 +142,12 @@ const yarnTiles = (data.yarn ?? [])
   .map((y) => resolveYarn(y, yarnLines))
   .filter((y) => y !== null)
   .sort((a, b) => (a.type ?? "").localeCompare(b.type ?? ""));
+
+const infoItems = [
+  data.date && { icon: "/images/icons/calendar.svg", label: data.date.toLocaleDateString(), title: "Finished" },
+  data.hoursSpent && { icon: "/images/icons/clock.svg", label: formatHours(data.hoursSpent), title: "Time spent" },
+  data.hookSize && { icon: "/images/icons/hook.svg", label: data.hookSize, title: "Hook size" },
+].filter((item): item is { icon: string; label: string; title: string } => Boolean(item));
 
 const craftType = data.type;
 
@@ -249,27 +247,9 @@ const pageTitle = data.searchTerms?.length ? `${data.title} (${data.searchTerms[
 
   <div class="layout">
     <div class="col-left">
-    <div class="card card-images">
-      <h2>Images</h2>
-      <div class="gallery">
-        {data.images.map((image, i) => (
-          <img
-            src={image}
-            alt={data.images.length > 1 ? `${creationAlt} — photo ${i + 1} of ${data.images.length}` : creationAlt}
-            class="gallery-thumb"
-            loading={i === 0 ? "eager" : "lazy"}
-            decoding="async"
-          />
-        ))}
-      </div>
-    </div>
+    <ImagesCard images={data.images} alt={creationAlt} />
 
-    {data.description.text && (
-      <div class="card card-description">
-        <h2>Description</h2>
-        <p class="description-text" set:html={data.description.html} />
-      </div>
-    )}
+    {data.description.text && <DescriptionCard html={data.description.html} />}
 
     {yarnTiles.length > 0 && (
       <div class="card card-yarn">
@@ -314,40 +294,13 @@ const pageTitle = data.searchTerms?.length ? `${data.title} (${data.searchTerms[
 
     <div class="col-right">
     <div class="pattern-social-row">
-    <div class="card card-info">
-      <h2>Info</h2>
-      <ul class="info-list">
-        {data.date && (
-          <li>
-            <span class="icon mask-icon" style="mask-image: url(/images/icons/calendar.svg); -webkit-mask-image: url(/images/icons/calendar.svg);"></span>
-            {data.date.toLocaleDateString()}
-          </li>
-        )}
-        {data.hoursSpent && (
-          <li>
-            <span class="icon mask-icon" style="mask-image: url(/images/icons/clock.svg); -webkit-mask-image: url(/images/icons/clock.svg);"></span>
-            {data.hoursSpent < 1 ? `${Math.round(data.hoursSpent * 60)}m` : `${data.hoursSpent}h`}
-          </li>
-        )}
-        {data.hookSize && (
-          <li>
-            <span class="icon mask-icon" style="mask-image: url(/images/icons/hook.svg); -webkit-mask-image: url(/images/icons/hook.svg);"></span>
-            {data.hookSize}
-          </li>
-        )}
-      </ul>
-
-      {(typeChipIds.length > 0 || effectiveTags.length > 0) && (
-        <div class="tags-row">
-          {typeChipIds.map((tag) => (
-            <TagChip id={tag} taxonomy={typesTaxonomy} />
-          ))}
-          {effectiveTags.map((tag) => (
-            <TagChip id={tag} taxonomy={taxonomy} />
-          ))}
-        </div>
-      )}
-    </div>
+    <InfoCard
+      items={infoItems}
+      typeChipIds={typeChipIds}
+      effectiveTags={effectiveTags}
+      typesTaxonomy={typesTaxonomy}
+      taxonomy={taxonomy}
+    />
 
     <div class="card card-designer">
       <DifficultyChip difficulty={data.difficulty} />
@@ -557,52 +510,17 @@ const pageTitle = data.searchTerms?.length ? `${data.title} (${data.searchTerms[
   margin-bottom: 0.75rem;
 }
 
-.card-images { order: 1; }
-.card-info { order: 2; }
-.card-description { order: 3; }
+:global(.card-images) { order: 1; }
+:global(.card-info) { order: 2; }
+:global(.card-description) { order: 3; }
 .card-designer { order: 4; position: relative; }
 .pattern-social-row { display: contents; }
 .card-socials { order: 5; }
 .card-yarn { order: 6; }
 .card-similar { order: 7; }
 
-.card-yarn, .card-socials, .card-info, .card-designer {
+.card-yarn, .card-socials, .card-designer {
   font-family: "Lili Love", cursive;
-}
-
-.description-text {
-  white-space: pre-line;
-  font-family: "Quicksand", sans-serif;
-  font-size: 1rem;
-  color: var(--text);
-  margin: 0;
-}
-
-/* description.html is injected via set:html (raw string content), so any
-   <a> inside never gets Astro's scoped-style data attribute — a plain
-   ".description-text a" selector silently fails to match it and this rule
-   never actually applied. */
-.description-text :global(a) {
-  color: var(--primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.gallery img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.gallery-thumb {
-  cursor: var(--cursor-pointer);
 }
 
 /* <LightboxChrome>/<LightboxStage> render the shared .lb-overlay/.lb-inner/
@@ -743,6 +661,11 @@ div.yarn-tile .line-name {
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
+  /* Same fix as patterns/[slug].astro's identical .used-yarn-swatch —
+     promotes this to its own compositing layer so an asynchronously-
+     decoded yarn photo can't briefly paint square past this box's rounded
+     clip before the next repaint catches it up. */
+  transform: translateZ(0);
 }
 
 .swatch .swatch-icon {
@@ -786,36 +709,21 @@ div.yarn-tile .line-name {
   color: var(--primary);
 }
 
-.tags-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-top: 1rem;
-}
-
 .icon {
   display: inline-block;
-}
-
-.info-list, .designer-list {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  font-size: 1rem;
-}
-
-.info-list {
-  margin-top: 0.6rem;
 }
 
 /* Extra breathing room between separate pattern credits (e.g. a main pattern
    plus a different designer's pattern for the eyes), bigger than the gap
    between the creator/pattern line within a single credit. */
 .designer-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
   gap: 1.75rem;
+  font-size: 1rem;
 }
 
 .pattern-credit {
@@ -921,19 +829,6 @@ div.yarn-tile .line-name {
   background-color: var(--primary);
 }
 
-.info-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.info-list .icon {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  background-color: var(--primary);
-}
-
 @media (--mobile) {
   .layout {
     display: flex;
@@ -949,8 +844,11 @@ div.yarn-tile .line-name {
     grid-template-columns: 1fr;
   }
 
-  .gallery {
-    grid-template-columns: repeat(2, 1fr);
+  /* !important — ImagesCard.astro's own scoped rule already sets
+     grid-template-columns on this class, which out-specifies a plain
+     :global() selector (same reasoning as the .info-list override below). */
+  :global(.gallery) {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 
   :global(#lightbox.lb-overlay) {
@@ -999,7 +897,16 @@ div.yarn-tile .line-name {
     height: 18px;
   }
 
-  .info-list, .designer-list, .socials-list {
+  /* !important on .info-list — InfoCard.astro's own scoped rule already sets
+     font-size on this class, and Astro's [data-astro-cid-*] attribute on that
+     rule out-specifies a plain :global() class selector regardless of source
+     order (same reasoning as CreationCard.astro's :global(.tile-carousel)
+     rules). */
+  :global(.info-list) {
+    font-size: 1.15rem !important;
+  }
+
+  .designer-list, .socials-list {
     font-size: 1.15rem;
   }
 }
@@ -1017,7 +924,7 @@ div.yarn-tile .line-name {
 /* iPad held upright: cards stay stacked (no room for a 300px side column),
    but there's enough width to fan the gallery/similar grids out further and
    to sit the pattern + "view on" cards side by side. */
-@media (--tablet-only) and (orientation: portrait) {
+@media (--tablet-only) {
   .layout {
     display: flex;
     flex-direction: column;
@@ -1028,8 +935,8 @@ div.yarn-tile .line-name {
     display: contents;
   }
 
-  .gallery {
-    grid-template-columns: repeat(3, 1fr);
+  :global(.gallery) {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 
   .similar-grid {

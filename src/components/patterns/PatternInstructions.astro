@@ -1,0 +1,941 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import { buildRenderRows, resolveInfoText } from "../../lib/patternInstructions";
+import { resolveYarn } from "../../lib/yarn";
+import ColoredSegments from "./ColoredSegments.astro";
+import PatternSettingsCard from "./PatternSettingsCard.astro";
+
+const { pattern } = Astro.props as { pattern: CollectionEntry<"patterns"> };
+const parts = pattern.data.pattern ?? [];
+const yarns = pattern.data.materials?.yarns ?? [];
+const previewBase = pattern.data.materials?.colorPreviewBase;
+
+// The recolor preview's default tint (before a visitor picks their own, see
+// PatternSettingsCard.astro) — the real product hex behind a yarn's own
+// `yarn` credit (resolved the same way the Materials card's own swatch
+// resolves it) when there is one, so the preview starts looking like the
+// actual pictured sample rather than the yarn's `color` field, which is
+// tuned for text legibility against both themes, not to look like real yarn
+// (see patternYarn.color in content.config.ts).
+const yarnLinesEntry = (await getCollection("yarns"))[0];
+const yarnLines = yarnLinesEntry.data.yarns;
+const previewHexByYarnId = Object.fromEntries(
+  yarns
+    .map((yarn) => [yarn.id, yarn.yarn ? resolveYarn(yarn.yarn, yarnLines)?.hex : undefined] as const)
+    .filter((entry): entry is [string, string] => Boolean(entry[1]))
+);
+---
+
+<div class="pattern-instructions" data-pattern-slug={pattern.id}>
+  <h2 class="pattern-instructions-title">Pattern</h2>
+  {yarns.length > 0 && (
+    <PatternSettingsCard slug={pattern.id} yarns={yarns} previewBase={previewBase} previewDefaultHexes={previewHexByYarnId} />
+  )}
+  {parts.map((part, partIndex) => {
+    const rows = buildRenderRows(part, partIndex, yarns);
+    return (
+    <div class="card card-pattern-part">
+      <h3>{part.part}</h3>
+      {part.info && <p class="part-info"><ColoredSegments segments={resolveInfoText(part.info, yarns)} /></p>}
+      {part.images && part.images.length > 0 && (
+        <div class="row-images part-images">
+          {part.images.map((src) => (
+            <img src={src} alt={`${part.part} photo`} class="gallery-thumb row-image" loading="lazy" decoding="async" />
+          ))}
+        </div>
+      )}
+      {rows.length > 0 && (
+      <ol class="instruction-list">
+        {rows.map((row) => {
+          if (row.kind === "info") {
+            return (
+              <li class="row row-line row-info" data-line-id={row.lineId}>
+                <label class="row-check">
+                  <input type="checkbox" class="line-check" data-line-id={row.lineId} aria-label="Mark done" />
+                </label>
+                <div class="row-body">
+                  <p class="row-text"><ColoredSegments segments={row.info} /></p>
+                  {row.images && row.images.length > 0 && (
+                    <div class="row-images">
+                      {row.images.map((src) => (
+                        <img src={src} alt={`${part.part} note photo`} class="gallery-thumb row-image" loading="lazy" decoding="async" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          }
+
+          if (row.kind === "line") {
+            return (
+              <li class="row row-line" data-line-id={row.lineId}>
+                <label class="row-check">
+                  <input type="checkbox" class="line-check" data-line-id={row.lineId} aria-label={row.label ? `Mark ${row.label} done` : "Mark done"} />
+                </label>
+                <div class="row-body">
+                  <p class="row-text">
+                    {row.label && <span class="line-label">{row.label}: </span>}
+                    <ColoredSegments segments={row.segments} spaced />
+                    {row.total !== undefined && <span class="line-total">({row.total})</span>}
+                  </p>
+                  {row.info && (
+                    <p class="row-note"><ColoredSegments segments={row.info} /></p>
+                  )}
+                  {row.images && row.images.length > 0 && (
+                    <div class="row-images">
+                      {row.images.map((src) => (
+                        <img src={src} alt={row.label ? `${row.label} photo` : `${part.part} photo`} class="gallery-thumb row-image" loading="lazy" decoding="async" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          }
+
+          return (
+            <li class="row row-block">
+              <div class="row-summary">
+                <label class="row-check">
+                  <input type="checkbox" class="line-check block-check" data-controls={row.lineIds.join(" ")} aria-label={row.labelRange ? `Mark ${row.labelRange} done` : "Mark repeated rows done"} />
+                </label>
+                <div class="row-body">
+                  <p class="row-text">
+                    {row.labelRange && <span class="line-label">{row.labelRange}: </span>}
+                    <ColoredSegments segments={row.segments} spaced />
+                    {row.total !== undefined && <span class="line-total">({row.total})</span>}
+                  </p>
+                  {row.info && (
+                    <p class="row-note"><ColoredSegments segments={row.info} /></p>
+                  )}
+                  {row.images && row.images.length > 0 && (
+                    <div class="row-images">
+                      {row.images.map((src) => (
+                        <img src={src} alt={row.labelRange ? `${row.labelRange} photo` : `${part.part} photo`} class="gallery-thumb row-image" loading="lazy" decoding="async" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button type="button" class="block-toggle" aria-expanded="false" aria-label={row.labelRange ? `Expand ${row.labelRange}` : "Expand repeated rows"}>
+                  <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+              </div>
+              <ol class="block-detail">
+                {row.repeats.map((repeat) => (
+                  <li class="row row-line" data-line-id={repeat.lineId}>
+                    <label class="row-check">
+                      <input type="checkbox" class="line-check" data-line-id={repeat.lineId} aria-label={repeat.label ? `Mark ${repeat.label} done` : "Mark done"} />
+                    </label>
+                    <div class="row-body">
+                      <p class="row-text">
+                        {repeat.label && <span class="line-label">{repeat.label}: </span>}
+                        <ColoredSegments segments={row.segments} spaced />
+                        {row.total !== undefined && <span class="line-total">({row.total})</span>}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </li>
+          );
+        })}
+      </ol>
+      )}
+    </div>
+    );
+  })}
+</div>
+
+<script>
+  import { readYarnOverrides } from "../../lib/yarnOverrides";
+
+  const STORAGE_PREFIX = "pattern-progress:";
+  const ANIMATION_DURATION = 250;
+
+  document.querySelectorAll<HTMLElement>(".pattern-instructions").forEach((container) => {
+    const slug = container.dataset.patternSlug;
+    if (!slug) return;
+    const storageKey = `${STORAGE_PREFIX}${slug}`;
+
+    function readDoneIds(): Set<string> {
+      try {
+        const raw = JSON.parse(localStorage.getItem(storageKey) ?? "[]");
+        return new Set(Array.isArray(raw) ? raw : []);
+      } catch {
+        return new Set();
+      }
+    }
+
+    function persistDoneIds() {
+      const ids = Array.from(container.querySelectorAll<HTMLInputElement>("input[data-line-id]"))
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.dataset.lineId);
+      localStorage.setItem(storageKey, JSON.stringify(ids));
+    }
+
+    function setLineDone(lineId: string, done: boolean) {
+      const checkbox = container.querySelector<HTMLInputElement>(`input[data-line-id="${CSS.escape(lineId)}"]`);
+      if (!checkbox) return;
+      checkbox.checked = done;
+      checkbox.closest(".row-line")?.classList.toggle("done", done);
+    }
+
+    // Every checkable line within the same .card-pattern-part as
+    // referenceLineId, in DOM order — which already matches instruction
+    // order, since a block's own repeats render nested in-place among the
+    // part's other lines. Used to find what comes "before"/"after" a given
+    // line when cascading checks below.
+    function linesInSamePart(referenceLineId: string): { lines: HTMLInputElement[]; index: number } | null {
+      const referenceCheckbox = container.querySelector<HTMLInputElement>(`input[data-line-id="${CSS.escape(referenceLineId)}"]`);
+      const partCard = referenceCheckbox?.closest(".card-pattern-part");
+      if (!referenceCheckbox || !partCard) return null;
+      const lines = Array.from(partCard.querySelectorAll<HTMLInputElement>("input[data-line-id]"));
+      return { lines, index: lines.indexOf(referenceCheckbox) };
+    }
+
+    // A crochet pattern is worked sequentially — checking off a later round
+    // implies every earlier round in the same part is already done too, so
+    // this marks them done automatically. Only ever adds checks.
+    function cascadePrecedingLines(referenceLineId: string) {
+      const found = linesInSamePart(referenceLineId);
+      if (!found) return;
+      for (let i = 0; i < found.index; i++) {
+        found.lines[i].checked = true;
+        found.lines[i].closest(".row-line")?.classList.add("done");
+      }
+    }
+
+    // The mirror of cascadePrecedingLines: a later round can't actually be
+    // done if an earlier one no longer is, so this marks every later round
+    // in the same part undone too. Only ever removes checks.
+    function cascadeFollowingLines(referenceLineId: string) {
+      const found = linesInSamePart(referenceLineId);
+      if (!found) return;
+      for (let i = found.index + 1; i < found.lines.length; i++) {
+        found.lines[i].checked = false;
+        found.lines[i].closest(".row-line")?.classList.remove("done");
+      }
+    }
+
+    // Whether any line after referenceLineId in the same part is currently
+    // checked — see the "rewind" comment on the change listener below.
+    function hasLaterCheckedLine(referenceLineId: string): boolean {
+      const found = linesInSamePart(referenceLineId);
+      if (!found) return false;
+      return found.lines.slice(found.index + 1).some((line) => line.checked);
+    }
+
+    // A block's own summary checkbox isn't independent state — it's always
+    // derived from whether all/some/none of its repeats are done, so this
+    // resyncs every block after any change rather than tracking the
+    // summary's state separately.
+    function syncBlockSummaries() {
+      container.querySelectorAll<HTMLElement>(".row-block").forEach((block) => {
+        const summaryCheckbox = block.querySelector<HTMLInputElement>(".block-check");
+        const ids = (summaryCheckbox?.dataset.controls ?? "").split(" ").filter(Boolean);
+        if (!summaryCheckbox || ids.length === 0) return;
+        const states = ids.map((id) => container.querySelector<HTMLInputElement>(`input[data-line-id="${CSS.escape(id)}"]`)?.checked ?? false);
+        const allDone = states.every(Boolean);
+        const noneDone = states.every((state) => !state);
+        summaryCheckbox.checked = allDone;
+        summaryCheckbox.indeterminate = !allDone && !noneDone;
+        block.classList.toggle("done", allDone);
+      });
+    }
+
+    // Highlights the next thing to do — only one row at a time, the first
+    // unchecked line in the first part that still has one, so the outline
+    // moves on to the next part's own first instruction once the current
+    // part is fully checked off rather than staying lit up everywhere at
+    // once. A part with nothing checkable (e.g. "Done!", images-only) is
+    // skipped over entirely, same as one that's already fully done.
+    function updateActiveRows() {
+      container.querySelectorAll(".row-active").forEach((el) => el.classList.remove("row-active"));
+      for (const partCard of Array.from(container.querySelectorAll<HTMLElement>(".card-pattern-part"))) {
+        const checkboxes = Array.from(partCard.querySelectorAll<HTMLInputElement>("input[data-line-id]"));
+        if (checkboxes.length === 0) continue;
+        const nextUnchecked = checkboxes.find((cb) => !cb.checked);
+        if (!nextUnchecked) continue;
+        const card = nextUnchecked.closest(".row-block") ?? nextUnchecked.closest(".row-line");
+        card?.classList.add("row-active");
+        break;
+      }
+    }
+
+    // Tracks the previous call's percent so updateProgressBar() can tell a
+    // fresh arrival at 100% (fire the confetti below) apart from a change
+    // that merely leaves it at 100% (e.g. toggling an already-done block's
+    // summary back on). null until the first call, which is always the
+    // { silent: true } initial-render one below — that keeps a pattern
+    // that's already fully checked off from a previous visit from bursting
+    // confetti the instant the page loads.
+    let previousPercent: number | null = null;
+
+    // Confetti pieces just shoot out/fade via CSS animation and get
+    // discarded — no restored/interactive state, so unlike checkbox
+    // progress this never needs to survive a reload or be undone, just
+    // cleaned up after it plays.
+    function triggerConfetti() {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const parts = container.querySelectorAll<HTMLElement>(".card-pattern-part");
+      const lastPart = parts[parts.length - 1];
+      if (!lastPart) return;
+
+      const burst = document.createElement("div");
+      burst.className = "confetti-burst";
+      burst.setAttribute("aria-hidden", "true");
+
+      const PIECE_COUNT = 100;
+      const MIN_RADIUS = 90;
+      const MAX_RADIUS = 320;
+      for (let i = 0; i < PIECE_COUNT; i++) {
+        const piece = document.createElement("span");
+        piece.className = `confetti-piece confetti-c${(i % 5) + 1}`;
+        // Every piece starts pinned to the card's exact center (see
+        // .confetti-piece's top/left: 50% in global.css) and travels
+        // outward along its own random angle/radius — a uniform 0-2π angle
+        // spread is what makes the burst read as a circle rather than
+        // favoring any one direction.
+        const angle = Math.random() * Math.PI * 2;
+        const radius = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
+        piece.style.setProperty("--end-x", `${Math.cos(angle) * radius}px`);
+        piece.style.setProperty("--end-y", `${Math.sin(angle) * radius}px`);
+        piece.style.setProperty("--rotate-end", `${360 + Math.random() * 360}deg`);
+        piece.style.setProperty("--fall-duration", `${0.55 + Math.random() * 0.35}s`);
+        piece.style.setProperty("--fall-delay", `${Math.random() * 0.1}s`);
+        burst.appendChild(piece);
+      }
+
+      lastPart.appendChild(burst);
+      // Longer than the slowest possible piece (0.35s fall-duration range +
+      // 0.1s fall-delay range, both above), so every piece has finished
+      // fading out before the whole burst is torn down.
+      window.setTimeout(() => burst.remove(), 1100);
+    }
+
+    function updateProgressBar(options: { silent?: boolean } = {}) {
+      const lineCheckboxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[data-line-id]"));
+      const total = lineCheckboxes.length;
+      const done = lineCheckboxes.filter((cb) => cb.checked).length;
+      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+      const card = document.getElementById("pattern-progress-card");
+      const fill = document.getElementById("pattern-progress-fill");
+      const label = document.getElementById("pattern-progress-label");
+      if (card) card.hidden = total === 0;
+      if (fill instanceof HTMLElement) fill.style.width = `${percent}%`;
+      if (label) label.textContent = `${percent}%`;
+
+      // Mirrors the same fill/percentage into the mobile/tablet-portrait
+      // mini bar (see #pattern-progress-mini in PatternProgressBar.astro) —
+      // kept in sync here rather than duplicating this whole function, since
+      // it's driven by the exact same done/total count.
+      const miniFill = document.getElementById("pattern-progress-mini-fill");
+      const miniLabel = document.getElementById("pattern-progress-mini-label");
+      if (miniFill instanceof HTMLElement) miniFill.style.width = `${percent}%`;
+      if (miniLabel) miniLabel.textContent = `${percent}%`;
+
+      if (!options.silent && percent === 100 && previousPercent !== null && previousPercent < 100) {
+        triggerConfetti();
+      }
+      previousPercent = percent;
+    }
+
+    // Reads the same session-stored overrides PatternSettingsCard.astro
+    // writes to — a segment whose yarn has a saved color/name shows that
+    // instead of the pattern's original default. Re-run whenever that card
+    // broadcasts a change (see the "pattern-yarn-override-change" listener
+    // below), not just once on load, so editing a yarn updates instructions
+    // already on screen without a reload.
+    function applyYarnOverrides() {
+      const overrides = readYarnOverrides(slug!);
+      container.querySelectorAll<HTMLElement>(".segment[data-yarn-id]").forEach((segment) => {
+        const yarnId = segment.dataset.yarnId;
+        if (!yarnId) return;
+        const override = overrides[yarnId];
+
+        const light = override?.hex || segment.dataset.defaultColorLight;
+        const dark = override?.hex || segment.dataset.defaultColorDark;
+        if (light) segment.style.setProperty("--segment-color-light", light);
+        if (dark) segment.style.setProperty("--segment-color-dark", dark);
+
+        const defaultName = segment.dataset.defaultName;
+        if (defaultName) segment.textContent = override?.name || defaultName;
+      });
+    }
+
+    // Initial render from storage.
+    const doneIds = readDoneIds();
+    container.querySelectorAll<HTMLInputElement>("input[data-line-id]").forEach((checkbox) => {
+      const id = checkbox.dataset.lineId;
+      if (id && doneIds.has(id)) {
+        checkbox.checked = true;
+        checkbox.closest(".row-line")?.classList.add("done");
+      }
+    });
+    syncBlockSummaries();
+    updateActiveRows();
+    updateProgressBar({ silent: true });
+    applyYarnOverrides();
+
+    // Shows the mini progress bar (see PatternProgressBar.astro) once the
+    // real Progress card has scrolled about halfway past the top of the
+    // viewport — it only exists to stand in for .col-right-sticky at
+    // mobile/tablet, where that column stops being sticky and sits above
+    // the instructions instead (patterns/[slug].astro), but this is
+    // harmless to set up unconditionally: the mini bar is display:none at
+    // every other size regardless of its .visible class. Triggering at the
+    // card's midpoint (not only once it's fully passed) so a visitor who
+    // never scrolls quite far enough to clear the whole card still gets a
+    // stand-in to work from.
+    //
+    // A scroll listener, not IntersectionObserver — IO only fires on actual
+    // threshold crossings, so a large instant scroll (a big fling, or
+    // jumping to an anchor) can skip straight from "below viewport" to
+    // "above viewport" without ever sampling a frame where the card was
+    // visible, and the callback simply never fires again. rAF-throttled
+    // scroll polling re-checks the card's real position every frame instead,
+    // so it can't miss the transition regardless of scroll distance/speed.
+    // Same stand-in role for #pattern-abbr-flap (PatternAbbreviationsDrawer.astro)
+    // as the mini bar plays for Progress — the on-page Abbreviations card
+    // scrolls out of view at the same moment (both sit in the same
+    // .col-right-sticky block), so it reuses this exact trigger rather than
+    // watching its own separate reference point.
+    const progressCard = document.getElementById("pattern-progress-card");
+    const progressMini = document.getElementById("pattern-progress-mini");
+    const abbrFlap = document.getElementById("pattern-abbr-flap");
+    if (progressCard && (progressMini || abbrFlap)) {
+      let ticking = false;
+      const updateMiniVisibility = () => {
+        ticking = false;
+        const rect = progressCard.getBoundingClientRect();
+        const scrolledPast = !progressCard.hidden && rect.top + rect.height / 2 < 0;
+        progressMini?.classList.toggle("visible", scrolledPast);
+        abbrFlap?.classList.toggle("visible", scrolledPast);
+      };
+      window.addEventListener("scroll", () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(updateMiniVisibility);
+      }, { passive: true });
+      updateMiniVisibility();
+    }
+
+    // Opens as a real <dialog> (showModal()) — same modal pattern as the
+    // materials card's yarn-edit-dialog just below, which already gets a
+    // native backdrop, focus trap, Escape-to-close, and focus returned to
+    // the flap on close for free, rather than reimplementing all of that
+    // by hand for a second dialog on the same page. A native dialog's own
+    // open/close is an instant, unanimated display swap though, so every
+    // close path below is routed through closeDrawer() to slide it out
+    // first and only call the real .close() once that finishes, instead of
+    // closing immediately and losing the exit animation.
+    const abbrDialog = document.getElementById("pattern-abbr-dialog") as HTMLDialogElement | null;
+    const abbrClose = document.getElementById("pattern-abbr-close");
+    if (abbrFlap && abbrDialog) {
+      const openDrawer = () => {
+        abbrDialog.showModal();
+        // Two rAFs, not one — the dialog needs an actual painted frame at
+        // its resting translateX(100%) (set in CSS) before changing it, or
+        // the browser can coalesce both the display:none->block flip and
+        // the transform change into the same frame and skip the transition
+        // entirely.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            abbrDialog.style.transform = "translateX(0)";
+          });
+        });
+        abbrFlap.setAttribute("aria-expanded", "true");
+      };
+
+      const closeDrawer = () => {
+        if (!abbrDialog.open) return;
+        abbrDialog.style.transform = "translateX(100%)";
+        const onSlideOut = (e: TransitionEvent) => {
+          if (e.propertyName !== "transform") return;
+          abbrDialog.removeEventListener("transitionend", onSlideOut);
+          abbrDialog.close();
+        };
+        abbrDialog.addEventListener("transitionend", onSlideOut);
+      };
+
+      abbrFlap.addEventListener("click", openDrawer);
+
+      abbrDialog.addEventListener("close", () => {
+        abbrFlap.setAttribute("aria-expanded", "false");
+        // Clears the inline override left behind by openDrawer()/closeDrawer()
+        // so the next open starts from the plain CSS resting state again,
+        // rather than an inline style that happens to already match it.
+        abbrDialog.style.transform = "";
+      });
+
+      // Escape fires "cancel" first (cancelable) and would otherwise close
+      // the dialog immediately, skipping the exit animation — intercepted
+      // here to run the same animated close as every other path instead.
+      abbrDialog.addEventListener("cancel", (e) => {
+        e.preventDefault();
+        closeDrawer();
+      });
+
+      abbrClose?.addEventListener("click", closeDrawer);
+
+      // Same "click the true backdrop to dismiss" check as the materials
+      // yarn-edit-dialog — comparing against the dialog's own rendered
+      // rect (which includes its padding), since e.target === dialog also
+      // matches a click inside the dialog's own padding, not just the
+      // ::backdrop behind it.
+      abbrDialog.addEventListener("click", (e) => {
+        const rect = abbrDialog.getBoundingClientRect();
+        const insideDialog =
+          e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+        if (!insideDialog) closeDrawer();
+      });
+    }
+
+    document.addEventListener("pattern-yarn-override-change", (e) => {
+      const detail = (e as CustomEvent<{ slug?: string }>).detail;
+      if (detail?.slug !== slug) return;
+      applyYarnOverrides();
+    });
+
+    document.getElementById("pattern-progress-reset")?.addEventListener("click", () => {
+      container.querySelectorAll<HTMLInputElement>("input[data-line-id]").forEach((checkbox) => {
+        checkbox.checked = false;
+        checkbox.closest(".row-line")?.classList.remove("done");
+      });
+      syncBlockSummaries();
+      updateActiveRows();
+      persistDoneIds();
+      updateProgressBar();
+    });
+
+    // Single source of truth for state changes, whether triggered by a
+    // native checkbox click or the manual toggles dispatched below.
+    container.addEventListener("change", (e) => {
+      const checkbox = e.target;
+      if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox") return;
+
+      if (checkbox.classList.contains("block-check")) {
+        const ids = (checkbox.dataset.controls ?? "").split(" ").filter(Boolean);
+        const lastId = ids[ids.length - 1];
+        if (lastId) {
+          if (checkbox.checked) {
+            ids.forEach((id) => setLineDone(id, true));
+            cascadePrecedingLines(lastId);
+          } else if (hasLaterCheckedLine(lastId)) {
+            // Rewind: this block was fully done, and something later still
+            // is — keep the block checked and undo the later lines instead
+            // of undoing the block itself. See the plain-line branch below
+            // for the full reasoning.
+            ids.forEach((id) => setLineDone(id, true));
+            cascadeFollowingLines(lastId);
+          } else {
+            ids.forEach((id) => setLineDone(id, false));
+          }
+        }
+      } else if (checkbox.dataset.lineId) {
+        const lineId = checkbox.dataset.lineId;
+        if (checkbox.checked) {
+          checkbox.closest(".row-line")?.classList.add("done");
+          cascadePrecedingLines(lineId);
+        } else if (hasLaterCheckedLine(lineId)) {
+          // Rewind, not undo: tapping an earlier already-checked line while
+          // later ones are still checked means "back up to here," not
+          // "this one specifically wasn't done" — keep it checked and
+          // uncheck everything after it instead. Only actually unchecks
+          // when there's nothing later left checked (the true frontier).
+          checkbox.checked = true;
+          checkbox.closest(".row-line")?.classList.add("done");
+          cascadeFollowingLines(lineId);
+        } else {
+          checkbox.closest(".row-line")?.classList.remove("done");
+        }
+      }
+
+      syncBlockSummaries();
+      updateActiveRows();
+      persistDoneIds();
+      updateProgressBar();
+    });
+
+    // Tapping anywhere on a line/info row's own card (other than an image,
+    // which opens the lightbox) manually flips that row's checkbox — the
+    // checkbox/label already toggles natively, this just extends the same
+    // tap target to the whole card. Applies to both top-level lines and
+    // lines nested inside an expanded block. Checking the last line in a
+    // part already cascades every earlier one done (see
+    // cascadePrecedingLines), so there's no separate "check the whole part
+    // at once" control needed on top of that.
+    container.querySelectorAll<HTMLElement>(".row-line").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.closest("img") || target.closest(".row-check")) return;
+        const checkbox = row.querySelector<HTMLInputElement>('input[type="checkbox"]');
+        if (!checkbox) return;
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+
+    // Tapping a block's summary card (other than its checkbox/label, an
+    // image, or the expand chevron) marks every repeat it controls done or
+    // undone as one unit.
+    container.querySelectorAll<HTMLElement>(".row-summary").forEach((summary) => {
+      summary.addEventListener("click", (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.closest("img") || target.closest(".row-check") || target.closest(".block-toggle")) return;
+        const checkbox = summary.querySelector<HTMLInputElement>(".block-check");
+        if (!checkbox) return;
+        const nextChecked = !(checkbox.checked && !checkbox.indeterminate);
+        checkbox.indeterminate = false;
+        checkbox.checked = nextChecked;
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+
+    // Expand/collapse only — independent of done-state. Same height-
+    // animation technique as the FAQ accordion (src/pages/faq.astro).
+    container.querySelectorAll<HTMLButtonElement>(".block-toggle").forEach((toggle) => {
+      const detail = toggle.closest(".row-block")?.querySelector<HTMLElement>(".block-detail");
+      if (!detail) return;
+
+      let animation: Animation | null = null;
+      let isOpen = false;
+
+      const setOpen = (open: boolean, animate: boolean) => {
+        isOpen = open;
+        toggle.setAttribute("aria-expanded", String(open));
+
+        if (!animate) {
+          // Straight to the resting state, no animation — used on initial
+          // load (see below), where there's nothing to transition *from*
+          // yet, just a starting state to render.
+          detail.style.paddingTop = open ? "0.6rem" : "0";
+          detail.style.height = open ? "auto" : "0px";
+          detail.style.overflow = open ? "" : "hidden";
+          return;
+        }
+
+        detail.style.overflow = "hidden";
+        // Read the starting height before touching padding, so a collapsed
+        // block (padding-top 0) doesn't get a false non-zero baseline.
+        const startHeight = `${detail.offsetHeight}px`;
+        if (open) detail.style.paddingTop = "0.6rem";
+        const endHeight = open ? `${detail.scrollHeight}px` : "0px";
+
+        animation?.cancel();
+        animation = detail.animate({ height: [startHeight, endHeight] }, { duration: ANIMATION_DURATION, easing: "ease-out" });
+        animation.onfinish = () => {
+          detail.style.height = open ? "auto" : "0px";
+          detail.style.overflow = open ? "" : "hidden";
+          // Only strip padding once fully collapsed — removing it earlier
+          // would jump the content up before the height animation catches
+          // up to match.
+          if (!open) detail.style.paddingTop = "0";
+          animation = null;
+        };
+      };
+
+      toggle.addEventListener("click", () => setOpen(!isOpen, true));
+
+      // A block left partially done on a previous visit (some repeats
+      // checked, not all) should already show which ones on arrival, not
+      // hide that behind a collapsed summary the visitor has to remember to
+      // expand themselves — doneIds were already applied and
+      // syncBlockSummaries() already ran above, so .indeterminate here
+      // reflects the restored progress, not a stale default.
+      const blockCheck = toggle.closest(".row-block")?.querySelector<HTMLInputElement>(".block-check");
+      if (blockCheck?.indeterminate) setOpen(true, false);
+    });
+  });
+</script>
+
+<style>
+@import "../../styles/breakpoints.css";
+
+.card-pattern-part {
+  /* Anchors .confetti-burst below, which is appended into whichever part
+     card is last once a pattern reaches 100% — without this the overlay
+     would position against the nearest positioned ancestor further up the
+     tree instead of this card. */
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 calc(4px * var(--shadow-blur-scale, 1)) calc(12px * var(--shadow-blur-scale, 1)) rgba(var(--shadow-color), calc(0.08 * var(--shadow-alpha-scale)));
+  padding: 1.5rem;
+}
+
+/* .confetti-burst/-piece/-c1..5 styling (built by triggerConfetti() above)
+   lives in global.css, not here — see that file for why. */
+
+.pattern-instructions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Sits above the part cards, not inside any of them — labels the whole
+   section the way "Materials"/"Info"/"Abbreviations" label their own
+   cards, just one level up. Margins zeroed so the flex gap above is the
+   only spacing (default h2 margins would otherwise stack on top of it). */
+.pattern-instructions-title {
+  margin: 0;
+}
+
+.part-info {
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin: 0.5rem 0 1rem;
+}
+
+.instruction-list, .block-detail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* No static top spacing here — a fixed margin/padding on a height:0 element
+   still physically renders (padding can't shrink below the space it needs,
+   and margin sits outside the box entirely either way), which is exactly
+   what left a collapsed block card visibly taller than a plain line card.
+   The expand/collapse script below sets padding-top itself, in step with
+   the height animation, so a collapsed block is indistinguishable from a
+   plain line card. Full width, no left indent either — expanded repeat
+   cards span the same width as every other instruction card instead of a
+   narrower nested column. */
+.block-detail {
+  height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.95rem;
+}
+
+/* Instruction rows read as their own small cards rather than floating
+   tiles — a visible border is enough to separate them from the part card's
+   own surface, no drop shadow (see the card-style convention every other
+   card on this site uses; these deliberately break from it since a shadow
+   on every single round/row would be visual noise at this density) and no
+   background shift either (same surface as the part card, kept flat). */
+.row-line, .row-block {
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  cursor: var(--cursor-pointer);
+}
+
+.row-block {
+  flex-direction: column;
+  gap: 0;
+}
+
+.row-block .row-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Greyed-out completed state — a lighter treatment than the border/text
+   changes below need on their own, so a finished round visibly recedes
+   without needing to repaint its background. */
+.row-line.done, .row-block.done {
+  opacity: 0.6;
+}
+
+/* The next thing to do in a part — first unchecked line, see
+   updateActiveRows() below. Outline (not border) so it doesn't reflow the
+   row's own 1px border/padding. */
+.row-line.row-active, .row-block.row-active {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+.row-check {
+  display: flex;
+  flex-shrink: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Matches the checkbox's own 24px height so its vertical center lines up
+   with the first line of text exactly — .row stays top-aligned (flex-start)
+   so any note/images stacked below still flow normally instead of the
+   checkbox trying to center against the row's full, variable height. */
+.row-text {
+  margin: 0;
+  line-height: 24px;
+  color: var(--text);
+}
+
+/* Standalone info entries (a checkable note between rounds, e.g. "Start
+   stuffing the body") read as an aside rather than a crochet instruction —
+   italic sets them apart from regular Round/Row lines, which stay upright. */
+.row-info .row-text {
+  font-style: italic;
+}
+
+.line-label {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.line-total {
+  margin-left: 0.4rem;
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.row-note {
+  margin: 0.35rem 0 0;
+  color: var(--muted-text);
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+/* Colored-segment styling (.segment, its light/dark variants, and the
+   .row-line.done/.row-block.done override) now lives in
+   ColoredSegments.astro, the component that actually renders those spans —
+   see that file for why. */
+.row-line.done .row-text,
+.row-block.done > .row-summary .row-text {
+  color: var(--muted-text);
+  text-decoration: line-through;
+}
+
+/* Two per row on tablet/desktop, reset to a single full-width column on
+   mobile below — a row with just one photo simply leaves the second column
+   empty rather than stretching to fill it, same convention as the
+   creations-grid/similar-patterns tile grids elsewhere on this page. */
+.row-images {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.row-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: var(--cursor-pointer);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Same scale-on-hover cue as the top "Images" gallery and GalleryImage.astro
+   — every clickable/lightbox photo on the site reads the same way. */
+.row-image:hover {
+  transform: scale(1.04);
+}
+
+/* Sized well past the visible chevron (18px) for a comfortable tap target —
+   the negative margin pulls it back so the larger hit area doesn't visibly
+   push the row's own padding out, while still landing taps anywhere near
+   the icon, not just directly on its 18px glyph. */
+.block-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -0.6rem -0.6rem -0.6rem 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  padding: 0;
+  cursor: var(--cursor-pointer);
+}
+
+.block-toggle .chevron {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.block-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Same heart-shaped custom checkbox as the taxonomy filters and yarn-edit
+   toggle elsewhere on this site (patterns/index.astro, [slug].astro) — kept
+   visually consistent rather than introducing a plain checkmark. */
+.line-check {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  cursor: var(--cursor-pointer);
+  flex-shrink: 0;
+}
+
+.line-check::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--primary);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.line-check:checked::before,
+.line-check:indeterminate::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5 2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3 19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z'/%3E%3C/svg%3E");
+}
+
+/* A block partially done (some but not all repeats checked) — same filled
+   heart as :checked, just softened, so it reads as "in between" rather
+   than fully done. */
+.line-check:indeterminate::before {
+  opacity: 0.5;
+}
+
+/* Safari-only bug: -webkit-appearance: none on the base rule above stops
+   suppressing native chrome the instant a checkbox becomes :indeterminate
+   specifically — WebKit paints its own square indeterminate box back in
+   (border + background), on top of/behind the heart mask. Redeclaring
+   appearance: none and blanking border/background directly on :indeterminate
+   itself is the standard fix; other engines already have nothing to
+   override here so this is a no-op for them. */
+.line-check:indeterminate {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  border: none;
+}
+
+@media (--mobile) {
+  .row-images {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

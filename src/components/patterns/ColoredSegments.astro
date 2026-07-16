@@ -1,0 +1,68 @@
+---
+// Shared by PatternInstructions.astro for both kinds of colored text: a
+// line/block's structured `segments` array (deliberately authored without
+// embedded spacing between entries, hence `spaced`) and a part/line/block's
+// free-text `info` split into segments by resolveInfoText() (already-typed
+// prose, so no artificial spacing needed between them).
+import type { RenderSegment } from "../../lib/patternInstructions";
+
+const { segments, spaced = false } = Astro.props as { segments: RenderSegment[]; spaced?: boolean };
+---
+
+{segments.map((segment, i) => (
+  <>
+    {spaced && i > 0 && " "}
+    <span
+      class="segment"
+      data-colored={segment.color ? "true" : undefined}
+      data-yarn-id={segment.yarnId}
+      data-default-color-light={segment.color?.light}
+      data-default-color-dark={segment.color?.dark}
+      data-default-name={segment.isYarnName ? segment.text : undefined}
+      style={segment.color ? `--segment-color-light: ${segment.color.light}; --segment-color-dark: ${segment.color.dark}` : undefined}
+    >{segment.text}</span>
+  </>
+))}
+
+<style>
+/* Colored segments carry a light AND a dark variant (--segment-color-light/
+   -dark, set inline — see content.config.ts's themedColor schema), since a
+   single hex a pattern author picks for the light theme's white card
+   surface is rarely also legible on the dark theme's near-black one. Which
+   one actually applies is decided below by the same html[data-theme]/
+   prefers-color-scheme switch every other themed value on this site uses
+   (see global.css) — kept local to this component rather than moved there,
+   since --segment-color-*'s value is per-segment inline data, not a
+   sitewide token. Using a CSS var here (not a bare inline color) also lets
+   the :global(.row-line.done)/:global(.row-block.done) rule below override
+   it at normal specificity instead of needing !important against an inline
+   style. */
+.segment {
+  color: var(--segment-color-light, inherit);
+}
+
+:global(html[data-theme="dark"]) .segment {
+  color: var(--segment-color-dark, inherit);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-theme])) .segment {
+    color: var(--segment-color-dark, inherit);
+  }
+}
+
+.segment[data-colored="true"] {
+  font-weight: 600;
+}
+
+/* .row-line/.row-block are PatternInstructions.astro's own classes, not
+   this component's — :global() so this still matches regardless of that
+   file's own scoped-CSS attribute, since a plain compound selector here
+   would otherwise only ever match a .row-line.done this component itself
+   rendered (it never does). */
+:global(.row-line.done) .segment,
+:global(.row-block.done) .row-summary .segment {
+  color: var(--muted-text);
+  font-weight: normal;
+}
+</style>
