@@ -623,6 +623,21 @@ mark {
   color: var(--text);
 }
 
+/* renderFaqAnswer can emit multiple <p>/<ul> blocks (one per paragraph or
+   bullet list in the source) — same spacing treatment as faq.astro's own
+   .faq-answer. */
+.faq-result-answer > * {
+  margin: 0;
+}
+
+.faq-result-answer > * + * {
+  margin-top: 0.5rem;
+}
+
+.faq-result-answer ul {
+  padding-left: 1.25rem;
+}
+
 .faq-result-answer a {
   color: var(--primary);
   text-decoration: underline;

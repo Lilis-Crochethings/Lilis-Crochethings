@@ -31,7 +31,16 @@ const imagesJson = JSON.stringify(thumbs).replace(/</g, "\\u003c");
 <div class="tile-carousel" data-images={imagesJson}>
   <a class="tc-link" href={href}>
     <div class="tc-viewport">
-      <img class="tc-img" src={thumbs[0]} alt={alt} loading="lazy" decoding="async" />
+      {/* Not loading="lazy" — /creations and /patterns re-sort their list by
+          moving each .list-item-wrap via appendChild, and detaching/
+          reattaching an already-lazy <img> like that is a known way for
+          browsers to drop its pending intersection check for good. With
+          nothing scrolling afterward to force a recheck, the thumbnail then
+          just never loads. Every subsequent slide image already skips lazy
+          loading too (see imageSlide.ts) — this makes the initial thumbnail
+          consistent with that, at the cost of eagerly fetching one small
+          pre-generated thumb per tile instead of deferring it. */}
+      <img class="tc-img" src={thumbs[0]} alt={alt} decoding="async" />
     </div>
   </a>
 

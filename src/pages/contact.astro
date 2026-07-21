@@ -51,8 +51,14 @@ const FORMSPREE_ENDPOINT = "https://formspree.io/f/xwvgkogd";
           ))}
         </select>
 
-        <label for="subject">Subject</label>
-        <input type="text" id="subject" name="subject" maxlength="250" required />
+        <!-- name is "topic", not "subject" — Formspree auto-detects a field
+             literally named "subject" and uses its raw value as the email's
+             subject line, which silently wins over the computed _subject
+             below (category never actually gets folded in). Keeping this
+             field's name off "subject" leaves _subject as the only
+             candidate. -->
+        <label for="topic">Subject</label>
+        <input type="text" id="topic" name="topic" maxlength="250" required />
 
         <label for="message">Message</label>
         <textarea id="message" name="message" rows="5" minlength="10" maxlength="1500" required></textarea>
@@ -125,7 +131,7 @@ const FORMSPREE_ENDPOINT = "https://formspree.io/f/xwvgkogd";
     if (submitButton) submitButton.disabled = true;
 
     const category = document.getElementById('category');
-    const subject = document.getElementById('subject');
+    const subject = document.getElementById('topic');
     const computedSubject = document.getElementById('computed-subject');
     if (category && subject && computedSubject) {
       computedSubject.value = `[${category.value}]: ${subject.value}`;
@@ -426,6 +432,13 @@ button[type="submit"]:disabled {
 
   .link-list {
     font-size: 1.15rem;
+  }
+
+  /* rows="5" (set for desktop) reads as cramped once the on-screen keyboard
+     eats half the viewport — min-height overrides the rows-implied height
+     without touching the HTML attribute other breakpoints still use. */
+  #message {
+    min-height: 10rem;
   }
 }
 

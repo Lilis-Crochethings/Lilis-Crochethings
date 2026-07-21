@@ -2,12 +2,16 @@ import { escapeHtml, highlight } from "./search";
 import { isExternalLink } from "./links";
 
 export type FaqVideo = { url: string; title: string; creator?: string };
-export type FaqIconCredit = { icon: string; name: string; link: string };
+// Generic named link — icon credits, product recommendations, anything
+// that's just "here's a thing, here's its name, here's where it links to".
+// icon is optional so plain text links (no artwork to show) can use the same
+// shape as icon credits.
+export type FaqLink = { icon?: string; name: string; link: string };
 export type FaqQuestion = {
   question: string;
   answer: string;
   videos?: FaqVideo[];
-  iconCredits?: FaqIconCredit[];
+  links?: FaqLink[];
 };
 export type FaqCategory = { id: string; title: string; questions: FaqQuestion[] };
 
@@ -23,22 +27,50 @@ export type FaqDoc = {
   answer: string;
 };
 
-// Supports inline links in FAQ answers using markdown-style `[text](url)` syntax.
+// Supports a small subset of markdown in FAQ answers: `[text](url)` inline
+// links, plus blank-line-separated paragraphs where a paragraph whose every
+// line starts with "- " renders as a bullet list instead of running text —
+// e.g. a round-by-round style answer ("- 8 inc (16)" / "- (1 sc, 1 inc) x8
+// (24)"). In the yaml source, list lines need extra indentation (beyond the
+// answer's base indent) so YAML's ">" folded scalar keeps them on separate
+// lines instead of joining them into running text — see faq.yaml's
+// "cone-shaped" answer for an example.
 // Pass `query` to also wrap case-insensitive matches in <mark> (both in link text and plain text).
 export function renderFaqAnswer(answer: string, query = ""): string {
+  return answer
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => renderFaqBlock(block, query))
+    .join("");
+}
+
+function renderFaqBlock(block: string, query: string): string {
+  const lines = block
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const isList = lines.length > 0 && lines.every((line) => line.startsWith("- "));
+
+  if (isList) {
+    return `<ul>${lines.map((line) => `<li>${renderFaqInline(line.slice(2), query)}</li>`).join("")}</ul>`;
+  }
+  return `<p>${renderFaqInline(lines.join(" "), query)}</p>`;
+}
+
+function renderFaqInline(text: string, query: string): string {
   const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
   let result = "";
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = linkPattern.exec(answer))) {
-    result += highlight(answer.slice(lastIndex, match.index), query);
-    const [full, text, url] = match;
+  while ((match = linkPattern.exec(text))) {
+    result += highlight(text.slice(lastIndex, match.index), query);
+    const [full, linkText, url] = match;
     const attrs = isExternalLink(url) ? ' target="_blank" rel="noopener noreferrer"' : "";
-    result += `<a href="${escapeHtml(url)}"${attrs}>${highlight(text, query)}</a>`;
+    result += `<a href="${escapeHtml(url)}"${attrs}>${highlight(linkText, query)}</a>`;
     lastIndex = match.index + full.length;
   }
-  result += highlight(answer.slice(lastIndex), query);
+  result += highlight(text.slice(lastIndex), query);
 
   return result;
 }
@@ -66,7 +98,7 @@ export function renderFaqResultTile(doc: FaqDoc, query: string): string {
   return `
     <div class="faq-result-card" data-href="${escapeHtml(doc.href)}" role="link" tabindex="0">
       <p class="faq-result-question">${highlight(doc.question, query)}</p>
-      <p class="faq-result-answer">${renderFaqAnswer(doc.answer, query)}</p>
+      <div class="faq-result-answer">${renderFaqAnswer(doc.answer, query)}</div>
     </div>
   `;
 }

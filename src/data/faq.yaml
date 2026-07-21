@@ -7,22 +7,17 @@ categories:
           Unfortunately, I don't sell my finished creations. However, you're
           welcome to browse the patterns I used so you can make your own!
 
-      - question: How did you learn to crochet?
+      - question: Do you take custom commissions?
         answer: >
-          I started by getting the hang of the basic stitches with the
-          YouTube playlist linked below. Once those felt comfortable, I moved
-          on to simple beginner projects, some of which you can still see on
-          my [about page](/about). From there, I just kept practicing and
-          slowly grew more confident tackling bigger, more advanced patterns.
-        videos:
-          - url: https://www.youtube.com/watch?v=GcOzdAzmtNM&list=PLsrz34yAA5TpH1yiwiZxVMftP_8hokT12
-            title: How to Crochet for Absolute Beginners (Step-by-Step Tutorials)
-            creator: Bella Coco Crochet
+          No — since I don't sell my finished creations, I don't take
+          commissions either. If there's something specific you'd like,
+          you can always try making it yourself. I have some patterns available and I also link all patterns that I used for my creations!
+
       - question: Do you have video tutorials?
         answer: >
           No, I currently only offer written patterns through my interactive
           crochet pattern pages.
-      
+
       - question: Can I sell items made from your patterns?
         answer: >
           Yes! You're welcome to sell finished items made from my patterns.
@@ -38,16 +33,30 @@ categories:
   - id: website
     title: Website
     questions:
-      - question: Where did my pattern progress go?
+      - question: What does the Easy/Medium/Hard label on a pattern mean?
         answer: >
-          Your progress is stored locally in your browser. If you clear your
-          browser data, switch browsers, or use a different device, your saved
-          progress won't be available.
+          It's a rough difficulty rating based on how many techniques a
+          pattern uses and how fiddly the shaping is, so you can gauge at a
+          glance whether it fits your current skill level before diving in.
 
-      - question: Why doesn't my progress sync between my computer and my phone?
+      - question: What does the "New" badge mean?
         answer: >
-          Progress is stored locally on each device and isn't synced through an
-          account or cloud storage.
+          Patterns and creations show a pulsing "New" badge for the first
+          two weeks after they're added, so it's easy to spot what's fresh
+          without digging through the full list.
+
+      - question: Can I filter or search patterns and creations?
+        answer: >
+          Yes! The Patterns and Creations pages both have a filter panel
+          (tap "Filters" on mobile) to narrow things down by tag,
+          difficulty, color, or yarn type, plus sorting by name, date, or
+          hours spent. There's also a search bar in the navbar that
+          searches patterns, creations, and this FAQ all at once.
+
+      - question: Does the site have a dark mode?
+        answer: >
+          Yes! Use the theme toggle in the navbar to cycle between Auto
+          (matches your device), Light, and Dark.
 
       - question: Is that your own handwriting as a font?
         answer: >
@@ -56,10 +65,9 @@ categories:
 
       - question: Where did you get your icons?
         answer: >
-          I drew and vectorized most of the icons on this site myself using
-          Inkscape. A couple were made by other talented designers, credited
+          I drew and vectorized most of the icons on this site myself using [Procreate](https://procreate.com/) and [Inkscape](https://inkscape.org/). A couple were made by other talented designers, credited
           below!
-        iconCredits:
+        links:
           - icon: /images/icons/color-picker.svg
             name: AriqStock
             link: https://www.flaticon.com/free-icon/color-picker_10075352?term=color+picker&page=1&position=1&origin=search&related_id=10075352
@@ -73,42 +81,103 @@ categories:
             name: Magnific
             link: https://www.flaticon.com/free-icon/bear_266436?term=teddy+bear&page=1&position=4&origin=search&related_id=266436
 
+  - id: patterns
+    title: Patterns
+    questions:
+      - question: Where did my pattern progress go?
+        answer: >
+          Your progress is stored locally in your browser. If you clear your
+          browser data, switch browsers, or use a different device, your saved
+          progress won't be available.
+
+      - question: Why doesn't my progress sync between my computer and my phone?
+        answer: >
+          Progress is stored locally on each device and isn't synced through an
+          account or cloud storage.
+
+      - question: Do your patterns use US or UK crochet terms?
+        answer: >
+          US terms — so "sc" means single crochet, not the UK double
+          crochet. Every pattern page has an abbreviations glossary you can
+          open if you're ever unsure what a stitch abbreviation means.
+
+      - question: Can I print a pattern or save it as a PDF?
+        answer: >
+          Patterns are meant to be followed directly on the site, so
+          printing and copying the pattern text is disabled. If you'd like
+          to share a pattern with someone else, please send them the link
+          instead!
+
+      - question: I'm stuck on one of your patterns.
+        answer: >
+          Feel free to contact me through my [contact page](/contact). I'll do
+          my best to help!
+
+      - question: I found a mistake in one of your patterns.
+        answer: >
+          Thanks for letting me know! Please contact me through my
+          [contact page](/contact) so I can fix it as soon as possible.
 
   - id: crochet
     title: Crochet Help
     questions:
+      - question: How did you learn to crochet?
+        answer: >
+          I started by getting the hang of the basic stitches with the
+          YouTube playlist linked below. Once those felt comfortable, I moved
+          on to simple beginner projects, some of which you can still see on
+          my [about page](/about). From there, I just kept practicing and
+          slowly grew more confident tackling bigger, more advanced patterns.
+        videos:
+          - url: https://www.youtube.com/watch?v=GcOzdAzmtNM&list=PLsrz34yAA5TpH1yiwiZxVMftP_8hokT12
+            title: How to Crochet for Absolute Beginners (Step-by-Step Tutorials)
+            creator: Bella Coco Crochet
+
+      - question: What crochet hooks do you use?
+        answer: >
+          I started out with just a basic set I got on Amazon. These are great to start out with, but honestly anything will do! Once I started to crochet more, I felt like I could use some better materials, so I got these Clover Amour Crochet hooks. I really like them and can only recommend them!
+
+      - question: What safety eyes do you use?
+        answer: >
+          For the black eyes I use these safety eyes that come in different sizes. For the moon eyes, I use 25mm ones that I also got on Amazon.
+        links:
+          - icon: /images/icons/eye.svg
+            name: Black safety eyes 6 - 14mm
+            link: https://www.amazon.de/-/en/dp/B09TJ7CNB1?ref=ppx_yo2ov_dt_b_fed_asin_title
+          - icon: /images/icons/eye.svg
+            name: Moon safety eyes - 25mm
+            link: https://www.amazon.de/-/en/gp/product/B0CTZVLM9T/ref=ox_sc_act_title_6?smid=A19IUTMF3UN6PS&th=1
+
       - question: My amigurumi head turns out cone-shaped instead of round. What should I do?
         answer: >
           Instead of starting with a magic ring of 6 single crochets, begin
           with 8 single crochets. Continue with:
 
-          - 8 inc (16)
-          - (1 sc, 1 inc) × 8 (24)
+            - 8 inc (16)
+            - (1 sc, 1 inc) × 8 (24)
 
           Then continue with the pattern as written. Since you started with
           more stitches, you'll effectively skip one increase round compared
           to the original pattern.
 
-
       - question: How do you choose the right crochet hook size for amigurumi?
         answer: >
           The best hook size depends on the yarn you're using and how tightly
           you crochet. I usually make a small test sphere with a few hook
-          sizes and choose the one that gives me the neatest fabric with no
+          sizes and choose the one that gives me the neatest look with no
           visible stuffing. For example, I typically use a 4 mm hook with
-          Hobbii Chenille yarn.
+          Hobbii Chenille yarn that is usually recommended for hook size 7mm.
 
-      - question: What yarn did you use?
+      - question: What yarn do you use?
         answer: >
-          You can find the yarn and other materials I used on each creation's
-          detail page, just below the images.
-
-      - question: I'm stuck on one of your patterns.
-        answer: >
-          Feel free to contact me through one of my [socials](/about). I'll do
-          my best to help!
-
-      - question: I found a mistake in one of your patterns.
-        answer: >
-          Thanks for letting me know! Please contact me through one of my
-          [socials](/about) so I can fix it as soon as possible.
+          I actually use a lot of different types of yarn. You can also find the exact yarn that I used per creation on the detail page. However, I do have my favorite chenille yarns that I like to work with, they're from Hobbii. I've had too often that I bought a skein of yarn somewhere, needed more and it was no longer in stock. With Hobbii, I know that they have their fixed colors and I can always get more of them. At least I haven't had it happen yet that a color was no longer available, only temporarily sold out.
+        links:
+          - name: Honey Bunny - Hobbii
+            icon: /images/icons/honey-bunny.svg
+            link: https://hobbii.be/collections/chenille-yarn/products/hp-1005670-honey-bunny
+          - name: Toucan - Hobbii
+            icon: /images/icons/toucan.svg
+            link: https://hobbii.be/collections/chenille-yarn/products/hp-1007324-toucan
+          - name: Baby Snuggle - Hobbii
+            icon: /images/icons/baby-snuggle.svg
+            link: https://hobbii.be/collections/chenille-yarn/products/hp-1003682-baby-snuggle-solid

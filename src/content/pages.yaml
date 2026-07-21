@@ -1,5 +1,10 @@
 home:
   description: "Lili's Crochethings — handmade crochet items like bags, amigurumi, and cross-stitch pieces. Browse the full collection, plus free crochet patterns."
+  highlightedCreations:
+    - little-biscuit
+    - mini-me
+    - lamb-lovey
+    - lily
 about:
   title: "About"
   description: "Meet Lili, the crocheter behind Lili's Crochethings — her story, her craft, and how she started sharing her creations."

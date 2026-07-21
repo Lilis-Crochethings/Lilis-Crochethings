@@ -30,7 +30,7 @@ const patternAlt = getCreationAlt(pattern.data.title, type, pattern.data.subtype
 >
   <div class="list-item" role="link" tabindex="0">
     <DifficultyChip difficulty={difficulty} hideOnMobile />
-    <NewBadge uploadDate={pattern.data.uploadDate} hideOnMobile />
+    <NewBadge uploadDate={pattern.data.uploadDate} />
     <div class="thumb">
       <TileCarousel images={pattern.data.images} alt={patternAlt} href={href} />
     </div>

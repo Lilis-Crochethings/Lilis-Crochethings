@@ -32,7 +32,7 @@ const creationAlt = getCreationAlt(creation.data.title, type, creation.data.subt
 >
   <div class="list-item" role="link" tabindex="0">
     <DifficultyChip difficulty={difficulty} hideOnMobile />
-    <NewBadge uploadDate={creation.data.uploadDate} hideOnMobile />
+    <NewBadge uploadDate={creation.data.uploadDate} />
     <div class="thumb">
       <TileCarousel images={creation.data.images} alt={creationAlt} href={href} />
     </div>

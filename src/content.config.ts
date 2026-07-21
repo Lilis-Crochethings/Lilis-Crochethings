@@ -132,7 +132,11 @@ const pageMeta = z.object({
 const pages = defineCollection({
   loader: glob({ pattern: "pages.yaml", base: "./src/content" }),
   schema: z.object({
-    home: pageMeta,
+    // Hand-picked creation ids shown on the home page's Creations preview
+    // card when there aren't enough "New" items to fill it — same
+    // fixed-list convention as about.yaml's firstProjects, just scoped to
+    // the home page instead.
+    home: pageMeta.extend({ highlightedCreations: z.array(z.string()).default([]) }),
     about: pageMeta,
     patterns: pageMeta,
     gallery: pageMeta,

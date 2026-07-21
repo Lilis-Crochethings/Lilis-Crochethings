@@ -6,6 +6,7 @@ import CreationsCard from '../components/main/CreationsCard.astro';
 import GalleryCard from '../components/main/GalleryCard.astro';
 import { getCollection } from 'astro:content';
 import { getEffectiveTags, getCreationAlt } from '../lib/tags';
+import { buildHomePreview } from '../lib/homePreview';
 
 const allCreations = (await getCollection('creations')).sort(
   (a, b) => (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0)
@@ -17,22 +18,40 @@ const taxonomy = taxonomyEntry.data.tags;
 const typesEntry = (await getCollection('types'))[0];
 const typesTaxonomy = typesEntry.data.types;
 
-// Capped at 4 so the homepage card stays a preview (2x2 on tablet/desktop)
-// rather than growing unbounded as more creations get added — the full set
-// lives at /creations.
-const creationPreviews = allCreations.slice(0, 4).map((creation) => ({
+const pagesEntry = (await getCollection('pages'))[0];
+const pageMeta = pagesEntry.data.home;
+
+// Priority order: recently-uploaded creations first (same "New" badge
+// window), then the hand-picked highlightedCreations list, then most-recent-
+// by-date to fill any leftover slots — capped at 4 so the homepage card
+// stays a preview (2x2 on tablet/desktop) rather than growing unbounded as
+// more creations get added. The full set lives at /creations.
+const creationPreviews = buildHomePreview(
+  allCreations,
+  (creation) => creation.id,
+  (creation) => creation.data.uploadDate,
+  pageMeta.highlightedCreations,
+  4
+).map((creation) => ({
   creation,
   effectiveTags: getEffectiveTags(creation.data.tags, taxonomy),
 }));
 
-// Same date-desc-then-title tiebreak as patterns/index.astro's own sort, and
-// the same 4-item preview cap as creationPreviews above.
+// Same date-desc-then-title tiebreak as patterns/index.astro's own sort.
 const allPatterns = (await getCollection('patterns')).sort((a, b) => {
   const dateDiff = (b.data.date?.getTime() ?? 0) - (a.data.date?.getTime() ?? 0);
   if (dateDiff !== 0) return dateDiff;
   return a.data.title.localeCompare(b.data.title, undefined, { sensitivity: 'base' });
 });
-const patternPreviews = allPatterns.slice(0, 4).map((pattern) => ({
+// Same "New" priority as creations above; patterns have no hand-picked
+// highlight list, so that tier is simply empty.
+const patternPreviews = buildHomePreview(
+  allPatterns,
+  (pattern) => pattern.id,
+  (pattern) => pattern.data.uploadDate,
+  [],
+  4
+).map((pattern) => ({
   pattern,
   effectiveTags: getEffectiveTags(pattern.data.tags, taxonomy),
 }));
@@ -54,9 +73,6 @@ const galleryImages = allCreations.flatMap((creation) =>
 // just makes it possible. Belongs on the homepage specifically, not every
 // page, per Google's own guidance for this markup.
 const generalEntry = (await getCollection('general'))[0];
-
-const pagesEntry = (await getCollection('pages'))[0];
-const pageMeta = pagesEntry.data.home;
 
 const aboutEntry = (await getCollection('about'))[0];
 const { summaryBio } = aboutEntry.data;
